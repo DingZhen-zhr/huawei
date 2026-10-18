@@ -17,3 +17,11 @@
 ## 本地版第二轮：依据、图片与报价
 
 事实卡保留public id并建立正文/逐判断fact_ids可点锚点；原始来源只接受HTTP/HTTPS且拒绝URL内用户名密码，没有链接显示待确认。图片卡展示自身型号、来源、位置和后端核验结果，不根据有图就标通过。报价以SKU明细表、服务返回的算式/金额/日期/渠道/地区展示，缺值待确认；fixture须有虚构样例标识。前端不发明价格或减免，不用真实产品事实填充demo。旧版字符串正文与新对象正文均兼容；编辑/文本预览/服务器附件保持。独立QA需覆盖点击引用、缺图/错图、缺价格、fixture标识及新旧结果形状。
+
+
+## 完整版独立前端
+
+工作区 full-web / feature/full-web，从develop/full派生；不得将变更合入release/lite。恢复正式任务数量/预算/独立约束、型号候选表单、八阶段公开摘要与失败后保留输入重试。保留既有真实/演示门禁；选项从/api/options返回，未取得不伪造候选。完整版与简易版本身份明显区分。新字段/修改请求待core确认契约，开发不改55项验收状态。
+
+
+完整任务契约与core确认：保持/api/tasks与SSE，新增/api/options；quantity/budget/constraints独立，追问支持multi/number/model_pick和带来源的model_candidates。编辑只发送revision_request结构及previous_task_id，不把修改指令拼入客户处境；核心负责每次修改后重验。成稿导出仅complete/complete_with_pending白名单，其余禁止；pending草稿始终提示核对而非最终通过。
