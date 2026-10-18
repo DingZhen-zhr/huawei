@@ -1,35 +1,18 @@
-import path from "path"
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
-import { inspectAttr } from 'kimi-plugin-inspect-react'
-
-// https://vite.dev/config/
-export default defineConfig({
-  base: './',
-  plugins: [inspectAttr(), react()],
-  server: {
-    port: 3000,
-    host: true,
-    // DeepSeek API 代理：前端走 /api/deepseek 避免跨域与密钥暴露
-    proxy: {
-      "/api/deepseek": {
-        target: "https://api.deepseek.com",
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/api\/deepseek/, ""),
-      },
-    },
-    // 允许前端通过 /@fs/ 读取知识库 v7 的 markdown 文件（仅本工作区内）
-    fs: {
-      allow: [
-        path.resolve(__dirname, ".."),
-        path.resolve(__dirname, "../../.."),
-        "D:/KimiData/kimi/Workspaces/华为浙客松",
-      ],
-    },
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
+import path from 'node:path';
+import react from '@vitejs/plugin-react';
+import { defineConfig, loadEnv } from 'vite';
+import { inspectAttr } from 'kimi-plugin-inspect-react';
+import { workflowApi } from './server/plugin';
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  return {
+    base: './',
+    plugins: [inspectAttr(), react(), workflowApi({
+      imaUrl: env.IMA_GATEWAY_URL, imaKey: env.IMA_API_KEY,
+      modelUrl: env.MODEL_API_BASE_URL, modelKey: env.MODEL_API_KEY, model: env.MODEL_NAME,
+    })],
+    server: { port: 3000, host: '127.0.0.1', fs: { allow: [path.resolve(__dirname)] } },
+    preview: { host: '127.0.0.1' },
+    resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+  };
 });

@@ -1,426 +1,94 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Store, BookOpen, Send, RotateCcw, Play, ChevronDown, Copy, Download,
-  CheckCircle2, XCircle, Database, Wand2, KeyRound,
-} from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import ChatMessage from "@/components/ChatMessage";
-import EvidencePanel from "@/components/EvidencePanel";
-import Md from "@/components/Md";
-import { fetchImageIndex, type KbImage } from "@/lib/kb";
-import {
-  MODELS, PLATFORMS, SCENARIOS,
-  buildExport, runPipeline,
-  type ModelId, type PlatformId, type ScenarioId, type StageOut, type TaskInput,
-} from "@/lib/content";
-import { freeReply, type ChatMsg } from "@/lib/engine";
-import { callDeepSeek } from "@/lib/llm";
+import { useEffect, useMemo, useState } from 'react';
+import { Store, Database, RefreshCw, ArrowRight, FileCheck2, Download, Copy, AlertTriangle, CheckCircle2, PencilLine } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Md from '@/components/Md';
+import { PRODUCTS, SCENE_STRATEGIES, PLATFORM_RULES, missingFields, platformIssues, canExport, exportDocument } from '@/lib/workflow';
+import type { ArticleTask, ArticleResult } from '@/lib/workflow';
+import type { ServiceStatus } from '../../server/contracts';
 
-const PROMPT_PATH =
-  "D:/KimiData/kimi/Workspaces/华为浙客松/门店增长智能体/系统提示词骨架.md";
-
-/** 按平台要求从图片索引挑图并格式化来源记录 */
-function pickImages(images: KbImage[], platform: PlatformId, modelDir: string): string[] {
-  const range = PLATFORMS[platform].imgRange;
-  const n = Math.min(range[1], Math.max(range[0], images.length ? range[0] : 0));
-  const sorted = [...images].sort((a, b) => {
-    const score = (x: KbImage) =>
-      (/外观|配色/.test(x.caption) ? 0 : /场景|创作|协同/.test(x.caption) ? 1 : /细节|屏幕/.test(x.caption) ? 2 : 3);
-    return score(a) - score(b);
-  });
-  const positions: Record<PlatformId, string[]> = {
-    小红书: ["封面/首图", "第 2 页·任务场景", "第 3 页·核心事实", "第 4 页·版本差异", "第 5 页·核对清单", "第 6 页·收尾"],
-    公众号: ["封面图", "正文中段·事实插图", "结尾·行动引导配图", "备选·细节图"],
-    门店朋友圈: ["主图", "场景图", "细节图"],
-    门店海报: ["唯一主视觉（不得拉伸或错配型号）"],
-  };
-  return sorted.slice(0, n).map(
-    (img, i) =>
-      `${img.file}｜来源：华为官方产品页（已登记于 P1/${modelDir}/图片索引.csv）｜插入位置：${positions[platform][i] ?? "正文"}｜图片说明：${img.caption}`
-  );
-}
-
-export default function Home() {
-  // ── 任务输入 ──
-  const [modelId, setModelId] = useState<ModelId>("matebook-pro");
-  const [scenario, setScenario] = useState<ScenarioId>("内容创作");
-  const [platform, setPlatform] = useState<PlatformId>("小红书");
-  const [goal, setGoal] = useState("带来私信咨询与到店体验");
-  const [withPrice, setWithPrice] = useState(false);
-  const [stages, setStages] = useState<StageOut[] | null>(null);
-  const [running, setRunning] = useState(false);
-  const [exported, setExported] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const task: TaskInput = useMemo(
-    () => ({ modelId, scenario, platform, goal, withPrice }),
-    [modelId, scenario, platform, goal, withPrice]
-  );
-
-  const run = async (t: TaskInput = task) => {
-    setRunning(true);
-    setStages(null);
-    setCopied(false);
-    const m = MODELS[t.modelId];
-    let imgs: KbImage[] = [];
-    try {
-      imgs = await fetchImageIndex(m.kbDir);
-    } catch {
-      imgs = [];
-    }
-    const plan = pickImages(imgs, t.platform, m.kbDir);
-    // 模拟流水线推进，让每阶段卡片依次出现
-    const all = runPipeline(t, plan);
-    setStages([]);
-    for (let i = 0; i < all.length; i++) {
-      await new Promise((r) => setTimeout(r, 180));
-      setStages(all.slice(0, i + 1));
-    }
-    setExported(buildExport(t, plan));
-    setRunning(false);
-  };
-
-  // ── 自由对话 ──
-  const [freeMsgs, setFreeMsgs] = useState<ChatMsg[]>([
-    {
-      role: "agent",
-      title: "门店增长智能体已就绪",
-      body: "我挂在华为 PC 知识库 v7 上（快照 2026-10-17）。在「软文工作台」里输入产品+人群+场景+平台即可跑完整流水线。\n\n这里可以现场测试：**混淆型号**（MateBook Pro 和 Pro S 有什么区别）、**补贴/内部价**（知识库没有的数据怎么处理）、**参数/价格**快查。\n\n在右上角「接入 DeepSeek」填入 API Key 后，本模式将切换为**大模型回答**：自动挂载知识库检索片段与护栏规则；未接入时使用内置规则引擎。",
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("deepseek-key") ?? "");
-  const [keyInput, setKeyInput] = useState("");
-  const [thinking, setThinking] = useState(false);
-
-  const saveKey = () => {
-    const k = keyInput.trim();
-    if (k) {
-      localStorage.setItem("deepseek-key", k);
-      setApiKey(k);
-      setKeyInput("");
-    }
-  };
-  const clearKey = () => {
-    localStorage.removeItem("deepseek-key");
-    setApiKey("");
-  };
-
-  const send = async () => {
-    const text = input.trim();
-    if (!text || thinking) return;
-    setFreeMsgs((m) => [...m, { role: "customer", body: text }]);
-    setInput("");
-    if (apiKey) {
-      setThinking(true);
-      try {
-        const history = freeMsgs
-          .filter((m) => m.role === "customer" || m.role === "agent")
-          .map((m) => ({ role: m.role as "customer" | "agent", body: m.body }));
-        const reply = await callDeepSeek(history, text, apiKey);
-        setFreeMsgs((m) => [...m, { role: "agent", title: "DeepSeek · 知识库增强回答", body: reply }]);
-      } catch (e) {
-        const fallback = freeReply(text);
-        fallback.body = `（DeepSeek 调用失败，已回退规则引擎）\n\n${fallback.body}`;
-        setFreeMsgs((m) => [...m, fallback]);
-      } finally {
-        setThinking(false);
-      }
-    } else {
-      setFreeMsgs((m) => [...m, freeReply(text)]);
-    }
-  };
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = scrollRef.current?.querySelector("[data-radix-scroll-area-viewport]");
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [stages, freeMsgs]);
-
-  const [promptText, setPromptText] = useState("");
-
-  const copyExport = async () => {    if (!exported) return;
-    await navigator.clipboard.writeText(exported);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  const downloadExport = () => {
-    if (!exported) return;
-    const blob = new Blob([exported], { type: "text/markdown;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${MODELS[modelId].name.replace(/[（）\s]/g, "")}-${scenario}-${platform}.md`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
-
-  return (
-    <div className="flex h-screen flex-col bg-background">
-      {/* 头部 */}
-      <header className="flex items-center justify-between border-b px-4 py-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-700 text-white">
-            <Store className="h-4.5 w-4.5" />
-          </div>
-          <div>
-            <div className="text-[15px] font-bold leading-tight">AI+华为PC营销软文智能体</div>
-            <div className="text-[11px] text-muted-foreground">
-              浙客松·华为产业赛道 ｜ 场景解析 → 平台策略 → 检索 → 生成 → 核验 → 合规 → 导出
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Dialog>
-            <DialogTrigger asChild>
-              {apiKey ? (
-                <Badge className="cursor-pointer gap-1 bg-emerald-600 text-[11px] hover:bg-emerald-700">
-                  <KeyRound className="h-3 w-3" />
-                  DeepSeek 已连接（点击管理）
-                </Badge>
-              ) : (
-                <Button variant="outline" size="sm" className="h-8 text-xs">
-                  <KeyRound className="mr-1 h-3.5 w-3.5" />
-                  接入 DeepSeek
-                </Button>
-              )}
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>接入 DeepSeek API</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3 text-[13px]">
-                <p className="text-muted-foreground">
-                  填入你的 DeepSeek API Key（platform.deepseek.com 申请），自由对话将由大模型回答，
-                  并自动挂载知识库检索片段与全部护栏规则。Key 仅保存在本机浏览器，不明文展示或上传。
-                </p>
-                <Input
-                  type="password"
-                  value={keyInput}
-                  onChange={(e) => setKeyInput(e.target.value)}
-                  placeholder="sk-..."
-                  className="h-9 text-xs"
-                />
-                <div className="flex gap-2">
-                  <Button className="h-8 bg-red-700 text-xs hover:bg-red-800" onClick={saveKey}>
-                    保存并连接
-                  </Button>
-                  {apiKey && (
-                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={clearKey}>
-                      清除已存 Key
-                    </Button>
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  已存 Key：{apiKey ? `${apiKey.slice(0, 6)}…${apiKey.slice(-4)}` : "无"}；未接入时自由对话使用内置规则引擎，工作台流水线不受影响。
-                </p>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <Badge variant="outline" className="gap-1 text-[11px]">
-            <Database className="h-3 w-3" />
-            知识库 v7 ｜ 快照 2026-10-17
-          </Badge>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
-                if (promptText) return;
-                fetch(`/@fs/${encodeURI(PROMPT_PATH)}`).then((r) => r.text()).then(setPromptText)
-                  .catch(() => setPromptText("（系统提示词文件读取失败）"));
-              }}>
-                <BookOpen className="mr-1 h-3.5 w-3.5" />
-                系统提示词
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[80vh] max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>系统提示词骨架（8 模块规范）</DialogTitle>
-              </DialogHeader>
-              <ScrollArea className="max-h-[62vh] pr-3">
-                <pre className="whitespace-pre-wrap text-[12px] leading-relaxed text-foreground/85">
-                  {promptText || "读取中…"}
-                </pre>
-              </ScrollArea>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </header>
-
-      <Tabs defaultValue="workbench" className="flex min-h-0 flex-1 flex-col">
-        <div className="border-b px-4 pt-2">
-          <TabsList>
-            <TabsTrigger value="workbench" className="text-xs">软文工作台（9 阶段流水线）</TabsTrigger>
-            <TabsTrigger value="free" className="text-xs">自由对话（现场抽查）</TabsTrigger>
-          </TabsList>
-        </div>
-
-        {/* ── 工作台 ── */}
-        <TabsContent value="workbench" className="m-0 flex min-h-0 flex-1 flex-col">
-          <ScrollArea className="min-h-0 flex-1" ref={scrollRef}>
-            <div className="mx-auto max-w-3xl space-y-3 px-4 py-4">
-              {/* 任务输入 */}
-              <div className="rounded-xl border bg-card p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="text-sm font-semibold">任务输入</div>
-                  <Button
-                    variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground"
-                    onClick={() => { setModelId("matebook-pro"); setScenario("内容创作"); setPlatform("小红书"); setGoal("带来私信咨询与到店体验"); setWithPrice(false); }}
-                  >
-                    <RotateCcw className="mr-1 h-3 w-3" />
-                    重置
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  <div>
-                    <Label className="mb-1 block text-xs text-muted-foreground">产品型号（相近型号易混淆）</Label>
-                    <Select value={modelId} onValueChange={(v) => setModelId(v as ModelId)}>
-                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {(Object.keys(MODELS) as ModelId[]).map((id) => (
-                          <SelectItem key={id} value={id} className="text-xs">
-                            {MODELS[id].name}｜{MODELS[id].cpu}·{MODELS[id].weight}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="mb-1 block text-xs text-muted-foreground">业务场景</Label>
-                    <Select value={scenario} onValueChange={(v) => setScenario(v as ScenarioId)}>
-                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {(Object.keys(SCENARIOS) as ScenarioId[]).map((id) => (
-                          <SelectItem key={id} value={id} className="text-xs">{id}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="mb-1 block text-xs text-muted-foreground">发布平台</Label>
-                    <Select value={platform} onValueChange={(v) => setPlatform(v as PlatformId)}>
-                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {(Object.keys(PLATFORMS) as PlatformId[]).map((id) => (
-                          <SelectItem key={id} value={id} className="text-xs">{id}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="mb-1 block text-xs text-muted-foreground">内容目标</Label>
-                    <Input value={goal} onChange={(e) => setGoal(e.target.value)} className="h-9 text-xs" />
-                  </div>
-                  <div className="flex items-end gap-2 pb-1.5">
-                    <Switch id="price" checked={withPrice} onCheckedChange={setWithPrice} />
-                    <Label htmlFor="price" className="text-xs leading-tight text-muted-foreground">
-                      文中引用价格<br />（仅限有官方依据时）
-                    </Label>
-                  </div>
-                </div>
-                <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted-foreground">
-                  <span className="font-medium text-foreground/80">防混淆提示：</span>
-                  {MODELS[modelId].identityNote}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button className="h-8 bg-red-700 text-xs hover:bg-red-800" onClick={() => run()} disabled={running}>
-                    <Play className="mr-1 h-3.5 w-3.5" />
-                    {running ? "流水线运行中…" : "运行 9 阶段流水线"}
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs" disabled={running}
-                    onClick={() => { const ids = Object.keys(PLATFORMS) as PlatformId[]; const next = ids[(ids.indexOf(platform) + 1) % ids.length]; setPlatform(next); }}>
-                    <Wand2 className="mr-1 h-3.5 w-3.5" />换平台重生成（→{(() => { const ids = Object.keys(PLATFORMS) as PlatformId[]; return PLATFORMS[ids[(ids.indexOf(platform) + 1) % ids.length]].id; })()}）
-                  </Button>
-                </div>
-              </div>
-
-              {/* 流水线阶段卡片 */}
-              {stages?.map((st) => (
-                <Collapsible key={st.id} defaultOpen={st.id === "generate" || st.id === "compliance" || st.id === "verify"}>
-                  <div className="rounded-xl border bg-card">
-                    <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-2.5 hover:bg-muted/40">
-                      <span className="flex items-center gap-2 text-[13px] font-semibold">
-                        {st.name}
-                        {st.ok !== undefined &&
-                          (st.ok ? (
-                            <Badge className="gap-1 bg-emerald-600 text-[10.5px] hover:bg-emerald-600"><CheckCircle2 className="h-3 w-3" />通过</Badge>
-                          ) : (
-                            <Badge className="gap-1 bg-amber-600 text-[10.5px] hover:bg-amber-600"><XCircle className="h-3 w-3" />需处理</Badge>
-                          ))}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <span className="max-w-[46vw] truncate text-[11px] font-normal text-muted-foreground">{st.summary}</span>
-                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      </span>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="space-y-2 border-t px-4 py-3">
-                        <Md text={st.detail} />
-                        {st.evidenceIds.length > 0 && <EvidencePanel fileIds={st.evidenceIds} />}
-                      </div>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              ))}
-
-              {/* 导出 */}
-              {exported && (
-                <div className="rounded-xl border bg-card p-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="text-sm font-semibold">导出（统一四段式格式）</div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="h-8 text-xs" onClick={copyExport}>
-                        {copied ? <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-emerald-600" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
-                        {copied ? "已复制" : "复制全文"}
-                      </Button>
-                      <Button variant="outline" size="sm" className="h-8 text-xs" onClick={downloadExport}>
-                        <Download className="mr-1 h-3.5 w-3.5" />下载 .md
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    已按比赛统一输出格式组装：场景判断 / 知识库依据 / 图文软文 / 核验结果。换场景或平台后重新运行，切入点与结构会实质变化。
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        {/* ── 自由对话 ── */}
-        <TabsContent value="free" className="m-0 flex min-h-0 flex-1 flex-col">
-          <ScrollArea className="min-h-0 flex-1" ref={scrollRef}>
-            <div className="mx-auto max-w-3xl space-y-4 px-4 py-4">
-              {freeMsgs.map((m, i) => (
-                <ChatMessage key={i} msg={m} onChip={(t) => setFreeMsgs((mm) => [...mm, { role: "customer", body: t }, freeReply(t)])} />
-              ))}
-            </div>
-          </ScrollArea>
-          <div className="border-t bg-card/60 px-4 py-2.5">
-            <div className="mx-auto flex max-w-3xl gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder={apiKey ? "DeepSeek 已接入，直接提问（自动挂载知识库）" : "试试：MateBook Pro 和 Pro S 有什么区别？／ 国补能减多少？（右上角可接入 DeepSeek）"}
-                className="h-9 text-[13px]"
-                disabled={thinking}
-              />
-              <Button className="h-9 bg-red-700 hover:bg-red-800" onClick={send} disabled={thinking}>
-                {thinking ? <span className="text-xs">思考中…</span> : <Send className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+const initial:ArticleTask={modelId:'matebook-pro',scenario:'内容创作',platform:'小红书',audience:'',customerQuote:'',identity:'',software:'',buyingStage:'比较选型',goal:'评论咨询',withPrice:false};
+interface Version {id:number;task:ArticleTask;result:ArticleResult;change:string}
+const stageNames=['① 场景解析','② 平台策略','③ 资料与图片检索','④ 事实点提取','⑤ 图文编排','⑥ 软文生成','⑦ 事实核验','⑧ 合规检查','⑨ 导出'];
+const connectionLabel={unconfigured:'未连接',verified:'已验证',failed:'失败'};
+export default function Home(){
+ const [task,setTask]=useState<ArticleTask>(initial);
+ const [status,setStatus]=useState<ServiceStatus|null>(null);
+ const [probeError,setProbeError]=useState('');
+ const [probing,setProbing]=useState(false);
+ const [running,setRunning]=useState(false);
+ const [versions,setVersions]=useState<Version[]>([]);
+ const [revision,setRevision]=useState('');
+ const [error,setError]=useState('');
+ const [reviewed,setReviewed]=useState(false);
+ const [imageState,setImageState]=useState<Record<string,boolean>>({});
+ const [notice,setNotice]=useState('');
+ const current=versions.at(-1);
+ const stale=!!current&&JSON.stringify(current.task)!==JSON.stringify(task);
+ const missing=missingFields(task);
+ const probe=async()=>{setProbing(true);setProbeError('');try{const response=await fetch('/api/status');if(!response.ok)throw new Error();setStatus(await response.json());}catch{setStatus(null);setProbeError('连接状态读取失败；请检查本地服务后重试。');}finally{setProbing(false);}};
+ useEffect(()=>{localStorage.removeItem('deepseek-key');void probe();},[]);
+ const checks=useMemo(()=>{
+  if(!current)return ['尚未生成稿件'];
+  const r=current.result;
+  const problems=[...r.issues,...platformIssues(current.task.platform,r.title??'',r.body??'',r.images?.length??0)];
+  if(!r.ok||!r.body)problems.push('服务未取得可核验稿件');
+  if(!r.facts?.length)problems.push('未取得指定ima事实原文');
+  if(!r.claimChecks?.length)problems.push('缺少正文事实映射');
+  const ids=new Set(r.facts?.map(f=>f.id)??[]);
+  if(r.claimChecks?.some(c=>{if(!c||typeof c!=='object')return true;const check=c as {text?:unknown;factIds?:unknown;section?:string};return typeof check.text!=='string'||!Array.isArray(check.factIds)||(check.factIds.length===0&&check.section!=='cta')||check.factIds.some(id=>!ids.has(String(id)));}))problems.push('事实映射格式不完整或含未知来源');
+  (r.images??[]).forEach(i=>{if(imageState[i.id]!==true)problems.push(`图片尚未加载或不可访问：${i.filename}`);});
+  return [...new Set(problems)];
+ },[current,imageState]);
+ const formal=!!current&&canExport(checks,reviewed,stale)&&!running&&!revision.trim();
+ const document=current?exportDocument(current.task,{...current.result,issues:[...current.result.issues,...checks],verification:formal?{status:'human-reviewed',issues:['负责人已确认逐句、图片及营销合规；发布前需复核动态信息。']}:current.result.verification,message:stale?'输入已变化，旧稿过期；请重生成':formal?'已完成人工逐项复核，发布前复核动态信息':current.result.message},current.id,formal):'';
+ const edit=(key:keyof ArticleTask,value:string|boolean)=>{setTask(t=>({...t,[key]:value}));setReviewed(false);};
+ const generate=async(next:ArticleTask=task,change='首次生成')=>{
+  setReviewed(false);setError('');setNotice('');
+  const questions=missingFields(next);if(questions.length){setError(`请先补充：${questions.join('；')}`);return;}
+  setRunning(true);
+  try{
+   const response=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:next,...(change!=='首次生成'?{revision:change,previous:current?.result.body?{title:current.result.title,body:current.result.body}:undefined}:{})})});
+   const result=await response.json() as ArticleResult;
+   if(typeof result.ok!=='boolean'||!Array.isArray(result.issues))throw new Error('服务响应格式错误');
+   if(result.body&&result.tags?.length)result.body+='\n\n'+result.tags.join(' ');
+   setVersions(v=>[...v,{id:(v.at(-1)?.id??0)+1,task:{...next},result,change}]);setImageState({});if(result.ok)setRevision('');
+   if(!result.ok)setError(result.message);
+  }catch{setError('请求失败，上一稿保留。请检查服务后重试；未生成新稿。');}
+  finally{setRunning(false);}
+ };
+ const transfer=()=>{const names=Object.keys(PLATFORM_RULES);const platform=names[(names.indexOf(task.platform)+1)%names.length];const next={...task,platform,goal:PLATFORM_RULES[platform].cta};setTask(next);void generate(next,`转为${platform}，按新平台重写并重验`);};
+ const copy=async()=>{try{await navigator.clipboard.writeText(document);setNotice('已复制当前版本四分区全文');}catch{setNotice('浏览器未允许剪贴板，请下载当前稿件。');}};
+ const download=()=>{if(!current)return;const url=URL.createObjectURL(new Blob([document],{type:'text/markdown;charset=utf-8'}));const a=window.document.createElement('a');a.href=url;a.download=`${formal?'待发布复核':'不可发布草稿'}-${current.task.modelId}-${current.task.scenario}-${current.task.platform}-v${current.id}.md`;a.click();URL.revokeObjectURL(url);};
+ const fieldClass='w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-200 disabled:bg-slate-50';
+ return <div className="min-h-screen bg-[#f5f6f8] text-slate-800">
+  <header className="border-b bg-white"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5"><div className="flex items-center gap-3"><div className="rounded-xl bg-red-700 p-3 text-white"><Store size={22}/></div><div><h1 className="text-lg font-bold">AI+华为PC营销软文智能体</h1><p className="mt-1 text-xs text-slate-500">门店增长工作台 · 从客户任务到可追溯图文</p></div></div><Button variant="outline" onClick={()=>void probe()} disabled={probing||running}><RefreshCw size={14} className="mr-2"/>{probing?'正在探测连接':'重新检测连接'}</Button></div></header>
+  <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
+   <div className="mb-6 grid gap-3 md:grid-cols-2">{(['knowledgeBase','model'] as const).map(key=><div key={key} className="flex gap-3 rounded-xl border bg-white p-4"><Database className="mt-1 shrink-0 text-red-700" size={19}/><div><div className="flex flex-wrap items-center gap-2 text-sm font-semibold">{key==='knowledgeBase'?'指定 ima 网关适配':'生成模型'}<span className={`rounded-full px-2 py-0.5 text-xs ${status?.[key].status==='verified'?'bg-green-50 text-green-800':'bg-amber-50 text-amber-800'}`}>{status?connectionLabel[status[key].status]:probing?'连接中':'状态未知'}</span></div><p className="mt-1 text-xs text-slate-500">{key==='knowledgeBase'?'任德耀新建华为PC知识库 · ':''}{status?.[key].message??probeError??'等待真实探测'}</p>{status?.[key].checkedAt&&<p className="mt-1 text-xs text-slate-400">最近探测：{new Date(status[key].checkedAt!).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</p>}</div></div>)}</div>
+   <div className="grid items-start gap-5 lg:grid-cols-[350px_minmax(0,1fr)]">
+    <aside className="space-y-4"><section className="rounded-2xl border bg-white p-5"><div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">任务输入</h2><button className="text-xs text-slate-500" disabled={running} onClick={()=>{setTask({...initial});setReviewed(false);}}>重置输入</button></div>
+     <div className="space-y-3"><label className="block text-xs text-slate-500">精确产品型号<select aria-label="精确产品型号" disabled={running} className={`${fieldClass} mt-1`} value={task.modelId} onChange={e=>edit('modelId',e.target.value)}>{Object.entries(PRODUCTS).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
+     <div className="grid grid-cols-2 gap-3"><label className="block text-xs text-slate-500">业务场景<select aria-label="业务场景" disabled={running} className={`${fieldClass} mt-1`} value={task.scenario} onChange={e=>edit('scenario',e.target.value)}>{Object.keys(SCENE_STRATEGIES).map(s=><option key={s}>{s}</option>)}</select></label><label className="block text-xs text-slate-500">发布平台<select aria-label="发布平台" disabled={running} className={`${fieldClass} mt-1`} value={task.platform} onChange={e=>{setTask(t=>({...t,platform:e.target.value,goal:PLATFORM_RULES[e.target.value].cta}));setReviewed(false);}}>{Object.keys(PLATFORM_RULES).map(s=><option key={s}>{s}</option>)}</select></label></div>
+     {([{key:'identity',label:'年份 / 系统 / 销售配置 / 屏幕版',placeholder:'例：2026 / HarmonyOS 版本 / 24GB+1TB / 柔光屏（待你确认）'},{key:'audience',label:'已确认目标人群',placeholder:'填写真实客户人群，不以场景假设代替'},{key:'customerQuote',label:'客户原话 / 具体任务',placeholder:SCENE_STRATEGIES[task.scenario].question},{key:'software',label:'必装软件 / 插件 / 外设与版本',placeholder:'填写待验证项；不确定请写明待确认'},{key:'buyingStage',label:'购买阶段',placeholder:'了解 / 比较选型 / 到店验证 / 采购验收'},{key:'goal',label:'唯一行动目标',placeholder:'仅保留一个动作'}] as const).map(f=><label key={f.key} className="block text-xs text-slate-500">{f.label}<input aria-label={f.label} disabled={running} className={`${fieldClass} mt-1`} value={task[f.key]} placeholder={f.placeholder} onChange={e=>edit(f.key,e.target.value)}/></label>)}
+     <label className="flex items-center gap-2 text-xs"><input type="checkbox" disabled={running} checked={task.withPrice} onChange={e=>edit('withPrice',e.target.checked)}/>申请引用有依据价格（需同SKU当前复核）</label>
+     <div className="rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-500">{PLATFORM_RULES[task.platform].structure}<br/>配图：{PLATFORM_RULES[task.platform].min}–{PLATFORM_RULES[task.platform].max}张；仅使用指定ima真实来源。</div>
+     {missing.length>0&&<div className="rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">待补充：{missing.join('；')}。补齐后才会请求资料与模型。</div>}
+     <Button className="w-full bg-red-700 hover:bg-red-800" disabled={running} onClick={()=>void generate()}><ArrowRight size={16} className="mr-2"/>{running?'正在检索与生成，等待真实响应…':'检索资料并生成'}</Button><Button variant="outline" className="w-full" disabled={running} onClick={transfer}>换平台重生成</Button>
+     </div></section>
+     <details className="rounded-xl border bg-white p-4 text-xs text-slate-500"><summary className="cursor-pointer font-semibold text-slate-700">接入与使用说明</summary><p className="mt-3 leading-relaxed">当前使用待部署的自定义只读ima网关协议适配，尚未完成原生ima API联调。管理员按服务端契约配置真实网关和模型环境变量。模型响应、资料身份和图片均需核验；未接入时保留阻断记录。浏览器不保存密钥或客户任务。</p><p className="mt-2">本地v7为离线参考，未接入当前正式生成。所有演示步骤均为待验证计划。</p></details>
+    </aside>
+    <div className="min-w-0 space-y-4">
+     <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-medium tracking-widest text-red-700">四分区交付</div><h2 className="mt-1 text-xl font-semibold">把任务写清楚，让每句都有依据</h2></div><span className="rounded-full border bg-white px-3 py-1 text-xs text-slate-500">{running?'检索 / 生成中':stale?'旧稿已过期':current?`${current.result.ok?'待人工复核':'已阻断'} · v${current.id}`:'等待任务'}</span></div>
+     {(error||stale)&&<div role="alert" className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><AlertTriangle size={18} className="shrink-0"/><div>{error}{stale&&<p>输入已变化，旧稿核验失效。请重新生成；草稿导出保留原任务快照。</p>}{error&&<button className="mt-2 block underline" disabled={running} onClick={()=>void generate()}>重试当前任务</button>}</div></div>}
+     <section className="rounded-2xl border bg-white p-5"><h3 className="mb-3 flex items-center gap-2 font-semibold"><span className="text-red-700">一</span> 场景判断</h3><p className="text-sm leading-7">{(current?.task??task).audience||'等待确认目标人群'} · {(current?.task??task).scenario} · {(current?.task??task).buyingStage}</p><p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm">客户原话：{(current?.task??task).customerQuote||'请记录真实客户任务，作为内容切入依据。'}</p><p className="mt-3 text-sm">唯一目标：{(current?.task??task).goal}；策略：{SCENE_STRATEGIES[(current?.task??task).scenario].focus}</p></section>
+     <section className="rounded-2xl border bg-white p-5"><h3 className="mb-3 font-semibold"><span className="mr-2 text-red-700">二</span>知识库依据</h3><p className="mb-3 break-words text-xs text-slate-500">身份快照：{current?.task.identity||'完整型号 / 年份 / 系统版本 / 销售配置 / 屏幕版，待确认'}</p>{current?.result.facts?.length?current.result.facts.map(f=><details key={f.id} className="mb-2 rounded-lg border p-3"><summary className="cursor-pointer text-sm">[{f.id}] {f.claim}</summary><div className="mt-2 space-y-2 break-words text-xs leading-relaxed text-slate-500"><p>原文：{f.quote}</p><p>条件：{f.conditions}</p><p>{f.knowledgeBase} / {f.title} / {f.entryId} / {f.location}</p><p>身份：{f.identity}；日期：{f.date}；核查：{f.verifiedAt}</p></div></details>):<div className="rounded-lg border border-dashed p-5 text-center text-sm text-slate-400">尚未取得指定ima原文与图片<br/><span className="text-xs">连接后展示条目、定位、日期及限定条件</span></div>}</section>
+     <section className="rounded-2xl border bg-white p-5"><h3 className="mb-3 font-semibold"><span className="mr-2 text-red-700">三</span>图文软文</h3>{current?.result.body?<><h4 className="mb-4 text-lg font-semibold">{current.result.title}</h4><Md text={current.result.body}/><p className="mt-4 text-sm font-semibold">{current.result.cta}</p></>:<p className="text-sm leading-7 text-slate-400">取得有效资料与模型响应后，正文将在这里呈现。当前不填充未经核实的产品文案。</p>}
+     <div className="mt-4 grid gap-3 sm:grid-cols-2">{current?.result.images?.map(i=><figure key={i.id} className="min-w-0 rounded-lg border p-3"><img className="h-40 w-full object-contain" alt={i.caption} src={i.url} referrerPolicy="no-referrer" onLoad={()=>setImageState(s=>({...s,[i.id]:true}))} onError={()=>{setImageState(s=>({...s,[i.id]:false}));setReviewed(false);}}/><figcaption className="mt-2 break-words text-xs leading-relaxed text-slate-500">{i.filename} · {i.placement}<br/>{i.caption}<br/>来源：{i.title}/{i.entryId}/{i.location}<br/>身份：{i.identity}；条件：{i.conditions}<br/><a className="text-red-700 underline" href={i.url} target="_blank" rel="noreferrer">查看来源图片</a></figcaption></figure>)}</div>
+     <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-6"><p>拟演示步骤（尚未实测）：{SCENE_STRATEGIES[(current?.task??task).scenario].demo}</p><p>报价：{current?.result.priceQuote?`${current.result.priceQuote.calculation}；SKU：${current.result.priceQuote.sku}；渠道：${current.result.priceQuote.channel}；条件：${current.result.priceQuote.conditions}；来源：${current.result.priceQuote.title}/${current.result.priceQuote.entryId}/${current.result.priceQuote.location}；当前复核：${current.result.priceQuote.currentVerifiedAt}`:(current?.task??task).withPrice?'待取得指定ima当前复核价格，禁止虚构优惠、库存与补贴。':'当前稿不含价格；需要报价时补充SKU、数量、渠道/地区、日期与来源。'}</p><p>下一步：{(current?.task??task).goal}</p></div>
+     <div className="mt-4 border-t pt-4"><label className="mb-2 flex items-center gap-2 text-sm font-medium"><PencilLine size={15}/>修改与重验</label><textarea aria-label="修改要求" className={`${fieldClass} min-h-20`} placeholder="删减 / 换卖点 / 改目标：说明修改要求；每次修改重新检索、生成与核验。" value={revision} disabled={running} onChange={e=>{setRevision(e.target.value);setReviewed(false);}}/><Button variant="outline" className="mt-2" disabled={running||!current?.result.body||!revision.trim()||stale} onClick={()=>void generate(task,revision.trim())}>提交修改并重验</Button></div></section>
+     <section className="rounded-2xl border bg-white p-5"><h3 className="mb-3 flex items-center gap-2 font-semibold"><FileCheck2 size={18} className="text-red-700"/>四、核验结果</h3><p className="text-sm text-slate-600">{current?.result.message??'待生成；尚无事实或图片核验结果。'}</p><ul className="my-3 space-y-2 text-xs text-amber-800">{checks.map((issue,i)=><li key={i}>• {issue}</li>)}</ul>{current?.result.claimChecks?.map((value,i)=>{const check=value as {text:string;factIds:string[]};return <div key={i} className="mb-2 rounded bg-slate-50 p-3 text-xs leading-relaxed"><p>{check.text}</p><p className="mt-1 text-slate-500">对应依据：{check.factIds.join('、')||'纯行动引导，无产品结论'} · 待人工逐句复核</p></div>;})}<p className="text-xs leading-relaxed text-slate-500">规则未命中不代表营销合规通过。请逐句核对原文、条件、型号和每张图片实际画面；发布前复核动态信息。</p><label className="mt-4 flex items-start gap-2 text-xs leading-relaxed"><input aria-label="人工复核确认" type="checkbox" className="mt-1" checked={reviewed} disabled={!current?.result.ok||checks.length>0||stale||running} onChange={e=>setReviewed(e.target.checked)}/>我已逐句核对事实与限制、确认图片身份及使用条件，并完成营销合规复核。</label><div className="mt-4 flex flex-wrap items-center gap-2"><Button variant="outline" disabled={!current||running} onClick={()=>void copy()}><Copy size={14} className="mr-2"/>复制当前{formal?'复核稿':'草稿'}</Button><Button variant="outline" disabled={!current||running} onClick={download}><Download size={14} className="mr-2"/>下载当前{formal?'复核稿':'草稿'}</Button><Button className="bg-red-700 hover:bg-red-800" disabled={!formal} onClick={download}><CheckCircle2 size={14} className="mr-2"/>正式格式导出</Button></div><p aria-live="polite" className="mt-2 text-xs text-slate-500">{notice||'未满足核验要求只能导出带“不可发布”标识的草稿。'}</p></section>
+     <details className="rounded-xl border bg-white p-4"><summary className="cursor-pointer text-sm font-medium">9阶段过程详情与版本记录</summary><ol className="mt-4 grid gap-2 text-xs sm:grid-cols-3">{stageNames.map((name,i)=><li key={name} className="rounded-lg bg-slate-50 p-3">{name}<p className="mt-1 text-slate-500">{running?'等待服务完整响应':!current?'待开始':i<2?'任务已记录':current.result.ok?(i<6?'已取回结果':i===8?formal?'可导出复核稿':'仅限草稿':'待人工复核'):'服务阻断，未完成'}</p></li>)}</ol><ul className="mt-4 space-y-2 text-xs text-slate-500">{versions.map(v=><li key={v.id}><details><summary className="cursor-pointer">v{v.id} · {v.task.platform} · {v.change} · {v.result.message}</summary><pre className="mt-2 whitespace-pre-wrap break-words rounded bg-slate-50 p-3">{exportDocument(v.task,v.result,v.id,false)}</pre></details></li>)}</ul></details>
     </div>
-  );
+   </div><footer className="py-6 text-center text-xs text-slate-400">指定知识库 · 单一行动目标 · 逐项来源复核 · 发布由门店负责人确认</footer>
+  </main>
+ </div>;
 }
