@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "category": "false_promise",
+  "label": "虚假承诺",
+  "description": "未经事实支持的效果、兼容性、服务保障",
+  "entries": [
+    {
+      "id": "fp1",
+      "pattern": "永不卡顿|永不死机|终身保修|保证兼容|任何软件都能|所有软件都能|包你满意",
+      "type": "regex",
+      "severity": "block",
+      "suggestion": "删除承诺，建议到店核对使用条件",
+      "example_bad": "保证兼容任何软件",
+      "example_good": "建议携带目标软件到店验证",
+      "exempt": []
+    },
+    {
+      "id": "fp2",
+      "pattern": "治疗近视|治近视|修复视力|用了不伤眼",
+      "type": "regex",
+      "severity": "block",
+      "suggestion": "删除医疗功效",
+      "example_bad": "治疗近视",
+      "example_good": "按知识库说明屏幕特性",
+      "exempt": []
+    }
+  ]
+}

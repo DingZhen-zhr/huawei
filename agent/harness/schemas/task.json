@@ -1,0 +1,300 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "task"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "need_info",
+        "need_model_choice"
+      ]
+    },
+    "normalized": {
+      "type": "object",
+      "properties": {
+        "product": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "model",
+                "undecided",
+                "ambiguous"
+              ]
+            },
+            "model_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 0
+            },
+            "raw": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "model_ids",
+            "raw"
+          ],
+          "additionalProperties": false
+        },
+        "audience": {
+          "type": "string"
+        },
+        "scene": {
+          "oneOf": [
+            {
+              "$ref": "_common.json#/$defs/SceneId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "platform": {
+          "oneOf": [
+            {
+              "$ref": "_common.json#/$defs/Platform"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "quantity": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "budget": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "oneOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "max": {
+                  "oneOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "min",
+                "max"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "product",
+        "audience",
+        "scene",
+        "platform",
+        "description",
+        "quantity",
+        "budget"
+      ],
+      "additionalProperties": false
+    },
+    "missing": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "product",
+              "audience",
+              "scene",
+              "platform"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi",
+              "text",
+              "number",
+              "model_pick"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0
+          },
+          "why": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "field",
+          "question",
+          "type",
+          "options",
+          "why"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "model_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "model_id": {
+            "type": "string"
+          },
+          "model_name": {
+            "type": "string"
+          },
+          "matched_on": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "model_name",
+          "matched_on",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "rejected_requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "price",
+              "subsidy",
+              "stock",
+              "gift",
+              "installment",
+              "trade_in",
+              "sales_volume",
+              "award",
+              "review",
+              "absolute",
+              "comparison",
+              "other"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "kind",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "degraded": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Degraded"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "status",
+    "normalized",
+    "missing",
+    "questions",
+    "model_candidates",
+    "rejected_requests",
+    "degraded"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "task.json"
+}

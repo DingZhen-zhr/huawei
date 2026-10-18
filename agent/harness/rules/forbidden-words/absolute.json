@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "category": "absolute",
+  "label": "绝对化宣传",
+  "description": "无依据的最高级、唯一性或全称承诺",
+  "entries": [
+    {
+      "id": "a1",
+      "pattern": "全球最|全网最|行业第一|全网第一|唯一选择|百分之百",
+      "type": "regex",
+      "severity": "block",
+      "suggestion": "删除最高级，改为有来源的具体参数",
+      "example_bad": "全球最轻",
+      "example_good": "标准屏版重量见知识库参数",
+      "exempt": []
+    },
+    {
+      "id": "a2",
+      "pattern": "零风险|永不落后|绝对安全",
+      "type": "regex",
+      "severity": "block",
+      "suggestion": "删除无条件断言",
+      "example_bad": "绝对安全",
+      "example_good": "按知识库说明隐私功能及使用条件",
+      "exempt": []
+    }
+  ]
+}

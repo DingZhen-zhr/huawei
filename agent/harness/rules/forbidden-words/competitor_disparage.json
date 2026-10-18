@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "category": "competitor_disparage",
+  "label": "竞品贬低",
+  "description": "点名或暗指其他产品作负面断言",
+  "entries": [
+    {
+      "id": "cd1",
+      "pattern": "(其他品牌|别的品牌|别家|某品牌).{0,12}(垃圾|卡顿|不行|做不到|差劲|落后)|智商税",
+      "type": "regex",
+      "severity": "block",
+      "suggestion": "删除对他方的负面评价",
+      "example_bad": "别家都是智商税",
+      "example_good": "按客户任务讲本机有依据的功能",
+      "exempt": []
+    }
+  ]
+}

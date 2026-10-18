@@ -1,0 +1,176 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "retrieval"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "ima",
+        "local_mirror"
+      ]
+    },
+    "kb": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "任德耀新建华为PC知识库"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "connected",
+            "fallback_browse",
+            "mirror",
+            "unavailable"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "status",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/Model"
+      },
+      "minItems": 0
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/Fact"
+      },
+      "minItems": 0
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/ImageRef"
+      },
+      "minItems": 0
+    },
+    "prices": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/PriceRecord"
+      },
+      "minItems": 0
+    },
+    "quote": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Quote"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/Conflict"
+      },
+      "minItems": 0
+    },
+    "pending": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/Pending"
+      },
+      "minItems": 0
+    },
+    "call_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "api": {
+            "type": "string",
+            "enum": [
+              "search_knowledge_base",
+              "search_knowledge",
+              "get_knowledge_list",
+              "get_media_info",
+              "mirror_read"
+            ]
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "code": {
+            "oneOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "api",
+          "ok",
+          "code",
+          "ms",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "degraded": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Degraded"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "origin",
+    "kb",
+    "models",
+    "facts",
+    "images",
+    "prices",
+    "quote",
+    "conflicts",
+    "pending",
+    "call_log",
+    "degraded"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "retrieval.json"
+}

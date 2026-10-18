@@ -1,0 +1,1551 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "_common.json",
+  "$defs": {
+    "Platform": {
+      "type": "string",
+      "enum": [
+        "wechat_mp",
+        "xiaohongshu",
+        "moments",
+        "poster"
+      ]
+    },
+    "SceneId": {
+      "type": "string",
+      "enum": [
+        "back_to_school",
+        "business_office",
+        "content_creation",
+        "home_upgrade",
+        "enterprise_procurement",
+        "store_visit",
+        "new_launch",
+        "festival"
+      ]
+    },
+    "Stage": {
+      "type": "string",
+      "enum": [
+        "task",
+        "insight",
+        "strategy",
+        "retrieval",
+        "draft",
+        "verification",
+        "compliance",
+        "export"
+      ]
+    },
+    "FactTopic": {
+      "type": "string",
+      "enum": [
+        "identity",
+        "os",
+        "weight",
+        "thickness",
+        "dimensions",
+        "display_size",
+        "display_type",
+        "resolution",
+        "refresh",
+        "brightness",
+        "color_gamut",
+        "processor",
+        "memory",
+        "storage",
+        "battery",
+        "charging",
+        "ports",
+        "keyboard",
+        "camera",
+        "audio",
+        "wireless",
+        "apps_collab",
+        "accessories",
+        "package",
+        "privacy",
+        "pen",
+        "limitation"
+      ]
+    },
+    "Category": {
+      "type": "string",
+      "enum": [
+        "absolute",
+        "false_promise",
+        "price_misleading",
+        "ungrounded_comparison",
+        "competitor_disparage"
+      ]
+    },
+    "Degraded": {
+      "type": "object",
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": [
+            "task",
+            "insight",
+            "strategy",
+            "retrieval",
+            "draft",
+            "verification",
+            "compliance",
+            "export"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "llm_failed",
+            "schema_invalid",
+            "timeout",
+            "no_data",
+            "fallback_model",
+            "mirror",
+            "mock",
+            "conflict"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        },
+        "fallback": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "reason",
+        "detail",
+        "fallback"
+      ],
+      "additionalProperties": false
+    },
+    "Pending": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "topic": {
+          "type": "string",
+          "enum": [
+            "price",
+            "subsidy",
+            "trade_in",
+            "installment",
+            "stock",
+            "gift",
+            "rebate",
+            "policy",
+            "spec",
+            "image",
+            "model",
+            "other"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "no_evidence",
+            "conflict",
+            "user_request_rejected",
+            "out_of_kb",
+            "image_missing"
+          ]
+        },
+        "next_owner": {
+          "type": "string",
+          "enum": [
+            "store_manager",
+            "authorized_channel",
+            "content_reviewer",
+            "user"
+          ]
+        },
+        "source_stage": {
+          "type": "string",
+          "enum": [
+            "task",
+            "insight",
+            "strategy",
+            "retrieval",
+            "draft",
+            "verification",
+            "compliance",
+            "export"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "topic",
+        "text",
+        "reason",
+        "next_owner",
+        "source_stage"
+      ],
+      "additionalProperties": false
+    },
+    "Fact": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": "string"
+        },
+        "model_name": {
+          "type": "string"
+        },
+        "topic": {
+          "$ref": "_common.json#/$defs/FactTopic"
+        },
+        "text": {
+          "type": "string"
+        },
+        "qualifier": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "doc_title": {
+          "type": "string"
+        },
+        "doc_path": {
+          "type": "string"
+        },
+        "media_id": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "ima",
+            "local_mirror"
+          ]
+        },
+        "verified_on": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conflict_with": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "id",
+        "model_id",
+        "model_name",
+        "topic",
+        "text",
+        "qualifier",
+        "doc_title",
+        "doc_path",
+        "media_id",
+        "origin",
+        "verified_on",
+        "conflict_with"
+      ],
+      "additionalProperties": false
+    },
+    "ImageRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "file_name": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": "string"
+        },
+        "model_name": {
+          "type": "string"
+        },
+        "doc_title": {
+          "type": "string"
+        },
+        "doc_path": {
+          "type": "string"
+        },
+        "media_id": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "ima",
+            "local_mirror"
+          ]
+        },
+        "caption_src": {
+          "type": "string"
+        },
+        "width": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "height": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "suggested_use": {
+          "type": "string"
+        },
+        "source_page_url": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "file_name",
+        "model_id",
+        "model_name",
+        "doc_title",
+        "doc_path",
+        "media_id",
+        "origin",
+        "caption_src",
+        "width",
+        "height",
+        "suggested_use",
+        "source_page_url"
+      ],
+      "additionalProperties": false
+    },
+    "PriceRecord": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "record_id": {
+          "type": "string"
+        },
+        "model_name": {
+          "type": "string"
+        },
+        "sku_text": {
+          "type": "string"
+        },
+        "price_type": {
+          "type": "string"
+        },
+        "amount": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ref_amount": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conditions": {
+          "type": "string"
+        },
+        "stock_text": {
+          "type": "string"
+        },
+        "region_text": {
+          "type": "string"
+        },
+        "verified_at": {
+          "type": "string"
+        },
+        "doc_title": {
+          "type": "string"
+        },
+        "doc_path": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "ima",
+            "local_mirror"
+          ]
+        },
+        "official_url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "record_id",
+        "model_name",
+        "sku_text",
+        "price_type",
+        "amount",
+        "ref_amount",
+        "conditions",
+        "stock_text",
+        "region_text",
+        "verified_at",
+        "doc_title",
+        "doc_path",
+        "origin",
+        "official_url"
+      ],
+      "additionalProperties": false
+    },
+    "Quote": {
+      "type": "object",
+      "properties": {
+        "model_name": {
+          "type": "string"
+        },
+        "sku_text": {
+          "type": "string"
+        },
+        "unit_price": {
+          "type": "number"
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "subtotal": {
+          "type": "number"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "price_type": {
+          "type": "string"
+        },
+        "verified_at": {
+          "type": "string"
+        },
+        "channel": {
+          "type": "string"
+        },
+        "region_text": {
+          "type": "string"
+        },
+        "official_url": {
+          "type": "string"
+        },
+        "doc_title": {
+          "type": "string"
+        },
+        "record_id": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "model_name",
+        "sku_text",
+        "unit_price",
+        "quantity",
+        "subtotal",
+        "formula",
+        "price_type",
+        "verified_at",
+        "channel",
+        "region_text",
+        "official_url",
+        "doc_title",
+        "record_id",
+        "notes"
+      ],
+      "additionalProperties": false
+    },
+    "Model": {
+      "type": "object",
+      "properties": {
+        "model_id": {
+          "type": "string"
+        },
+        "model_name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "candidate",
+            "recommended"
+          ]
+        },
+        "why": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "model_id",
+        "model_name",
+        "role",
+        "why"
+      ],
+      "additionalProperties": false
+    },
+    "Conflict": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": "string"
+        },
+        "topic": {
+          "$ref": "_common.json#/$defs/FactTopic"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fact_id": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "doc_title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fact_id",
+              "value",
+              "doc_title"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2
+        },
+        "resolved": {
+          "const": false
+        }
+      },
+      "required": [
+        "id",
+        "model_id",
+        "topic",
+        "values",
+        "resolved"
+      ],
+      "additionalProperties": false
+    },
+    "Segment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "lead",
+            "body",
+            "cta",
+            "caption",
+            "slogan",
+            "subtitle",
+            "selling_point",
+            "event_note"
+          ]
+        },
+        "heading": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "image_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "is_fact_claim": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "role",
+        "heading",
+        "text",
+        "fact_ids",
+        "image_ids",
+        "is_fact_claim"
+      ],
+      "additionalProperties": false
+    },
+    "Poster": {
+      "type": "object",
+      "properties": {
+        "main_title": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "fact_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 0
+              }
+            },
+            "required": [
+              "text",
+              "fact_ids"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 3
+        },
+        "event_note": {
+          "type": "string"
+        },
+        "qr_hint": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "main_title",
+        "subtitle",
+        "points",
+        "event_note",
+        "qr_hint"
+      ],
+      "additionalProperties": false
+    },
+    "Article": {
+      "type": "object",
+      "properties": {
+        "title_options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "title": {
+          "type": "string"
+        },
+        "lead": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "_common.json#/$defs/Segment"
+          },
+          "minItems": 0
+        },
+        "cta": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "consult",
+                "visit",
+                "comment",
+                "dm",
+                "scan"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "poster": {
+          "oneOf": [
+            {
+              "$ref": "_common.json#/$defs/Poster"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "title_options",
+        "title",
+        "lead",
+        "segments",
+        "cta",
+        "tags",
+        "poster"
+      ],
+      "additionalProperties": false
+    },
+    "ImagePlan": {
+      "type": "object",
+      "properties": {
+        "image_id": {
+          "type": "string"
+        },
+        "insert_after": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "cover",
+            "scene",
+            "detail",
+            "evidence",
+            "cta"
+          ]
+        },
+        "caption": {
+          "type": "string"
+        },
+        "on_image_text": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "image_id",
+        "insert_after",
+        "role",
+        "caption",
+        "on_image_text"
+      ],
+      "additionalProperties": false
+    },
+    "QuoteBlock": {
+      "type": "object",
+      "properties": {
+        "quote_id": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "quote_ref": {
+                "type": "string"
+              },
+              "fact_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 0
+              }
+            },
+            "required": [
+              "text",
+              "quote_ref",
+              "fact_ids"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "footnote": {
+          "type": "string"
+        },
+        "pending_notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "quote_id",
+        "lines",
+        "footnote",
+        "pending_notes"
+      ],
+      "additionalProperties": false
+    },
+    "DemoScript": {
+      "type": "object",
+      "properties": {
+        "goal": {
+          "type": "string"
+        },
+        "duration_min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prep": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "action": {
+                "type": "string"
+              },
+              "say": {
+                "type": "string"
+              },
+              "highlight_fact_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 0
+              },
+              "checkpoint": {
+                "type": "string"
+              },
+              "pitfall": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "seq",
+              "action",
+              "say",
+              "highlight_fact_ids",
+              "checkpoint",
+              "pitfall"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "objection_handling": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "objection": {
+                "type": "string"
+              },
+              "reply": {
+                "type": "string"
+              },
+              "fact_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 0
+              }
+            },
+            "required": [
+              "objection",
+              "reply",
+              "fact_ids"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "goal",
+        "duration_min",
+        "prep",
+        "steps",
+        "objection_handling"
+      ],
+      "additionalProperties": false
+    },
+    "NextAction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "action": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        },
+        "script": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string",
+          "enum": [
+            "sales",
+            "store_manager",
+            "customer"
+          ]
+        },
+        "depends_on_pending": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "id",
+        "seq",
+        "action",
+        "when",
+        "script",
+        "owner",
+        "depends_on_pending"
+      ],
+      "additionalProperties": false
+    },
+    "Evidence": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "claim_ref": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "user_input",
+            "scene_rule",
+            "inference"
+          ]
+        },
+        "quote": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rule_id": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "claim_ref",
+        "basis",
+        "quote",
+        "rule_id"
+      ],
+      "additionalProperties": false
+    },
+    "Insight": {
+      "type": "object",
+      "properties": {
+        "stage": {
+          "const": "insight"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "persona": {
+          "type": "string"
+        },
+        "usage_scene": {
+          "type": "string"
+        },
+        "purchase_stage": {
+          "type": "string",
+          "enum": [
+            "awareness",
+            "consideration",
+            "comparison",
+            "decision",
+            "post_purchase"
+          ]
+        },
+        "core_situation": {
+          "type": "string"
+        },
+        "concerns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "empathy_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "detail_tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "detail_tags"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "_common.json#/$defs/Evidence"
+          },
+          "minItems": 1
+        },
+        "content_goal": {
+          "type": "string",
+          "enum": [
+            "inquiry",
+            "visit",
+            "compare",
+            "decide",
+            "refer"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "model",
+            "rule_default"
+          ]
+        },
+        "degraded": {
+          "oneOf": [
+            {
+              "$ref": "_common.json#/$defs/Degraded"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "stage",
+        "schema_version",
+        "persona",
+        "usage_scene",
+        "purchase_stage",
+        "core_situation",
+        "concerns",
+        "empathy_anchors",
+        "evidence",
+        "content_goal",
+        "source",
+        "degraded"
+      ],
+      "additionalProperties": false
+    },
+    "FactCheck": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "segment_id": {
+          "type": "string"
+        },
+        "claim": {
+          "type": "string"
+        },
+        "claim_type": {
+          "type": "string",
+          "enum": [
+            "number",
+            "model",
+            "spec",
+            "feature",
+            "price",
+            "image_caption",
+            "other"
+          ]
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported",
+            "unsupported",
+            "conflict",
+            "pending",
+            "removed"
+          ]
+        },
+        "fact_id": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "doc_title": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "keep",
+            "delete",
+            "mark_pending",
+            "rewrite"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "segment_id",
+        "claim",
+        "claim_type",
+        "value",
+        "status",
+        "fact_id",
+        "doc_title",
+        "note",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "ImageCheck": {
+      "type": "object",
+      "properties": {
+        "image_id": {
+          "type": "string"
+        },
+        "file_name": {
+          "type": "string"
+        },
+        "image_model": {
+          "type": "string"
+        },
+        "text_model": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "match",
+            "mismatch",
+            "unknown",
+            "origin_invalid"
+          ]
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "keep",
+            "remove",
+            "pending"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_id",
+        "file_name",
+        "image_model",
+        "text_model",
+        "status",
+        "action",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "Hit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "category": {
+          "$ref": "_common.json#/$defs/Category"
+        },
+        "word": {
+          "type": "string"
+        },
+        "pattern_id": {
+          "type": "string"
+        },
+        "segment_id": {
+          "type": "string"
+        },
+        "span": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "text_excerpt": {
+          "type": "string"
+        },
+        "suggestion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "word",
+        "pattern_id",
+        "segment_id",
+        "span",
+        "text_excerpt",
+        "suggestion"
+      ],
+      "additionalProperties": false
+    },
+    "Finding": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "category": {
+          "$ref": "_common.json#/$defs/Category"
+        },
+        "segment_id": {
+          "type": "string"
+        },
+        "text_excerpt": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "suggestion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "segment_id",
+        "text_excerpt",
+        "reason",
+        "suggestion"
+      ],
+      "additionalProperties": false
+    },
+    "Change": {
+      "type": "object",
+      "properties": {
+        "segment_id": {
+          "type": "string"
+        },
+        "before": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string"
+        },
+        "hit_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "segment_id",
+        "before",
+        "after",
+        "hit_ids"
+      ],
+      "additionalProperties": false
+    },
+    "StageLog": {
+      "type": "object",
+      "properties": {
+        "stage": {
+          "$ref": "_common.json#/$defs/Stage"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "done",
+            "degraded",
+            "failed",
+            "blocked"
+          ]
+        },
+        "started_at": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ended_at": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "model_used": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "degraded": {
+          "oneOf": [
+            {
+              "$ref": "_common.json#/$defs/Degraded"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "status",
+        "started_at",
+        "ended_at",
+        "ms",
+        "attempts",
+        "model_used",
+        "degraded",
+        "note"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

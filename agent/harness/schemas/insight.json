@@ -1,0 +1,116 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "insight"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "persona": {
+      "type": "string"
+    },
+    "usage_scene": {
+      "type": "string"
+    },
+    "purchase_stage": {
+      "type": "string",
+      "enum": [
+        "awareness",
+        "consideration",
+        "comparison",
+        "decision",
+        "post_purchase"
+      ]
+    },
+    "core_situation": {
+      "type": "string"
+    },
+    "concerns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "empathy_anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "detail_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "detail_tags"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/Evidence"
+      },
+      "minItems": 1
+    },
+    "content_goal": {
+      "type": "string",
+      "enum": [
+        "inquiry",
+        "visit",
+        "compare",
+        "decide",
+        "refer"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "model",
+        "rule_default"
+      ]
+    },
+    "degraded": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Degraded"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "persona",
+    "usage_scene",
+    "purchase_stage",
+    "core_situation",
+    "concerns",
+    "empathy_anchors",
+    "evidence",
+    "content_goal",
+    "source",
+    "degraded"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "insight.json"
+}

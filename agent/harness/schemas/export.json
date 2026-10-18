@@ -1,0 +1,512 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "export"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "complete_with_pending",
+        "manual_required",
+        "incomplete_info"
+      ]
+    },
+    "mirror_notice": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sections": {
+      "type": "object",
+      "properties": {
+        "s1_scene": {
+          "type": "object",
+          "properties": {
+            "audience": {
+              "type": "string"
+            },
+            "usage_scene": {
+              "type": "string"
+            },
+            "user_problem": {
+              "type": "string"
+            },
+            "content_goal": {
+              "type": "string"
+            },
+            "platform": {
+              "oneOf": [
+                {
+                  "$ref": "_common.json#/$defs/Platform"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "scene_label": {
+              "type": "string"
+            },
+            "strategy_basis": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "audience",
+            "usage_scene",
+            "user_problem",
+            "content_goal",
+            "platform",
+            "scene_label",
+            "strategy_basis"
+          ],
+          "additionalProperties": false
+        },
+        "s2_basis": {
+          "type": "object",
+          "properties": {
+            "models": {
+              "type": "array",
+              "items": {
+                "$ref": "_common.json#/$defs/Model"
+              },
+              "minItems": 0
+            },
+            "facts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "fact_id": {
+                    "type": "string"
+                  },
+                  "model_name": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "qualifier": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "doc_title": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "type": "string",
+                    "enum": [
+                      "ima",
+                      "local_mirror"
+                    ]
+                  }
+                },
+                "required": [
+                  "fact_id",
+                  "model_name",
+                  "text",
+                  "qualifier",
+                  "doc_title",
+                  "origin"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            },
+            "doc_titles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "models",
+            "facts",
+            "doc_titles"
+          ],
+          "additionalProperties": false
+        },
+        "s3_article": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "lead": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "body": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "heading": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 0
+                  }
+                },
+                "required": [
+                  "id",
+                  "heading",
+                  "text",
+                  "images"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            },
+            "cta": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "consult",
+                    "visit",
+                    "comment",
+                    "dm",
+                    "scan"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 0
+            },
+            "poster": {
+              "oneOf": [
+                {
+                  "$ref": "_common.json#/$defs/Poster"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "images": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "source_doc": {
+                    "type": "string"
+                  },
+                  "insert_position": {
+                    "type": "string"
+                  },
+                  "caption": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "source_doc",
+                  "insert_position",
+                  "caption"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "title",
+            "lead",
+            "body",
+            "cta",
+            "tags",
+            "poster",
+            "images"
+          ],
+          "additionalProperties": false
+        },
+        "s4_verify": {
+          "type": "object",
+          "properties": {
+            "facts": {
+              "type": "array",
+              "items": {
+                "$ref": "_common.json#/$defs/FactCheck"
+              },
+              "minItems": 0
+            },
+            "image_models": {
+              "type": "array",
+              "items": {
+                "$ref": "_common.json#/$defs/ImageCheck"
+              },
+              "minItems": 0
+            },
+            "compliance": {
+              "type": "object",
+              "properties": {
+                "verdict": {
+                  "type": "string",
+                  "enum": [
+                    "pass",
+                    "pass_after_rewrite",
+                    "needs_manual",
+                    "not_run"
+                  ]
+                },
+                "hits_total": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "by_category": {
+                  "type": "object",
+                  "properties": {
+                    "absolute": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "false_promise": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "price_misleading": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "ungrounded_comparison": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "competitor_disparage": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "absolute",
+                    "false_promise",
+                    "price_misleading",
+                    "ungrounded_comparison",
+                    "competitor_disparage"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "verdict",
+                "hits_total",
+                "by_category"
+              ],
+              "additionalProperties": false
+            },
+            "pending": {
+              "type": "array",
+              "items": {
+                "$ref": "_common.json#/$defs/Pending"
+              },
+              "minItems": 0
+            },
+            "conflicts": {
+              "type": "array",
+              "items": {
+                "$ref": "_common.json#/$defs/Conflict"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "facts",
+            "image_models",
+            "compliance",
+            "pending",
+            "conflicts"
+          ],
+          "additionalProperties": false
+        },
+        "s5_insight": {
+          "oneOf": [
+            {
+              "$ref": "_common.json#/$defs/Insight"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "s6_plan": {
+          "type": "object",
+          "properties": {
+            "quote_block": {
+              "oneOf": [
+                {
+                  "$ref": "_common.json#/$defs/QuoteBlock"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "demo_script": {
+              "oneOf": [
+                {
+                  "$ref": "_common.json#/$defs/DemoScript"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "next_actions": {
+              "type": "array",
+              "items": {
+                "$ref": "_common.json#/$defs/NextAction"
+              },
+              "minItems": 0
+            },
+            "price_notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "quote_block",
+            "demo_script",
+            "next_actions",
+            "price_notes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "s1_scene",
+        "s2_basis",
+        "s3_article",
+        "s4_verify",
+        "s5_insight",
+        "s6_plan"
+      ],
+      "additionalProperties": false
+    },
+    "progress": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/StageLog"
+      },
+      "minItems": 0
+    },
+    "degraded": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/Degraded"
+      },
+      "minItems": 0
+    },
+    "copy_text": {
+      "type": "string"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "mime",
+          "bytes"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "status",
+    "mirror_notice",
+    "sections",
+    "progress",
+    "degraded",
+    "copy_text",
+    "files"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "export.json"
+}

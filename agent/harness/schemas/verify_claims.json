@@ -1,0 +1,85 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "verify_claims"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "extra_claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string"
+          },
+          "claim": {
+            "type": "string"
+          },
+          "claim_type": {
+            "type": "string",
+            "enum": [
+              "number",
+              "model",
+              "spec",
+              "feature",
+              "price",
+              "image_caption",
+              "other"
+            ]
+          },
+          "matched_fact_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0
+          },
+          "hint": {
+            "type": "string",
+            "enum": [
+              "supported",
+              "unsupported",
+              "conflict",
+              "pending"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "segment_id",
+          "claim",
+          "claim_type",
+          "matched_fact_ids",
+          "hint",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "degraded": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Degraded"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "extra_claims",
+    "degraded"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "verify_claims.json"
+}

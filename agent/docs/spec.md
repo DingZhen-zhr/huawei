@@ -990,3 +990,16 @@ NDJSON 写 `out/logs/<date>.ndjson`;字段 `{ t, run_id, stage, level, event, ms
 
 **B.3 核验项**:`{"id":"v7","segment_id":"s3","claim":"重量约798克","claim_type":"number","value":"798 g","status":"supported","fact_id":"f21","doc_title":"HUAWEI MateBook Pro S - 产品事实","note":"限定:标准屏/防窥屏版;典藏版为825 g","action":"keep"}`
 
+
+
+## 15. 一小时 MVP 执行补充（2026-10-18）
+
+用户最新范围为「在现有基础上制作一个可通过初赛的最简版本，限时一个小时，自行安排」。此前完整接口作为后续目标，首版按 `docs/design-handoff.md` 中 core/web 已共同采用的 `/api/tasks` 简契约实现，避免完整设计阻塞可运行演示。不得将本补充理解为验收条目已通过。
+
+- 演示模式与真实模式隔离：demo 明示非 ima 实时来源；live 缺凭证返回 `needs_configuration`，不伪造连接、调用记录、核验通过或知识库图片。
+- 本地镜像同源尚未确认；镜像可用于明确标注的开发演示，不能仅因标注「本地镜像」就认定满足 ima 唯一来源验收。正式来源核验未完成前，界面和导出均提示待确认。
+- Codex 内层仍按原设计保留可配置驱动，HTTP 直连为 MVP 简化实现选择，须在运行状态如实显示实际驱动，不宣称未使用的架构。外层必须承担场景、规则、核验、合规。
+- 重试采用首次调用加最多两次重试（共至多三次尝试），以 §7.2 为准；`PipelineConfig.maxAttempts:2` 旧例应解释为 `maxRetries:2`，开发可采用后者避免歧义。
+- AC-031 四类兼容文件已补在 `harness/rules/forbidden-words/`，主 JSON 仍含五类，运行时只加载主文件，避免重复计数。变更词条时同步对应兼容文件。
+- Schema 使用 draft 2020-12；`_common.json` 通过 `$ref` 复用，向模型服务提交前须解析/内联外部引用，不能把文件相对引用原样发给模型服务。
+- 完整 `export.json` 现明确 `s4_verify.conflicts`，`s5_insight` 为 Insight 或 null，阻塞/追问时允许空分区；`strategy_basis` 为可读字符串数组。完整稿严格核验与 MVP 简契约可分期接入。

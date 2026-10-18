@@ -1,0 +1,89 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "draft"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "platform": {
+      "$ref": "_common.json#/$defs/Platform"
+    },
+    "article": {
+      "$ref": "_common.json#/$defs/Article"
+    },
+    "image_plan": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/ImagePlan"
+      },
+      "minItems": 0
+    },
+    "quote_block": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/QuoteBlock"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "demo_script": {
+      "$ref": "_common.json#/$defs/DemoScript"
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/NextAction"
+      },
+      "minItems": 0
+    },
+    "fact_digest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fact_id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fact_id",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "degraded": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Degraded"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "platform",
+    "article",
+    "image_plan",
+    "quote_block",
+    "demo_script",
+    "next_actions",
+    "fact_digest",
+    "degraded"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "draft.json"
+}

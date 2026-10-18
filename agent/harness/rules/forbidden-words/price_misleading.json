@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "category": "price_misleading",
+  "label": "价格误导",
+  "description": "无依据优惠、库存、迫单及缺限定价格",
+  "entries": [
+    {
+      "id": "pm1",
+      "pattern": "国补后|补贴后|立减|到手仅|全年最低|史低|最低价|买一送|免息分期|免费赠送",
+      "type": "regex",
+      "severity": "block",
+      "suggestion": "从成稿删除，登记待确认并转店长核实",
+      "example_bad": "国补后立减2000",
+      "example_good": "价格与权益待向授权渠道确认",
+      "exempt": []
+    },
+    {
+      "id": "pm2",
+      "pattern": "最后[一二三四五六七八九十0-9]+台|手慢无|库存紧张|马上涨价|售罄在即",
+      "type": "regex",
+      "severity": "block",
+      "suggestion": "删除库存与紧迫性承诺",
+      "example_bad": "最后两台，手慢无",
+      "example_good": "可预约到店体验",
+      "exempt": []
+    }
+  ]
+}

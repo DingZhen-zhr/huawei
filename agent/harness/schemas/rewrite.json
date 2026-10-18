@@ -1,0 +1,41 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "rewrite"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "article": {
+      "$ref": "_common.json#/$defs/Article"
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/Change"
+      },
+      "minItems": 0
+    },
+    "degraded": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Degraded"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "article",
+    "changes",
+    "degraded"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rewrite.json"
+}

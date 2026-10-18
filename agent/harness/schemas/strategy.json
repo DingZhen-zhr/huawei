@@ -1,0 +1,307 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "strategy"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "scene": {
+      "$ref": "_common.json#/$defs/SceneId"
+    },
+    "platform": {
+      "$ref": "_common.json#/$defs/Platform"
+    },
+    "angle": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "rationale"
+      ],
+      "additionalProperties": false
+    },
+    "selling_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          },
+          "need_topics": {
+            "type": "array",
+            "items": {
+              "$ref": "_common.json#/$defs/FactTopic"
+            },
+            "minItems": 0
+          }
+        },
+        "required": [
+          "rank",
+          "key",
+          "label",
+          "why",
+          "need_topics"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "platform_plan": {
+      "type": "object",
+      "properties": {
+        "structure": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "image_count": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "target": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "min",
+            "max",
+            "target"
+          ],
+          "additionalProperties": false
+        },
+        "tone": {
+          "type": "string"
+        },
+        "cta_type": {
+          "type": "string"
+        },
+        "cta_hint": {
+          "type": "string"
+        },
+        "title_rule_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "length": {
+          "type": "object",
+          "properties": {
+            "unit": {
+              "const": "chars"
+            },
+            "min": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "unit",
+            "min",
+            "max"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "structure",
+        "image_count",
+        "tone",
+        "cta_type",
+        "cta_hint",
+        "title_rule_ids",
+        "length"
+      ],
+      "additionalProperties": false
+    },
+    "taboos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "scene",
+              "platform",
+              "global"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "rule_basis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule_file": {
+            "type": "string",
+            "enum": [
+              "scenes.json",
+              "platforms.json"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_file",
+          "path",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "query_plan": {
+      "type": "object",
+      "properties": {
+        "keywords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "$ref": "_common.json#/$defs/FactTopic"
+          },
+          "minItems": 0
+        },
+        "want_images": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "roles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "min",
+            "max",
+            "roles"
+          ],
+          "additionalProperties": false
+        },
+        "want_price": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "keywords",
+        "topics",
+        "want_images",
+        "want_price"
+      ],
+      "additionalProperties": false
+    },
+    "single_selling_point": {
+      "type": "boolean"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "model",
+        "rule_default"
+      ]
+    },
+    "degraded": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Degraded"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "scene",
+    "platform",
+    "angle",
+    "selling_points",
+    "platform_plan",
+    "taboos",
+    "rule_basis",
+    "query_plan",
+    "single_selling_point",
+    "source",
+    "degraded"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "strategy.json"
+}

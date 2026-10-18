@@ -1,0 +1,227 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "compliance"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "rounds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "round": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "scan": {
+            "type": "object",
+            "properties": {
+              "ran": {
+                "const": true
+              },
+              "hits": {
+                "type": "array",
+                "items": {
+                  "$ref": "_common.json#/$defs/Hit"
+                },
+                "minItems": 0
+              }
+            },
+            "required": [
+              "ran",
+              "hits"
+            ],
+            "additionalProperties": false
+          },
+          "review": {
+            "type": "object",
+            "properties": {
+              "ran": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "model",
+                  "skipped"
+                ]
+              },
+              "findings": {
+                "type": "array",
+                "items": {
+                  "$ref": "_common.json#/$defs/Finding"
+                },
+                "minItems": 0
+              }
+            },
+            "required": [
+              "ran",
+              "source",
+              "findings"
+            ],
+            "additionalProperties": false
+          },
+          "rewrite": {
+            "type": "object",
+            "properties": {
+              "applied": {
+                "type": "boolean"
+              },
+              "changes": {
+                "type": "array",
+                "items": {
+                  "$ref": "_common.json#/$defs/Change"
+                },
+                "minItems": 0
+              }
+            },
+            "required": [
+              "applied",
+              "changes"
+            ],
+            "additionalProperties": false
+          },
+          "recheck": {
+            "type": "object",
+            "properties": {
+              "verification_passed": {
+                "type": "boolean"
+              },
+              "scan_hits_left": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "verification_passed",
+              "scan_hits_left"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "round",
+          "scan",
+          "review",
+          "rewrite",
+          "recheck"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 3
+    },
+    "hits_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "by_category": {
+      "type": "object",
+      "properties": {
+        "absolute": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "false_promise": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "price_misleading": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ungrounded_comparison": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "competitor_disparage": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "absolute",
+        "false_promise",
+        "price_misleading",
+        "ungrounded_comparison",
+        "competitor_disparage"
+      ],
+      "additionalProperties": false
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "pass_after_rewrite",
+        "needs_manual"
+      ]
+    },
+    "manual_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "_common.json#/$defs/Category"
+          },
+          "why": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "category",
+          "why"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "final_article": {
+      "$ref": "_common.json#/$defs/Article"
+    },
+    "final_image_plan": {
+      "type": "array",
+      "items": {
+        "$ref": "_common.json#/$defs/ImagePlan"
+      },
+      "minItems": 0
+    },
+    "degraded": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Degraded"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "rounds",
+    "hits_total",
+    "by_category",
+    "verdict",
+    "manual_items",
+    "final_article",
+    "final_image_plan",
+    "degraded"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compliance.json"
+}

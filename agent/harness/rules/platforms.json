@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "_doc": "字数为本产品默认策略，不冒充平台硬性政策。图片不足允许少于下限并登记Pending，严禁补外部图。",
+  "platforms": {
+    "wechat_mp": {
+      "label": "公众号",
+      "aliases": [
+        "微信公众号",
+        "微信公众平台"
+      ],
+      "structure": [
+        {
+          "slot": "title",
+          "required": true,
+          "desc": "title"
+        },
+        {
+          "slot": "lead",
+          "required": true,
+          "desc": "lead"
+        },
+        {
+          "slot": "body",
+          "required": true,
+          "desc": "按场景展开；朋友圈仅一个核心卖点"
+        },
+        {
+          "slot": "cta",
+          "required": true,
+          "desc": "cta"
+        }
+      ],
+      "image_count": {
+        "min": 2,
+        "max": 4,
+        "target": 3
+      },
+      "length": {
+        "unit": "chars",
+        "min": 600,
+        "max": 1200,
+        "lead_min": 40,
+        "lead_max": 120
+      },
+      "tone": {
+        "voice": "稳重清晰",
+        "do": [
+          "用具体处境开头",
+          "保留事实限定条件"
+        ],
+        "dont": [
+          "虚构亲测经历",
+          "堆砌产品参数"
+        ]
+      },
+      "cta": {
+        "type": "consult",
+        "hint": "文末咨询具体配置或预约到店",
+        "examples": [
+          "文末咨询具体配置或预约到店"
+        ],
+        "forbidden": [
+          "承诺库存或未经核实优惠",
+          "制造限时抢购压力"
+        ]
+      },
+      "title": {
+        "count": 3,
+        "min_chars": 10,
+        "max_chars": 30,
+        "rules": [
+          {
+            "id": "wechat_mp_title_scene",
+            "text": "标题体现本次使用处境与内容切入点"
+          },
+          {
+            "id": "wechat_mp_title_evidence",
+            "text": "标题事实也必须有依据，不作绝对化宣传"
+          }
+        ]
+      },
+      "tags": {
+        "required": false,
+        "min": 0,
+        "max": 0
+      },
+      "image_roles_order": [
+        "cover",
+        "scene",
+        "detail",
+        "evidence"
+      ],
+      "first_person_experience": "forbidden",
+      "price_policy": "footnote"
+    },
+    "xiaohongshu": {
+      "label": "小红书",
+      "aliases": [
+        "红薯"
+      ],
+      "structure": [
+        {
+          "slot": "title",
+          "required": true,
+          "desc": "title"
+        },
+        {
+          "slot": "body",
+          "required": true,
+          "desc": "按场景展开；朋友圈仅一个核心卖点"
+        },
+        {
+          "slot": "cta",
+          "required": true,
+          "desc": "cta"
+        },
+        {
+          "slot": "tags",
+          "required": true,
+          "desc": "tags"
+        }
+      ],
+      "image_count": {
+        "min": 3,
+        "max": 6,
+        "target": 4
+      },
+      "length": {
+        "unit": "chars",
+        "min": 250,
+        "max": 700,
+        "lead_min": 0,
+        "lead_max": 80
+      },
+      "tone": {
+        "voice": "口语、短句、场景具体",
+        "do": [
+          "用具体处境开头",
+          "保留事实限定条件"
+        ],
+        "dont": [
+          "虚构亲测经历",
+          "堆砌产品参数"
+        ]
+      },
+      "cta": {
+        "type": "dm",
+        "hint": "评论提出使用需求或私信预约体验",
+        "examples": [
+          "评论提出使用需求或私信预约体验"
+        ],
+        "forbidden": [
+          "承诺库存或未经核实优惠",
+          "制造限时抢购压力"
+        ]
+      },
+      "title": {
+        "count": 3,
+        "min_chars": 8,
+        "max_chars": 20,
+        "rules": [
+          {
+            "id": "xiaohongshu_title_scene",
+            "text": "标题体现本次使用处境与内容切入点"
+          },
+          {
+            "id": "xiaohongshu_title_evidence",
+            "text": "标题事实也必须有依据，不作绝对化宣传"
+          }
+        ]
+      },
+      "tags": {
+        "required": true,
+        "min": 3,
+        "max": 6
+      },
+      "image_roles_order": [
+        "cover",
+        "scene",
+        "detail",
+        "evidence",
+        "cta"
+      ],
+      "first_person_experience": "forbidden",
+      "price_policy": "quote_block_only"
+    },
+    "moments": {
+      "label": "门店朋友圈",
+      "aliases": [
+        "朋友圈",
+        "微信朋友圈"
+      ],
+      "structure": [
+        {
+          "slot": "title",
+          "required": true,
+          "desc": "title"
+        },
+        {
+          "slot": "body",
+          "required": true,
+          "desc": "按场景展开；朋友圈仅一个核心卖点"
+        },
+        {
+          "slot": "cta",
+          "required": true,
+          "desc": "cta"
+        }
+      ],
+      "image_count": {
+        "min": 1,
+        "max": 3,
+        "target": 2
+      },
+      "length": {
+        "unit": "chars",
+        "min": 50,
+        "max": 180,
+        "lead_min": 0,
+        "lead_max": 0
+      },
+      "tone": {
+        "voice": "亲切直接、只讲一个核心卖点",
+        "do": [
+          "用具体处境开头",
+          "保留事实限定条件"
+        ],
+        "dont": [
+          "虚构亲测经历",
+          "堆砌产品参数"
+        ]
+      },
+      "cta": {
+        "type": "visit",
+        "hint": "预约到店做一项具体体验",
+        "examples": [
+          "预约到店做一项具体体验"
+        ],
+        "forbidden": [
+          "承诺库存或未经核实优惠",
+          "制造限时抢购压力"
+        ]
+      },
+      "title": {
+        "count": 3,
+        "min_chars": 4,
+        "max_chars": 20,
+        "rules": [
+          {
+            "id": "moments_title_scene",
+            "text": "标题体现本次使用处境与内容切入点"
+          },
+          {
+            "id": "moments_title_evidence",
+            "text": "标题事实也必须有依据，不作绝对化宣传"
+          }
+        ]
+      },
+      "tags": {
+        "required": false,
+        "min": 0,
+        "max": 0
+      },
+      "image_roles_order": [
+        "cover",
+        "scene",
+        "detail"
+      ],
+      "first_person_experience": "forbidden",
+      "price_policy": "quote_block_only"
+    },
+    "poster": {
+      "label": "门店海报",
+      "aliases": [
+        "海报"
+      ],
+      "structure": [
+        {
+          "slot": "main_title",
+          "required": true,
+          "desc": "main_title"
+        },
+        {
+          "slot": "subtitle",
+          "required": false,
+          "desc": "subtitle"
+        },
+        {
+          "slot": "selling_point",
+          "required": true,
+          "desc": "最多三个有事实依据的卖点"
+        },
+        {
+          "slot": "event_note",
+          "required": false,
+          "desc": "event_note"
+        },
+        {
+          "slot": "cta",
+          "required": true,
+          "desc": "cta"
+        }
+      ],
+      "image_count": {
+        "min": 1,
+        "max": 1,
+        "target": 1
+      },
+      "length": {
+        "unit": "chars",
+        "min": 20,
+        "max": 100,
+        "lead_min": 0,
+        "lead_max": 0
+      },
+      "tone": {
+        "voice": "精炼、主次分明",
+        "do": [
+          "用具体处境开头",
+          "保留事实限定条件"
+        ],
+        "dont": [
+          "虚构亲测经历",
+          "堆砌产品参数"
+        ]
+      },
+      "cta": {
+        "type": "scan",
+        "hint": "扫码咨询或到店核对配置",
+        "examples": [
+          "扫码咨询或到店核对配置"
+        ],
+        "forbidden": [
+          "承诺库存或未经核实优惠",
+          "制造限时抢购压力"
+        ]
+      },
+      "title": {
+        "count": 3,
+        "min_chars": 4,
+        "max_chars": 16,
+        "rules": [
+          {
+            "id": "poster_title_scene",
+            "text": "标题体现本次使用处境与内容切入点"
+          },
+          {
+            "id": "poster_title_evidence",
+            "text": "标题事实也必须有依据，不作绝对化宣传"
+          }
+        ]
+      },
+      "tags": {
+        "required": false,
+        "min": 0,
+        "max": 0
+      },
+      "image_roles_order": [
+        "cover"
+      ],
+      "first_person_experience": "forbidden",
+      "price_policy": "footnote"
+    }
+  }
+}

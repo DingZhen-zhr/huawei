@@ -1,0 +1,249 @@
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "complete_with_pending",
+        "need_info",
+        "needs_configuration",
+        "manual_required",
+        "error"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "live",
+        "demo"
+      ]
+    },
+    "source": {
+      "type": "string"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "scene": {
+      "type": "string"
+    },
+    "insight": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "fact": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "model",
+          "fact",
+          "title",
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "article": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "lead": {
+          "type": "string"
+        },
+        "paragraphs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cta": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "position": {
+                "type": "string"
+              },
+              "caption": {
+                "type": "string"
+              },
+              "url": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "source",
+              "position",
+              "caption",
+              "url"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "title",
+        "lead",
+        "paragraphs",
+        "cta",
+        "tags",
+        "images"
+      ],
+      "additionalProperties": false
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "facts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "compliance": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pending": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "facts",
+        "images",
+        "compliance",
+        "pending"
+      ],
+      "additionalProperties": false
+    },
+    "plan": {
+      "type": "object",
+      "properties": {
+        "quote": {
+          "type": "string"
+        },
+        "demo_script": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "action": {
+                "type": "string"
+              },
+              "talk": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "step",
+              "action",
+              "talk"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "next_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "quote",
+        "demo_script",
+        "next_actions"
+      ],
+      "additionalProperties": false
+    },
+    "copy_text": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "mode",
+    "source",
+    "questions",
+    "warnings",
+    "scene",
+    "insight",
+    "evidence",
+    "article",
+    "verification",
+    "plan",
+    "copy_text"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mvp-result.json",
+  "$comment": "MVP公开结果契约。所有字段required，无法输出内容时使用空块，未知图片URL用null；不得在demo中写source=ima。状态定义见docs/design-handoff.md。"
+}

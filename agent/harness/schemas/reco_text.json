@@ -1,0 +1,58 @@
+{
+  "type": "object",
+  "properties": {
+    "stage": {
+      "const": "reco_text"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "model_id": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          },
+          "fact_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0
+          }
+        },
+        "required": [
+          "model_id",
+          "why",
+          "fact_ids"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "degraded": {
+      "oneOf": [
+        {
+          "$ref": "_common.json#/$defs/Degraded"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "schema_version",
+    "items",
+    "degraded"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reco_text.json"
+}

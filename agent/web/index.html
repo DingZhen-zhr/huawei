@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>门店增长工作台 · 华为 PC</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header class="topbar"><a class="brand" href="/" aria-label="门店增长工作台首页"><span class="brand-icon">生</span><span>门店增长工作台<small>HUAWEI PC · 销售顾问助手</small></span></a><button id="btn-settings" class="secondary">连接设置</button></header>
+<main>
+<section class="intro"><div><div class="eyebrow">从客户处境，到下一次咨询</div><h1>把产品知识，变成到店理由。</h1><p>读懂客户、生成图文、核验依据，一次完成。</p></div><span class="workspace-label">营销工作台 / 新建任务</span></section>
+<section id="status-card" class="statusbar" aria-label="连接状态"><div><i class="dot"></i><strong id="kb-name">任德耀新建华为PC知识库</strong><span id="kb-state">正在检查连接…</span></div><div><span id="mirror-badge" class="badge">模式待确认</span><span id="llm-mode">模型待确认</span></div><small id="kb-last-api"></small><span id="id-tail" hidden></span><span id="key-tail" hidden></span></section>
+<div class="workspace">
+<aside class="panel input-panel"><div class="panel-heading"><span class="step-number">01</span><div><h2>告诉我这次任务</h2><p>从一个具体客户开始</p></div></div>
+<div class="sample-row"><span>快速试一试</span><button type="button" id="sample-student">新生开学</button><button type="button" id="sample-business">差旅办公</button></div>
+<form id="task-form" novalidate>
+<label for="f-product">产品型号</label><input id="f-product" name="product" placeholder="如 HUAWEI MateBook Pro S" list="model-list"><datalist id="model-list"></datalist>
+<label for="f-audience">目标人群</label><input id="f-audience" name="audience" placeholder="如 大学新生与家长">
+<div class="form-row"><div><label for="f-scene">业务场景</label><select id="f-scene" name="scene"><option value="">请选择</option><option value="back_to_school">开学季</option><option value="business_office">职场办公</option><option value="content_creation">内容创作</option><option value="home_upgrade">家庭换新</option><option value="enterprise_procurement">企业采购</option><option value="store_visit">门店到访</option><option value="new_launch">新品首发</option><option value="festival">节日营销</option></select></div><div><label for="f-platform">发布平台</label><select id="f-platform" name="platform"><option value="">请选择</option><option value="xiaohongshu">小红书</option><option value="wechat_mp">公众号</option><option value="moments">门店朋友圈</option><option value="poster">门店海报</option></select></div></div>
+<label for="f-description">客户处境 / 内容目标</label><textarea id="f-description" name="description" rows="5" placeholder="他遇到了什么问题？有什么顾虑？希望他看完做什么？"></textarea>
+<label class="checkbox"><input type="checkbox" id="f-demo"> 使用演示模式（不代表实时资料核验）</label>
+<button class="primary" id="btn-submit" type="submit">生成本次营销方案 <span>→</span></button><p class="form-hint">信息不足时会先追问。无依据的参数与优惠不会作为事实输出。</p>
+</form><form id="ask-form" class="followup" hidden><h3>还需要了解几件事</h3><div id="questions"></div><button id="btn-ask-submit" class="primary">补充并继续</button></form>
+</aside>
+<section class="results"><div class="result-heading"><div><div class="eyebrow">本次方案</div><h2>让每一步，都有依据</h2></div><div class="actions"><button id="btn-copy" class="secondary" disabled>复制全文</button><button id="btn-export" class="secondary" disabled>导出文本 ↓</button></div></div>
+<div id="progress" class="progress" aria-live="polite"></div><div id="notice" class="notice" role="status" hidden></div><div id="blocked-banner" class="warning" role="alert" hidden></div>
+<div id="empty-state" class="empty-state"><div class="empty-mark">↗</div><h3>下一份好内容，从理解客户开始</h3><p>填写左侧任务，或选择一个示例。<br>生成后在这里查看洞察、内容、依据与下一步动作。</p><div class="empty-chips"><span>客户洞察</span><span>图文软文</span><span>事实核验</span><span>门店行动</span></div></div>
+<div id="output" hidden>
+<details class="output-card" id="sec-insight" open><summary><span>客户洞察卡</span><small>读懂眼前的人</small></summary><div class="section-content"></div></details>
+<details class="output-card" id="sec-scene" open><summary><span>一、场景判断</span><small>切入点与平台策略</small></summary><div class="section-content"></div></details>
+<details class="output-card" id="sec-basis"><summary><span>二、知识库依据</span><small>产品事实与资料来源</small></summary><div class="section-content"></div></details>
+<details class="output-card article-card" id="sec-article" open><summary><span>三、图文软文</span><small>标题、正文与配图方案</small></summary><div class="section-content"></div></details>
+<details class="output-card" id="sec-verify" open><summary><span>四、核验结果</span><small>事实、图片与合规检查</small></summary><div class="section-content"></div></details>
+<details class="output-card" id="sec-plan" open><summary><span>演示脚本与下一步动作</span><small>把咨询推向成交</small></summary><div class="section-content"></div></details>
+<form class="output-card revise" id="revise-form"><h3>调整这份方案</h3><div class="form-row"><div><label for="r-kind">调整方式</label><select id="r-kind"><option value="regenerate">重新生成</option><option value="change_platform">切换平台</option><option value="edit_constraints">补充要求</option><option value="change_selling_point">更换卖点</option></select></div><div><label for="r-platform">目标平台</label><select id="r-platform"><option value="xiaohongshu">小红书</option><option value="wechat_mp">公众号</option><option value="moments">门店朋友圈</option><option value="poster">门店海报</option></select></div></div><input id="r-focus" placeholder="希望强调的卖点（可选）" aria-label="希望强调的卖点"><textarea id="r-note" rows="2" placeholder="如：删掉夸张表达，改为邀请到店体验" aria-label="修改要求"></textarea><button id="btn-revise" class="secondary">修改并重新核验</button></form>
+</div></section></div><footer>门店增长智能体 · 产品事实与图片需有知识库依据，价格与权益以核实结果为准。</footer></main>
+<dialog id="settings"><form id="settings-form"><div class="dialog-heading"><h2>连接设置</h2><button type="button" id="btn-close-settings" aria-label="关闭设置">×</button></div><p>凭证仅发送到本机服务，不保存在浏览器。留空保留现有配置。</p><label for="c-base">模型接口地址</label><input id="c-base" type="url" placeholder="https://服务地址/v1"><label for="c-model">模型名称</label><input id="c-model" placeholder="模型标识"><label for="c-key">模型 API Key</label><input id="c-key" type="password" autocomplete="off"><label for="c-client">ima Client ID</label><input id="c-client" type="password" autocomplete="off"><label for="c-ima">ima API Key</label><input id="c-ima" type="password" autocomplete="off"><p id="config-message" role="status"></p><button class="primary" id="btn-save-settings">保存到本次服务会话</button></form></dialog>
+</body></html>

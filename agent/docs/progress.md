@@ -43,3 +43,25 @@
 - `bts_no_single_perf` 的 `require_groups` 用 study/carry/battery 三组、min=2,组内 topic 取自 fact_topic;是否满足由代码在草稿后按事实主题覆盖判定,尚未实现。
 - 触发词与禁忌正则为首版,未用真实样本回归;测试 Agent 应以 spec §14.3「八场景」用例补测。
 - 型号 `recommended_models` 中下架型号(D14、D16、14 Ultra、GT 14、X Pro)报价必为待确认,已在 note 中标注;阶段 4 须按知识库实际可读性再剔除。
+
+
+## [003] 设计 Agent（恢复额度中断任务） | 2026-10-18
+
+做了什么
+- 重读根 AGENTS、赛题总结、设计书、工作流程及当前 spec/rules/prompts 和 Git 状态，沿用已有 spec/scenes/prompts，不覆盖他人业务实现。
+- 补齐四平台规则，五类主合规词表与四类独立兼容词表；补齐公共defs、八阶段、五辅助及MVP共15个JSON Schema，保留已有八提示词模块。
+- 修正 compose 的追问子Schema与辅助Schema缺口说明；追加 spec §15 和 design-handoff，采用 core/web 已对齐的 MVP /api/tasks 简接口与明确模块所有权。
+- 已用现有 Ajv 8.17.1 编译15个Schema，11条合规词条正则与场景正则均可编译；未修改已有 package 与 acceptance。
+
+当前状态
+- MVP 必需设计就绪，可并行开发，完整八阶段Schema可后续接入；静态检查不是业务验收。
+
+设计偏离与诚实约束
+- 最新用户授权是一小时 MVP，完整 /api/runs 接口先不阻塞首版，记录 /api/tasks 简契约。
+- 既存 spec 默认 HTTP/Codex可选与原设计内层Codex要求有出入，MVP保留可配置Codex并如实标明实际驱动，不宣称不存在的架构。
+- 镜像同源未确认，必须以demo隔离，不得因标注本地镜像就视作满足ima来源要求。live缺凭证是needs_configuration，不得伪造连接或通过。
+- AC031独立四类词表与主JSON五类差异已用兼容文件补齐；主JSON作为唯一运行加载源避免重复。
+- 重试旧maxAttempts=2示例与首次+两次重试出入，以最多三次尝试为准。
+
+未完成项
+- core/web业务实现、网页独立验收、真实模型及ima联调、发布扫描与上传均交对应Agent；设计不宣称55项验收通过。
