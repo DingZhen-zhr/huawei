@@ -23,11 +23,10 @@ import {
   type ModelId, type PlatformId, type ScenarioId, type StageOut, type TaskInput,
 } from "@/lib/content";
 import { freeReply, type ChatMsg } from "@/lib/engine";
-import { callDeepSeek, callCreativeStep } from "@/lib/llm";
+import { callDeepSeek, callCreativeStep, hasServerModel } from "@/lib/llm";
 import { prepareArticle, type ArticleBundle } from "@/lib/creative";
 
-const PROMPT_PATH =
-  "D:/KimiData/kimi/Workspaces/华为浙客松/门店增长智能体/系统提示词骨架.md";
+const PROMPT_PATH = "system-prompt";
 
 /** 按平台要求从图片索引挑图并格式化来源记录 */
 function pickImages(images: KbImage[], platform: PlatformId, modelDir: string): string[] {
@@ -82,7 +81,7 @@ export default function Home() {
       imgs = [];
     }
     const plan = pickImages(imgs, t.platform, m.kbDir);
-    const bundle = await prepareArticle(t, plan, apiKey ? (step, instructions, data) => callCreativeStep(step, instructions, data, apiKey) : undefined);
+    const bundle = await prepareArticle(t, plan, (apiKey || await hasServerModel()) ? (step, instructions, data) => callCreativeStep(step, instructions, data, apiKey) : undefined);
     const all = runPipeline(t, plan, bundle);
     setStages([]);
     for (let i = 0; i < all.length; i++) {
@@ -127,7 +126,7 @@ export default function Home() {
     if (!text || thinking) return;
     setFreeMsgs((m) => [...m, { role: "customer", body: text }]);
     setInput("");
-    if (apiKey) {
+    if (apiKey || await hasServerModel()) {
       setThinking(true);
       try {
         const history = freeMsgs

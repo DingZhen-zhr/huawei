@@ -1,5 +1,5 @@
 // 知识库 v7 访问层：通过 Vite /@fs/ 读取工作区内真实文件，实现可回溯的"检索"
-const KB_ROOT = "D:/KimiData/kimi/Workspaces/华为浙客松/华为PC全板块深度知识库_v7";
+const KB_ROOT = "/knowledge";
 
 export interface KbFile {
   id: string;
@@ -437,7 +437,7 @@ export async function fetchImageIndex(modelDir: string): Promise<KbImage[]> {
 }
 
 export async function fetchKbFile(path: string): Promise<string> {
-  const res = await fetch(`/@fs/${encodeURI(path)}`);
+  const res = await fetch(`/api/knowledge?path=${encodeURIComponent(path.replace(/^\/knowledge\//, ""))}`);
   if (!res.ok) throw new Error(`无法读取知识库文件（${res.status}）：${path}`);
   return res.text();
 }

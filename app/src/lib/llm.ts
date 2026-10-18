@@ -1,8 +1,12 @@
-// DeepSeek 大模型接入层（OpenAI 兼容接口，经 Vite 代理转发）
+// DeepSeek 大模型接入层（经同源 Node 服务转发，开发/生产共用）
 import { KB_FILES, fetchKbFile } from "./kb";
 
-const PROMPT_PATH =
-  "D:/KimiData/kimi/Workspaces/华为浙客松/门店增长智能体/系统提示词骨架.md";
+const PROMPT_PATH = "/api/prompt";
+
+export async function hasServerModel(): Promise<boolean> {
+  try { const response = await fetch('/api/runtime'); return response.ok && (await response.json()).modelConfigured === true; }
+  catch { return false; }
+}
 
 export interface LlmMessage {
   role: "system" | "user" | "assistant";
@@ -14,7 +18,7 @@ let cachedPrompt: string | null = null;
 async function loadSystemPrompt(): Promise<string> {
   if (cachedPrompt) return cachedPrompt;
   try {
-    cachedPrompt = await fetch(`/@fs/${encodeURI(PROMPT_PATH)}`).then((r) => r.text());
+    cachedPrompt = await fetch(PROMPT_PATH).then((r) => { if (!r.ok) throw new Error("提示词读取失败"); return r.text(); });
   } catch {
     cachedPrompt = "你是华为PC门店营销软文智能体。";
   }
@@ -83,7 +87,7 @@ export async function callDeepSeek(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      "X-Model-Key": apiKey,
     },
     body: JSON.stringify({
       model: "deepseek-chat",
@@ -113,7 +117,7 @@ export async function callDeepSeek(
 export async function callCreativeStep(step: string, instructions: string, data: string, apiKey: string): Promise<string> {
   const response = await fetch('/api/deepseek/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    headers: { 'Content-Type': 'application/json', "X-Model-Key": apiKey },
     signal: AbortSignal.timeout(60000),
     body: JSON.stringify({ model: 'deepseek-chat', messages: [
       { role:'system',content:instructions },
