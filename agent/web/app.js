@@ -9,7 +9,7 @@ function showNotice(text, warning = false) { const e=$(warning?'blocked-banner':
 function resetProgress() { $('progress').replaceChildren(...Object.entries(stages).map(([key,title])=>{const e=node('div',title,'stage');e.id=`stage-${key}`;e.dataset.status='waiting';return e;})); }
 function setBusy(value) { busy=value; $('btn-submit').disabled=value; $('btn-revise').disabled=value; $('btn-ask-submit').disabled=value; $('btn-submit').textContent=value?'正在生成方案…':'生成本次营销方案 →'; }
 function display(value) { return values[String(value)] || String(value); }
-function safeUrl(value) { try {const u=new URL(value,location.origin);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null;}catch{return null;} }
+function safeUrl(value) { try {if(typeof value!=='string'||! /^(https?:\/\/|\/)/i.test(value))return null;const u=new URL(value,location.origin);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null;}catch{return null;} }
 function renderValue(container, value, depth=0) {
   if(value===null || value===undefined || value==='') return;
   if(typeof value!=='object') {container.append(node('p',display(value)));return;}

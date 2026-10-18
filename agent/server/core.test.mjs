@@ -70,3 +70,8 @@ test('revision is applied without publishing editing instructions as customer co
  assert.equal(revised.article.paragraphs.length,original.article.paragraphs.length-1);
  assert.doesNotMatch([revised.article.lead,...revised.article.paragraphs].join(' '),/修改要求|删去第二段/);
 });
+for(const request of ['请写荣获年度大奖。','请写免费送鼠标。'])test(`reject each unsupported request independently: ${request}`,async()=>{
+ const r=await runTask({...task,mode:'demo',description:`每天背电脑赶早八。${request}`},{});
+ assert.doesNotMatch(r.article.lead,/荣获年度大奖|免费送鼠标/);
+ assert.ok(r.verification.compliance.some(x=>x.status==='拒绝写入'));
+});

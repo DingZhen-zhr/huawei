@@ -19,9 +19,9 @@ function finish(r){
  r.copy_text=[label,`状态：${r.status}`,r.warnings.join('\n'),'一、场景判断',JSON.stringify(r.scene,null,2),'客户洞察卡',JSON.stringify(r.insight,null,2),'二、知识库依据',...r.evidence.map(f=>`${f.id} ${f.fact}（${f.title}）`),'三、图文软文',r.article.title,r.article.lead,...r.article.paragraphs,r.article.cta,r.article.tags.map(t=>`#${t}`).join(' '),...r.article.images.map(i=>`${i.name}｜${i.source}｜${i.position}｜${i.caption}`),'四、核验结果',JSON.stringify(r.verification,null,2),'方案、演示脚本与下一步',JSON.stringify(r.plan,null,2),...r.questions].filter(Boolean).join('\n\n');
  return r;
 }
-function prohibited(text,wordRules){
+function prohibited(text,wordRules,evidence=[]){
  const matches=[];
- if(wordRules?.categories)for(const [type,c] of Object.entries(wordRules.categories))for(const e of c.entries||[]){try{const rx=new RegExp(e.type==='literal'?e.pattern.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'):e.pattern,'iu');const m=rx.exec(text);if(!m)continue;const window=text.slice(Math.max(0,m.index-12),m.index+m[0].length+12);if((e.exempt||[]).some(x=>new RegExp(x.when_context,'iu').test(window)))continue;matches.push({type,term:m[0],suggestion:e.suggestion});}catch{}}
+ if(wordRules?.categories)for(const [key,c] of Object.entries({...wordRules.categories,...wordRules.supplementary}))for(const e of c.entries||[]){try{const rx=new RegExp(e.type==='literal'?e.pattern.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'):e.pattern,'iu');const m=rx.exec(text);if(!m)continue;const window=text.slice(Math.max(0,m.index-12),m.index+m[0].length+12);if((e.exempt||[]).some(x=>new RegExp(x.when_context,'iu').test(window)))continue;if(e.requires_evidence&&evidence.some(f=>f.origin==='ima'&&normalize(f.fact).includes(normalize(m[0]))))continue;matches.push({type:c.report_as||key,term:m[0],suggestion:e.suggestion});}catch{}}
  for(const [type,rx] of [['absolute',/全网最|第一品牌|唯一选择|绝对安全|百分百|100%/],['false_promise',/保证.{0,12}不坏|终身免费|包治/],['price_misleading',/国补|补贴|限时低价|原价\s*\d|立减\s*\d|库存紧张/],['ungrounded_comparison',/比.{1,15}强太多|全面超越/],['competitor_disparage',/别家都是|垃圾品牌|吊打/],['fake_experience',/我用了.{0,8}个月|亲测|月销十万|好评\s*98/]]){const m=rx.exec(text);if(m)matches.push({type,term:m[0],suggestion:'删除无依据宣传，改为具体可核实的事实'});}
  return matches;
 }
@@ -123,14 +123,14 @@ export async function runTask(raw,config,{root=process.cwd(),emit=()=>{},retriev
  if(r.article.images.length<p.min)r.verification.pending.push(`知识库可核实图片不足：${input.platform}建议${p.min}–${p.max}张，当前${r.article.images.length}张；未用外部图片补位`);
  phase('verification','complete','已剔除无依据内容，图片不足保留待确认');
  phase('compliance','running','检查绝对化、承诺、价格误导、对比与竞品贬低');
- const requested=prohibited(originalDescription,words);if(requested.length){r.verification.pending.push('用户要求中的无依据宣传/权益已拒绝，需向店长或授权渠道核实');r.verification.compliance.push(...requested.map(m=>({...m,status:'拒绝写入'})));}
+ const requested=prohibited(originalDescription,words,r.evidence);if(requested.length){r.verification.pending.push('用户要求中的无依据宣传/权益已拒绝，需向店长或授权渠道核实');r.verification.compliance.push(...requested.map(m=>({...m,status:'拒绝写入'})));}
  for(const key of ['title','lead','cta']){
-  const issues=prohibited(r.article[key],words);if(issues.length){r.verification.compliance.push(...issues.map(m=>({...m,status:'已移除'})));r.article[key]=key==='title'?`${input.audience}购机需求参考`:key==='cta'?p.cta:'';}
+  const issues=prohibited(r.article[key],words,r.evidence);if(issues.length){r.verification.compliance.push(...issues.map(m=>({...m,status:'已移除'})));r.article[key]=key==='title'?`${input.audience}购机需求参考`:key==='cta'?p.cta:'';}
  }
- r.article.paragraphs=r.article.paragraphs.filter(t=>{const issues=prohibited(t,words);if(issues.length)r.verification.compliance.push(...issues.map(m=>({...m,status:'已移除'})));return !issues.length;});
+ r.article.paragraphs=r.article.paragraphs.filter(t=>{const issues=prohibited(t,words,r.evidence);if(issues.length)r.verification.compliance.push(...issues.map(m=>({...m,status:'已移除'})));return !issues.length;});
  // Headline and lead are not exempt from factual checks.
  if(r.mode==='live')for(const key of ['title','lead','cta'])if(numTokens(r.article[key]).some(n=>!r.evidence.some(f=>numTokens(f.fact).includes(n)))||/国补|补贴|免费|库存/.test(r.article[key])){r.article[key]=key==='title'?`${input.product}购机参考`:key==='cta'?p.cta:'';r.verification.pending.push('标题或导语中未核实数字/权益已移除');}
- r.plan.demo_script=(Array.isArray(draft.demo_script)?draft.demo_script:[]).filter(s=>s&&typeof s.action==='string'&&typeof s.talk==='string'&&!prohibited(s.action+' '+s.talk,words).length).slice(0,6);
+ r.plan.demo_script=(Array.isArray(draft.demo_script)?draft.demo_script:[]).filter(s=>s&&typeof s.action==='string'&&typeof s.talk==='string'&&!prohibited(s.action+' '+s.talk,words,r.evidence).length).slice(0,6);
  if(r.mode==='live')r.plan.demo_script=[{step:1,action:'展示对应型号的知识库资料页，逐项核对以下已证实亮点',talk:r.evidence.slice(0,2).map(f=>f.fact).join('；')},{step:2,action:'确认在售配置与店内可演示条件后，再由顾问执行体验',talk:'实际演示前，我们先核对这台展示机的型号和适用条件。'}];
  r.plan.next_actions=[`核实${input.audience}的预算、购机时间和${r.strategy.angle}`,p.cta,'报价、权益和库存先向店长或授权渠道核实'];
  r.verification.pending.push('精确SKU、官方公开价格、渠道、地区、核验日期待确认；不估算报价');

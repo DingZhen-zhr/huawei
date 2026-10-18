@@ -157,6 +157,42 @@
           "exempt": []
         }
       ]
+    },
+    "unsupported_award": {
+      "label": "无依据奖项",
+      "description": "资料有明确同项记录方可使用，否则拒绝并待确认",
+      "report_as": "absolute",
+      "entries": [
+        {
+          "id": "unsupported_award",
+          "pattern": "荣获.{0,12}(?:奖|荣誉)|获得.{0,12}(?:大奖|奖项)|年度大奖",
+          "type": "regex",
+          "severity": "block",
+          "requires_evidence": true,
+          "suggestion": "核实同型号、活动条件和资料来源后再写入",
+          "example_bad": "荣获年度大奖",
+          "example_good": "具体权益请咨询并核实活动资料",
+          "exempt": []
+        }
+      ]
+    },
+    "unsupported_gift": {
+      "label": "无依据赠品",
+      "description": "资料有明确同项记录方可使用，否则拒绝并待确认",
+      "report_as": "false_promise",
+      "entries": [
+        {
+          "id": "unsupported_gift",
+          "pattern": "免费送.{0,12}|赠送.{0,12}|送鼠标|赠品",
+          "type": "regex",
+          "severity": "block",
+          "requires_evidence": true,
+          "suggestion": "核实同型号、活动条件和资料来源后再写入",
+          "example_bad": "免费送鼠标",
+          "example_good": "具体权益请咨询并核实活动资料",
+          "exempt": []
+        }
+      ]
     }
   },
   "semantic_hints": {
