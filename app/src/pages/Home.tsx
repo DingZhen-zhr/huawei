@@ -19,7 +19,7 @@ import Md from "@/components/Md";
 import { fetchImageIndex, type KbImage } from "@/lib/kb";
 import {
   MODELS, PLATFORMS, SCENARIOS,
-  buildExport, runPipeline,
+  buildExport, buildPublishText, runPipeline,
   type ModelId, type PlatformId, type ScenarioId, type StageOut, type TaskInput,
 } from "@/lib/content";
 import { freeReply, type ChatMsg } from "@/lib/engine";
@@ -55,15 +55,17 @@ export default function Home() {
   const [scenario, setScenario] = useState<ScenarioId>("内容创作");
   const [platform, setPlatform] = useState<PlatformId>("小红书");
   const [goal, setGoal] = useState("带来私信咨询与到店体验");
+  const [brief, setBrief] = useState("");
   const [withPrice, setWithPrice] = useState(false);
   const [stages, setStages] = useState<StageOut[] | null>(null);
   const [running, setRunning] = useState(false);
   const [exported, setExported] = useState<string | null>(null);
+  const [lastRun, setLastRun] = useState<{ task: TaskInput; plan: string[] } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const task: TaskInput = useMemo(
-    () => ({ modelId, scenario, platform, goal, withPrice }),
-    [modelId, scenario, platform, goal, withPrice]
+    () => ({ modelId, scenario, platform, goal, withPrice, brief: brief.trim() || undefined }),
+    [modelId, scenario, platform, goal, withPrice, brief]
   );
 
   const run = async (t: TaskInput = task) => {
@@ -86,6 +88,7 @@ export default function Home() {
       setStages(all.slice(0, i + 1));
     }
     setExported(buildExport(t, plan));
+    setLastRun({ task: t, plan });
     setRunning(false);
   };
 
@@ -152,6 +155,13 @@ export default function Home() {
     await navigator.clipboard.writeText(exported);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+  const [copiedPub, setCopiedPub] = useState(false);
+  const copyPublish = async () => {
+    if (!lastRun) return;
+    await navigator.clipboard.writeText(buildPublishText(lastRun.task, lastRun.plan));
+    setCopiedPub(true);
+    setTimeout(() => setCopiedPub(false), 2000);
   };
   const downloadExport = () => {
     if (!exported) return;
@@ -273,7 +283,7 @@ export default function Home() {
                   <div className="text-sm font-semibold">任务输入</div>
                   <Button
                     variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground"
-                    onClick={() => { setModelId("matebook-pro"); setScenario("内容创作"); setPlatform("小红书"); setGoal("带来私信咨询与到店体验"); setWithPrice(false); }}
+                    onClick={() => { setModelId("matebook-pro"); setScenario("内容创作"); setPlatform("小红书"); setGoal("带来私信咨询与到店体验"); setWithPrice(false); setBrief(""); }}
                   >
                     <RotateCcw className="mr-1 h-3 w-3" />
                     重置
@@ -318,6 +328,17 @@ export default function Home() {
                   <div className="col-span-2">
                     <Label className="mb-1 block text-xs text-muted-foreground">内容目标</Label>
                     <Input value={goal} onChange={(e) => setGoal(e.target.value)} className="h-9 text-xs" />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="mb-1 block text-xs text-muted-foreground">
+                      顾客原话（可选）——填模糊需求可演示「先追问再生成」机制
+                    </Label>
+                    <Input
+                      value={brief}
+                      onChange={(e) => setBrief(e.target.value)}
+                      placeholder="例：想买台轻薄本，平时就办公用"
+                      className="h-9 text-xs"
+                    />
                   </div>
                   <div className="flex items-end gap-2 pb-1.5">
                     <Switch id="price" checked={withPrice} onCheckedChange={setWithPrice} />
@@ -377,9 +398,13 @@ export default function Home() {
                   <div className="mb-2 flex items-center justify-between">
                     <div className="text-sm font-semibold">导出（统一四段式格式）</div>
                     <div className="flex gap-2">
+                      <Button size="sm" className="h-8 bg-red-700 text-xs hover:bg-red-800" onClick={copyPublish}>
+                        {copiedPub ? <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
+                        {copiedPub ? "已复制" : "复制发布正文"}
+                      </Button>
                       <Button variant="outline" size="sm" className="h-8 text-xs" onClick={copyExport}>
                         {copied ? <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-emerald-600" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
-                        {copied ? "已复制" : "复制全文"}
+                        {copied ? "已复制" : "复制全文（四段式）"}
                       </Button>
                       <Button variant="outline" size="sm" className="h-8 text-xs" onClick={downloadExport}>
                         <Download className="mr-1 h-3.5 w-3.5" />下载 .md
@@ -387,7 +412,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    已按比赛统一输出格式组装：场景判断 / 知识库依据 / 图文软文 / 核验结果。换场景或平台后重新运行，切入点与结构会实质变化。
+                    「复制发布正文」可直接粘贴到平台（仅标题+正文+配图建议，已去掉审核包装）；「复制全文 / 下载 .md」为比赛统一四段式格式（场景判断 / 知识库依据 / 图文软文 / 核验结果），用于提交与存档。发布前请人工复核价格与权益。
                   </div>
                 </div>
               )}

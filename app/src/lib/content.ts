@@ -277,6 +277,7 @@ export interface TaskInput {
   platform: PlatformId;
   goal: string; // 内容目标
   withPrice: boolean; // 是否在文中引用价格（有依据时）
+  brief?: string; // 顾客原话/补充描述（可选，用于触发追问机制演示）
 }
 
 export interface StageOut {
@@ -322,7 +323,7 @@ export function generateArticle(task: TaskInput): { title: string; body: string;
   if (task.platform === "小红书") {
     const title = `${m.name.replace(/（.*?）/, "")} 适不适合${task.scenario}？先说结论再看条件`;
     const body = [
-      `先给结论：${m.positioning}。但值不值得买，取决于你的任务，不看形容词。`,
+      `**导语**：先给结论：${m.positioning}。但值不值得买，取决于你的任务，不看形容词。`,
       ``,
       `我的场景是「${s.problem}」。这台机器对上这个场景的点在于：${angle}。`,
       ``,
@@ -337,7 +338,7 @@ export function generateArticle(task: TaskInput): { title: string; body: string;
       `适合继续了解的人：${s.crowd}，且接受上面的条件。需要先停下来验证的人：必装软件/外设还没确认兼容的。`,
       `${priceLine}`,
       ``,
-      `你是什么场景？评论区留下你的任务和预算，我帮你列一份核验清单。`,
+      `**行动引导**：你是什么场景？评论区留下你的任务和预算，我帮你列一份核验清单。`,
       ``,
       tags,
     ].join("\n");
@@ -373,13 +374,13 @@ export function generateArticle(task: TaskInput): { title: string; body: string;
   if (task.platform === "门店朋友圈") {
     const title = `${task.scenario}选电脑，一个最该先看的点`;
     const body = [
-      `【${task.scenario}选机】${angle}。`,
+      `**钩子**：【${task.scenario}选机】${angle}。`,
       ``,
-      `已核对事实（官方规格页，核验 2026-10-17）：${m.weight}、${m.screen.split("，")[0]}。`,
+      `**核心卖点**：已核对事实（官方规格页，核验 2026-10-17）：${m.weight}、${m.screen.split("，")[0]}。`,
       `取舍也直说：${m.tradeoff}。`,
       `${task.withPrice ? PRICE_LINES[task.modelId] + "。" : "价格以当前官方渠道核验为准。"}`,
       ``,
-      `${s.cta}。`,
+      `**行动引导**：${s.cta}。`,
     ].join("\n");
     return { title, body, images: "" };
   }
@@ -436,7 +437,19 @@ export function runPipeline(task: TaskInput, imagePlan: string[]): StageOut[] {
         `- 用户问题：${s.problem}`,
         `- 内容目标：${task.goal || "（未指定，按默认「带来咨询」处理）"}`,
         `- 发布平台：${task.platform}`,
+        `- 顾客补充描述（原话）：${task.brief ? `「${task.brief}」` : "（无，需求已通过结构化字段完整收集，无需追问）"}`,
         `- 本场景切入点：${s.angle[task.modelId]}`,
+        ``,
+        ...(task.brief
+          ? [
+              `**追问机制（收到模糊需求先追问再生成）**：`,
+              `1. 预算范围是多少？——影响版本/配置推荐与价格口径`,
+              `2. 必装软件和外设有哪些？——兼容性是鸿蒙本选型前置条件`,
+              `3. 主要使用任务是什么？——决定内容切入点`,
+              `4. 打算什么时候购买？——涉及权益与库存口径`,
+              `本演示中以上信息已由结构化字段补齐，继续生成；实际接待中应先完成追问。`,
+            ]
+          : []),
         ``,
         `**可解释性**：换场景后切入点必然改变（如切到「企业采购」→ ${SCENARIOS["企业采购"].angle[task.modelId]}）。`,
       ].join("\n"),
@@ -453,6 +466,13 @@ export function runPipeline(task: TaskInput, imagePlan: string[]): StageOut[] {
         `- 语气：${p.tone}`,
         `- 图片数量：${p.imgRange[0]}–${p.imgRange[1]} 张`,
         `- 行动引导：${p.ctaStyle}`,
+        ``,
+        `**平台适配自检**（判断标准：换平台后结构、语气、图片数量和行动引导必须改变，只改篇幅或平台名不视为完成适配）`,
+        `| 维度 | 本平台取值 |`,
+        `| 结构 | ${p.structure} |`,
+        `| 语气 | ${p.tone} |`,
+        `| 图片数量 | ${p.imgRange[0]}–${p.imgRange[1]} 张 |`,
+        `| 行动引导 | ${p.ctaStyle} |`,
         ``,
         `**差异保证**：换平台后结构、语气、图片数量和行动引导全部改变，不只改篇幅或平台名（公众号=长文小标题 2–4 图；小红书=短段落 3–6 图；朋友圈=单卖点 1–3 图；海报=一屏一结论 1 主视觉）。`,
       ].join("\n"),
@@ -573,6 +593,7 @@ export function buildExport(task: TaskInput, imagePlan: string[]): string {
     `- 使用场景：${task.scenario}（问题：${s.problem}）`,
     `- 内容目标：${task.goal || "带来咨询"}`,
     `- 发布平台：${task.platform}`,
+    `- 顾客补充描述：${task.brief || "（无）"}`,
     ``,
     `## 二、知识库依据`,
     `- 产品型号：${m.name}（${m.os} / ${m.cpu}）`,
@@ -597,4 +618,15 @@ export function buildExport(task: TaskInput, imagePlan: string[]): string {
     `---`,
     `由「门店增长智能体」生成 · 发布前请人工复核价格与权益`,
   ].join("\n");
+}
+
+/** 提取可直接粘贴到平台的发布正文（仅标题+正文+配图建议，去掉四段式审核包装） */
+export function buildPublishText(task: TaskInput, imagePlan: string[]): string {
+  const art = generateArticle(task);
+  const strip = (s: string) => s.replace(/\*\*/g, "");
+  const parts: string[] = [strip(art.title), "", strip(art.body)];
+  if (imagePlan.length) {
+    parts.push("", "配图：", ...imagePlan.map((l, i) => `${i + 1}. ${l}`));
+  }
+  return parts.join("\n");
 }
