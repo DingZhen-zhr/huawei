@@ -10,6 +10,14 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    // DeepSeek API 代理：前端走 /api/deepseek 避免跨域与密钥暴露
+    proxy: {
+      "/api/deepseek": {
+        target: "https://api.deepseek.com",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api\/deepseek/, ""),
+      },
+    },
     // 允许前端通过 /@fs/ 读取知识库 v7 的 markdown 文件（仅本工作区内）
     fs: {
       allow: [

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Store, BookOpen, Send, RotateCcw, Play, ChevronDown, Copy, Download,
-  CheckCircle2, XCircle, Database, Wand2,
+  CheckCircle2, XCircle, Database, Wand2, KeyRound,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   type ModelId, type PlatformId, type ScenarioId, type StageOut, type TaskInput,
 } from "@/lib/content";
 import { freeReply, type ChatMsg } from "@/lib/engine";
+import { callDeepSeek } from "@/lib/llm";
 
 const PROMPT_PATH =
   "D:/KimiData/kimi/Workspaces/华为浙客松/门店增长智能体/系统提示词骨架.md";
@@ -93,15 +94,50 @@ export default function Home() {
     {
       role: "agent",
       title: "门店增长智能体已就绪",
-      body: "我挂在华为 PC 知识库 v7 上（快照 2026-10-17）。在「软文工作台」里输入产品+人群+场景+平台即可跑完整流水线。\n\n这里可以现场测试：**混淆型号**（MateBook Pro 和 Pro S 有什么区别）、**补贴/内部价**（知识库没有的数据怎么处理）、**参数/价格**快查。",
+      body: "我挂在华为 PC 知识库 v7 上（快照 2026-10-17）。在「软文工作台」里输入产品+人群+场景+平台即可跑完整流水线。\n\n这里可以现场测试：**混淆型号**（MateBook Pro 和 Pro S 有什么区别）、**补贴/内部价**（知识库没有的数据怎么处理）、**参数/价格**快查。\n\n在右上角「接入 DeepSeek」填入 API Key 后，本模式将切换为**大模型回答**：自动挂载知识库检索片段与护栏规则；未接入时使用内置规则引擎。",
     },
   ]);
   const [input, setInput] = useState("");
-  const send = () => {
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem("deepseek-key") ?? "");
+  const [keyInput, setKeyInput] = useState("");
+  const [thinking, setThinking] = useState(false);
+
+  const saveKey = () => {
+    const k = keyInput.trim();
+    if (k) {
+      localStorage.setItem("deepseek-key", k);
+      setApiKey(k);
+      setKeyInput("");
+    }
+  };
+  const clearKey = () => {
+    localStorage.removeItem("deepseek-key");
+    setApiKey("");
+  };
+
+  const send = async () => {
     const text = input.trim();
-    if (!text) return;
-    setFreeMsgs((m) => [...m, { role: "customer", body: text }, freeReply(text)]);
+    if (!text || thinking) return;
+    setFreeMsgs((m) => [...m, { role: "customer", body: text }]);
     setInput("");
+    if (apiKey) {
+      setThinking(true);
+      try {
+        const history = freeMsgs
+          .filter((m) => m.role === "customer" || m.role === "agent")
+          .map((m) => ({ role: m.role as "customer" | "agent", body: m.body }));
+        const reply = await callDeepSeek(history, text, apiKey);
+        setFreeMsgs((m) => [...m, { role: "agent", title: "DeepSeek · 知识库增强回答", body: reply }]);
+      } catch (e) {
+        const fallback = freeReply(text);
+        fallback.body = `（DeepSeek 调用失败，已回退规则引擎）\n\n${fallback.body}`;
+        setFreeMsgs((m) => [...m, fallback]);
+      } finally {
+        setThinking(false);
+      }
+    } else {
+      setFreeMsgs((m) => [...m, freeReply(text)]);
+    }
   };
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -144,6 +180,52 @@ export default function Home() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              {apiKey ? (
+                <Badge className="cursor-pointer gap-1 bg-emerald-600 text-[11px] hover:bg-emerald-700">
+                  <KeyRound className="h-3 w-3" />
+                  DeepSeek 已连接（点击管理）
+                </Badge>
+              ) : (
+                <Button variant="outline" size="sm" className="h-8 text-xs">
+                  <KeyRound className="mr-1 h-3.5 w-3.5" />
+                  接入 DeepSeek
+                </Button>
+              )}
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>接入 DeepSeek API</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 text-[13px]">
+                <p className="text-muted-foreground">
+                  填入你的 DeepSeek API Key（platform.deepseek.com 申请），自由对话将由大模型回答，
+                  并自动挂载知识库检索片段与全部护栏规则。Key 仅保存在本机浏览器，不明文展示或上传。
+                </p>
+                <Input
+                  type="password"
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  placeholder="sk-..."
+                  className="h-9 text-xs"
+                />
+                <div className="flex gap-2">
+                  <Button className="h-8 bg-red-700 text-xs hover:bg-red-800" onClick={saveKey}>
+                    保存并连接
+                  </Button>
+                  {apiKey && (
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={clearKey}>
+                      清除已存 Key
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  已存 Key：{apiKey ? `${apiKey.slice(0, 6)}…${apiKey.slice(-4)}` : "无"}；未接入时自由对话使用内置规则引擎，工作台流水线不受影响。
+                </p>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Badge variant="outline" className="gap-1 text-[11px]">
             <Database className="h-3 w-3" />
             知识库 v7 ｜ 快照 2026-10-17
@@ -328,11 +410,12 @@ export default function Home() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder="试试：MateBook Pro 和 Pro S 有什么区别？／ 国补能减多少？／ MateBook 14 多少钱？"
+                placeholder={apiKey ? "DeepSeek 已接入，直接提问（自动挂载知识库）" : "试试：MateBook Pro 和 Pro S 有什么区别？／ 国补能减多少？（右上角可接入 DeepSeek）"}
                 className="h-9 text-[13px]"
+                disabled={thinking}
               />
-              <Button className="h-9 bg-red-700 hover:bg-red-800" onClick={send}>
-                <Send className="h-4 w-4" />
+              <Button className="h-9 bg-red-700 hover:bg-red-800" onClick={send} disabled={thinking}>
+                {thinking ? <span className="text-xs">思考中…</span> : <Send className="h-4 w-4" />}
               </Button>
             </div>
           </div>
