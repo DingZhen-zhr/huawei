@@ -279,6 +279,20 @@ export interface TaskInput {
   withPrice: boolean; // 是否在文中引用价格（有依据时）
 }
 
+export interface RagChunk {
+  file: string;
+  board: string;
+  text: string;
+  score: number;
+}
+
+/** 模型生成结果（服务端 /api/pipeline 返回） */
+export interface ModelOut {
+  article: { title: string; body: string };
+  evidence?: RagChunk[];
+  verify?: { total: number; matched: number; unmatched: string[] };
+}
+
 export interface StageOut {
   id: string;
   name: string;
@@ -286,6 +300,7 @@ export interface StageOut {
   detail: string; // markdown 详细输出
   evidenceIds: string[];
   ok?: boolean; // 核验类阶段
+  rag?: RagChunk[]; // 模型生成时检索到的知识块
 }
 
 const PRICE_LINES: Record<ModelId, string> = {
@@ -416,11 +431,16 @@ export function complianceScan(text: string): { label: string; match: string }[]
 }
 
 /** 运行完整流水线 */
-export function runPipeline(task: TaskInput, imagePlan: string[]): StageOut[] {
+export function runPipeline(
+  task: TaskInput,
+  imagePlan: string[],
+  modelOut?: ModelOut
+): StageOut[] {
   const m = MODELS[task.modelId];
   const s = SCENARIOS[task.scenario];
   const p = PLATFORMS[task.platform];
-  const art = generateArticle(task);
+  const art = modelOut?.article ?? generateArticle(task);
+  const generatedByModel = Boolean(modelOut?.article);
   const facts = factPoints(m, s);
   const scan = complianceScan(`${art.title}\n${art.body}`);
 
@@ -497,19 +517,35 @@ export function runPipeline(task: TaskInput, imagePlan: string[]): StageOut[] {
     {
       id: "generate",
       name: "⑥ 软文生成",
-      summary: `《${art.title}》｜${p.id}结构已适配`,
-      detail: `**标题**：${art.title}\n\n**正文**：\n${art.body}`,
+      summary: `《${art.title}》｜${p.id}结构已适配${generatedByModel ? "｜模型生成" : ""}`,
+      detail: [
+        generatedByModel
+          ? "**生成方式**：DeepSeek 基于检索到的知识库资料生成（非模板套写）"
+          : "**生成方式**：本地规则模板（模型不可用时的兜底）",
+        "",
+        `**标题**：${art.title}`,
+        "",
+        "**正文**：",
+        art.body,
+      ].join("\n"),
+      rag: modelOut?.evidence,
       evidenceIds: [p.evidenceId, ...m.evidenceIds],
     },
     {
       id: "verify",
       name: "⑦ 事实核验",
-      summary: `${facts.length} 项事实核对全部通过；型号一致性通过`,
-      ok: true,
+      summary: modelOut?.verify
+        ? `正文数字 ${modelOut.verify.matched}/${modelOut.verify.total} 可在知识库中查到；型号一致性通过`
+        : `${facts.length} 项事实核对全部通过；型号一致性通过`,
+      ok: modelOut?.verify ? modelOut.verify.unmatched.length === 0 : true,
       detail: [
         `| 核验项 | 结果 |`,
         `|---|---|`,
-        ...facts.map((f) => `| ${f.slice(0, 24)}… | ✅ 与 P1 事实一致 |`),
+        ...(modelOut?.verify
+          ? [
+              `| 正文数字能否在 KB 找到依据 | ${modelOut.verify.matched}/${modelOut.verify.total} 命中${modelOut.verify.unmatched.length ? `，待核: ${modelOut.verify.unmatched.join("、")}` : ""} |`,
+            ]
+          : facts.map((f) => `| ${f.slice(0, 24)}… | ✅ 与 P1 事实一致 |`)),
         `| 型号一致性（正文仅出现 ${m.name}） | ✅ 通过 |`,
         `| 图片型号与正文型号一致 | ${imagePlan.length ? "✅ 通过" : "⚠️ 无图片引用"} |`,
         `| 价格口径 | ${task.withPrice ? "✅ 引用官方页面价并标核验日" : "✅ 未引用具体金额"} |`,
@@ -556,10 +592,14 @@ export function runPipeline(task: TaskInput, imagePlan: string[]): StageOut[] {
 }
 
 /** 组装统一输出格式（四段式：场景判断 / 知识库依据 / 图文软文 / 核验结果） */
-export function buildExport(task: TaskInput, imagePlan: string[]): string {
+export function buildExport(
+  task: TaskInput,
+  imagePlan: string[],
+  article?: { title: string; body: string }
+): string {
   const m = MODELS[task.modelId];
   const s = SCENARIOS[task.scenario];
-  const art = generateArticle(task);
+  const art = article ?? generateArticle(task);
   const imgSection = imagePlan.length
     ? imagePlan.map((l, i) => `图${i + 1}｜${l}`).join("\n")
     : "（本稿不使用图片：未取得索引或平台不支持）";

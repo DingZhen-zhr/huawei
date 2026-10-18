@@ -106,12 +106,52 @@ export default function Md({ text }: { text: string }) {
       continue;
     }
 
-    // 小标题
-    if (line.startsWith("### ")) {
+    // 分隔线
+    if (/^\s*---\s*$/.test(line)) {
+      blocks.push(<hr key={`hr-${i}`} className="my-3 border-t" />);
+      i++;
+      continue;
+    }
+
+    // 引用块
+    if (/^\s*>\s?/.test(line)) {
+      const quoted: string[] = [];
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
+        quoted.push(lines[i].replace(/^\s*>\s?/, ""));
+        i++;
+      }
       blocks.push(
-        <h4 key={`h-${i}`} className="mt-3 mb-1 font-semibold">
-          {inline(line.slice(4), `h-${i}`)}
-        </h4>
+        <blockquote
+          key={`bq-${i}`}
+          className="my-2 border-l-2 border-muted-foreground/40 pl-3 text-[13px] text-muted-foreground"
+        >
+          {quoted.map((q, j) => (
+            <p key={j} className="my-0.5">
+              {inline(q, `bq-${i}-${j}`)}
+            </p>
+          ))}
+        </blockquote>
+      );
+      continue;
+    }
+
+    // 标题：# / ## / ### / ####
+    const hMatch = line.match(/^(#{1,4})\s+(.*)$/);
+    if (hMatch) {
+      const level = hMatch[1].length;
+      const content = inline(hMatch[2], `h-${i}`);
+      const cls =
+        level === 1
+          ? "mt-1 mb-2 text-[16px] font-bold"
+          : level === 2
+            ? "mt-3 mb-1.5 text-[15px] font-semibold"
+            : "mt-3 mb-1 text-[14px] font-semibold";
+      blocks.push(
+        React.createElement(
+          level === 1 ? "h2" : level === 2 ? "h3" : "h4",
+          { key: `h-${i}`, className: cls },
+          content
+        )
       );
       i++;
       continue;
@@ -126,7 +166,15 @@ export default function Md({ text }: { text: string }) {
     // 普通段落（合并到下一个空行前）
     const para: string[] = [line];
     i++;
-    while (i < lines.length && lines[i].trim() && !/^\s*[-\d]/.test(lines[i]) && !lines[i].trim().startsWith("|") && !lines[i].startsWith("### ")) {
+    while (
+      i < lines.length &&
+      lines[i].trim() &&
+      !/^\s*[-\d]/.test(lines[i]) &&
+      !lines[i].trim().startsWith("|") &&
+      !/^#{1,4}\s/.test(lines[i]) &&
+      !/^\s*>/.test(lines[i]) &&
+      !/^\s*---\s*$/.test(lines[i])
+    ) {
       para.push(lines[i]);
       i++;
     }

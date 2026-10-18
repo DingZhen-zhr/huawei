@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Store, BookOpen, Send, RotateCcw, Play, ChevronDown, Copy, Download,
+  Store, BookOpen, Send, RotateCcw, Bot, Play, ChevronDown, Copy, Download,
   CheckCircle2, XCircle, Database, Wand2,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,12 +20,11 @@ import { fetchImageIndex, type KbImage } from "@/lib/kb";
 import {
   MODELS, PLATFORMS, SCENARIOS,
   buildExport, runPipeline,
-  type ModelId, type PlatformId, type ScenarioId, type StageOut, type TaskInput,
+  type ModelId, type PlatformId, type ScenarioId, type StageOut, type TaskInput, type ModelOut,
 } from "@/lib/content";
-import { freeReply, type ChatMsg } from "@/lib/engine";
+import { freeReplyAgent, type ChatMsg } from "@/lib/engine";
 
-const PROMPT_PATH =
-  "D:/KimiData/kimi/Workspaces/华为浙客松/门店增长智能体/系统提示词骨架.md";
+const PROMPT_API = "/api/prompt";
 
 /** 按平台要求从图片索引挑图并格式化来源记录 */
 function pickImages(images: KbImage[], platform: PlatformId, modelDir: string): string[] {
@@ -59,6 +58,7 @@ export default function Home() {
   const [running, setRunning] = useState(false);
   const [exported, setExported] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [genNote, setGenNote] = useState("");
 
   const task: TaskInput = useMemo(
     () => ({ modelId, scenario, platform, goal, withPrice }),
@@ -69,6 +69,7 @@ export default function Home() {
     setRunning(true);
     setStages(null);
     setCopied(false);
+    setGenNote("");
     const m = MODELS[t.modelId];
     let imgs: KbImage[] = [];
     try {
@@ -77,14 +78,43 @@ export default function Home() {
       imgs = [];
     }
     const plan = pickImages(imgs, t.platform, m.kbDir);
-    // 模拟流水线推进，让每阶段卡片依次出现
-    const all = runPipeline(t, plan);
+
+    // 先让模型基于知识库写稿；失败则退回本地模板
+    let modelOut: ModelOut | undefined;
+    try {
+      const sc = SCENARIOS[t.scenario];
+      const res = await fetch("/api/pipeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          modelName: m.name,
+          scenario: t.scenario,
+          platform: t.platform,
+          goal: t.goal,
+          withPrice: t.withPrice,
+          crowd: sc.crowd,
+          problem: sc.problem,
+          angle: sc.angle[t.modelId],
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        modelOut = { article: d.article, evidence: d.evidence, verify: d.verify };
+      } else {
+        setGenNote("模型服务返回异常，本次用本地模板兜底。");
+      }
+    } catch {
+      setGenNote("模型服务未连接，本次用本地模板兜底。");
+    }
+
+    // 流水线逐阶段展开，保留可解释性
+    const all = runPipeline(t, plan, modelOut);
     setStages([]);
     for (let i = 0; i < all.length; i++) {
-      await new Promise((r) => setTimeout(r, 180));
+      await new Promise((r) => setTimeout(r, 150));
       setStages(all.slice(0, i + 1));
     }
-    setExported(buildExport(t, plan));
+    setExported(buildExport(t, plan, modelOut?.article));
     setRunning(false);
   };
 
@@ -92,16 +122,31 @@ export default function Home() {
   const [freeMsgs, setFreeMsgs] = useState<ChatMsg[]>([
     {
       role: "agent",
-      title: "门店增长智能体已就绪",
-      body: "我挂在华为 PC 知识库 v7 上（快照 2026-10-17）。在「软文工作台」里输入产品+人群+场景+平台即可跑完整流水线。\n\n这里可以现场测试：**混淆型号**（MateBook Pro 和 Pro S 有什么区别）、**补贴/内部价**（知识库没有的数据怎么处理）、**参数/价格**快查。",
+      title: "智能体已就绪（RAG + DeepSeek）",
+      body: "我挂在华为 PC 知识库 v7 上（快照 2026-10-17），回答由**本地 bge-m3 向量检索 + DeepSeek 生成**，下方可展开「检索依据」核对原文。\n\n可以现场测试：**混淆型号**（MateBook Pro 和 Pro S 有什么区别）、**参数/价格**快查、**无依据补贴**（知识库没有的数据怎么处理）、**内部价/返点**（权限闸门）。",
     },
   ]);
   const [input, setInput] = useState("");
+  const [thinking, setThinking] = useState(false);
+  // 传给模型的对话历史（只含 user/assistant）
+  const historyRef = useRef<{ role: "user" | "assistant" | "system"; content: string }[]>([]);
+
+  const askAgent = async (text: string) => {
+    setThinking(true);
+    const hist = [...historyRef.current, { role: "user" as const, content: text }];
+    historyRef.current = hist;
+    const reply = await freeReplyAgent(hist);
+    historyRef.current = [...hist, { role: "assistant" as const, content: reply.body }];
+    setFreeMsgs((m) => [...m, reply]);
+    setThinking(false);
+  };
+
   const send = () => {
     const text = input.trim();
     if (!text) return;
-    setFreeMsgs((m) => [...m, { role: "customer", body: text }, freeReply(text)]);
+    setFreeMsgs((m) => [...m, { role: "customer", body: text }]);
     setInput("");
+    void askAgent(text);
   };
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -152,8 +197,8 @@ export default function Home() {
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
                 if (promptText) return;
-                fetch(`/@fs/${encodeURI(PROMPT_PATH)}`).then((r) => r.text()).then(setPromptText)
-                  .catch(() => setPromptText("（系统提示词文件读取失败）"));
+                fetch(PROMPT_API).then((r) => r.text()).then(setPromptText)
+                  .catch(() => setPromptText("（系统提示词文件读取失败，请确认服务端已启动）"));
               }}>
                 <BookOpen className="mr-1 h-3.5 w-3.5" />
                 系统提示词
@@ -244,6 +289,11 @@ export default function Home() {
                     </Label>
                   </div>
                 </div>
+                {genNote && (
+                  <div className="mt-2 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">
+                    {genNote}
+                  </div>
+                )}
                 <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted-foreground">
                   <span className="font-medium text-foreground/80">防混淆提示：</span>
                   {MODELS[modelId].identityNote}
@@ -282,6 +332,26 @@ export default function Home() {
                     <CollapsibleContent>
                       <div className="space-y-2 border-t px-4 py-3">
                         <Md text={st.detail} />
+                        {st.rag && st.rag.length > 0 && (
+                          <details className="rounded-lg border bg-muted/30 p-2.5 text-[11px]">
+                            <summary className="cursor-pointer text-muted-foreground">
+                              模型检索依据（{st.rag.length} 条）
+                            </summary>
+                            <div className="mt-2 space-y-2">
+                              {st.rag.map((ev, i) => (
+                                <div key={i} className="rounded border bg-background/70 p-2">
+                                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                                    <Badge variant="secondary" className="text-[10px] font-normal">{ev.board}</Badge>
+                                    <span className="truncate text-[10px] text-muted-foreground">{ev.file}</span>
+                                  </div>
+                                  <pre className="max-h-28 overflow-auto whitespace-pre-wrap leading-relaxed text-foreground/80">
+                                    {ev.text}
+                                  </pre>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
                         {st.evidenceIds.length > 0 && <EvidencePanel fileIds={st.evidenceIds} />}
                       </div>
                     </CollapsibleContent>
@@ -318,8 +388,23 @@ export default function Home() {
           <ScrollArea className="min-h-0 flex-1" ref={scrollRef}>
             <div className="mx-auto max-w-3xl space-y-4 px-4 py-4">
               {freeMsgs.map((m, i) => (
-                <ChatMessage key={i} msg={m} onChip={(t) => setFreeMsgs((mm) => [...mm, { role: "customer", body: t }, freeReply(t)])} />
+                <ChatMessage key={i} msg={m} onChip={(t) => {
+                  setFreeMsgs((mm) => [...mm, { role: "customer", body: t }]);
+                  void askAgent(t);
+                }} />
               ))}
+              {thinking && (
+                <div className="flex gap-2.5">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-700/10 text-red-700">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 max-w-full flex-1">
+                    <div className="rounded-xl border bg-card px-3.5 py-2.5 text-xs text-muted-foreground shadow-sm">
+                      正在检索知识库并生成回答…
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
           <div className="border-t bg-card/60 px-4 py-2.5">

@@ -10,13 +10,20 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    // 允许前端通过 /@fs/ 读取知识库 v7 的 markdown 文件（仅本工作区内）
+    // 知识库 /@fs/ 读取（工作台证据面板使用）
     fs: {
       allow: [
         path.resolve(__dirname, ".."),
         path.resolve(__dirname, "../../.."),
         "D:/KimiData/kimi/Workspaces/华为浙客松",
       ],
+    },
+    // 服务端代理：自由对话 / RAG 检索交给 Node 服务端
+    proxy: {
+      "/api": {
+        target: "http://localhost:8787",
+        changeOrigin: true,
+      },
     },
   },
   resolve: {

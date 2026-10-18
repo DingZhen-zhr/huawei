@@ -7,6 +7,10 @@ export interface ChatMsg {
   body: string;
   evidenceIds?: string[];
   chips?: string[];
+  /** 服务端 RAG 检索到的知识块证据（接入模型后使用） */
+  ragEvidence?: { file: string; board: string; text: string; score: number }[];
+  /** 是否来自真实模型（接入 Agent 后 true） */
+  fromAgent?: boolean;
 }
 
 /* ─────────────────────── 演示模式脚本 ─────────────────────── */
@@ -380,4 +384,43 @@ export function freeReply(input: string): ChatMsg {
     evidenceIds: ["rules-order"],
     chips: ["MateBook Pro 和 Pro S 有什么区别", "国补能减多少", "MateBook 14 多少钱？", "能跑 Photoshop 吗？"],
   };
+}
+
+/* ─────────────────────── 模型 Agent（RAG + DeepSeek）─────────────────────── */
+
+/**
+ * 调用服务端 RAG + DeepSeek 生成回答。
+ * 传入对话历史，返回智能体回复。服务端返回的检索证据随消息带回。
+ */
+export async function freeReplyAgent(
+  messages: { role: "user" | "assistant" | "system"; content: string }[]
+): Promise<ChatMsg> {
+  try {
+    const res = await fetch("/api/free-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`服务端 ${res.status}: ${t.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    return {
+      role: "agent",
+      title: "智能体回复（RAG + DeepSeek）",
+      body: data.reply || "（模型未返回内容）",
+      ragEvidence: data.evidence || [],
+      fromAgent: true,
+    };
+  } catch (e) {
+    // 服务端不可用时的兜底：转本地规则引擎，并提示
+    const local = freeReply(messages[messages.length - 1]?.content ?? "");
+    return {
+      ...local,
+      body:
+        local.body +
+        "\n\n> ⚠️ 模型服务暂不可用，以上为本地规则引擎兜底回复。请确认服务端（node server/index.mjs）已启动。",
+    };
+  }
 }
