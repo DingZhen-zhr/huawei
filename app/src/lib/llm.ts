@@ -97,6 +97,12 @@ export async function callDeepSeek(
     const errText = await res.text().catch(() => "");
     throw new Error(`DeepSeek API ${res.status}：${errText.slice(0, 200)}`);
   }
+  const ct = res.headers.get("content-type") ?? "";
+  if (!ct.includes("application/json")) {
+    throw new Error(
+      "响应不是 JSON（可能是开发服务器未重启导致代理未生效，请重启 dev server 或重新打开预览卡片）"
+    );
+  }
   const data = await res.json();
   const text: string = data?.choices?.[0]?.message?.content ?? "";
   if (!text) throw new Error("DeepSeek 返回为空");
