@@ -1,0 +1,452 @@
+{
+  "version": 1,
+  "_doc": "场景规则库。策略阶段(stage 3)只能在这里给出的 angles / selling_priority 集合内选择与重排;换场景时切入点与卖点顺序的差异由本文件解释。禁忌(taboos)由代码在草稿、核验、合规阶段执行。本文件不含任何产品参数,参数只来自知识库。",
+  "selling_point_catalog": {
+    "portability": { "label": "轻薄好携带", "need_topics": ["weight", "thickness", "dimensions"], "proof_hint": "重量、厚度必须带版本前缀(如标准屏版/典藏版),并保留“实际依配置而异”的限定" },
+    "battery_charging": { "label": "续航与充电", "need_topics": ["battery", "charging"], "proof_hint": "只写知识库记载的电池容量与适配器规格;不写“用一整天”之类无依据时长" },
+    "display_comfort": { "label": "屏幕观感与护眼", "need_topics": ["display_type", "resolution", "display_size", "refresh"], "proof_hint": "屏幕类型、分辨率、比例、刷新率逐项引用;亮度类数字必须带典型值/HDR/实验室限定" },
+    "color_creation": { "label": "色彩与创作显示", "need_topics": ["color_gamut", "display_type", "brightness", "resolution"], "proof_hint": "色域、色准只写知识库原文;不得写专业软件下的实测结果" },
+    "multi_device": { "label": "多设备协同", "need_topics": ["apps_collab"], "proof_hint": "只写知识库列出的协同功能名称;注明系统与设备条件,不写“全部设备无缝”" },
+    "performance_memory": { "label": "处理器与内存存储", "need_topics": ["processor", "memory", "storage"], "proof_hint": "只列处理器名称、内存与存储档位;不写跑分、不写“流畅运行某软件”" },
+    "ports_expansion": { "label": "接口与扩展", "need_topics": ["ports"], "proof_hint": "接口种类与数量逐条引用;接口少的型号如实写出数量,不回避" },
+    "privacy_security": { "label": "隐私与安全开关", "need_topics": ["privacy"], "proof_hint": "只写知识库记载的隐私开关/防窥功能及适用版本;不写“绝对安全”" },
+    "pen_input": { "label": "手写与触控输入", "need_topics": ["pen", "keyboard"], "proof_hint": "手写笔是否随机附带必须按版本确认,不得推断" },
+    "big_canvas": { "label": "大屏与大画布", "need_topics": ["display_size", "resolution", "display_type"], "proof_hint": "大屏型号的重量与携带取舍要同时如实说明" },
+    "audio_meeting": { "label": "会议音视频", "need_topics": ["camera", "audio", "apps_collab"], "proof_hint": "摄像头、麦克风、扬声器数量与规格逐项引用" },
+    "keyboard_typing": { "label": "键盘与输入手感", "need_topics": ["keyboard"], "proof_hint": "键程、键盘类型、触控板特性只写知识库记载" },
+    "migration_ease": { "label": "换机迁移与易上手", "need_topics": ["os", "apps_collab"], "proof_hint": "迁移与兼容只写知识库有依据的条件;软件兼容需客户自带软件验证" },
+    "long_use": { "label": "长期使用的配置余量", "need_topics": ["memory", "storage", "processor"], "proof_hint": "只比较配置档位,不承诺“用很多年不卡”" },
+    "deployment_manage": { "label": "部署与管理友好", "need_topics": ["os", "ports", "privacy"], "proof_hint": "知识库没有的部署、管理、服务政策一律不写,转待确认" },
+    "design_look": { "label": "外观与配色", "need_topics": ["identity", "dimensions"], "proof_hint": "外观描述限于知识库图片说明与规格;图片只证明外观,不证明性能" },
+    "accessory_bundle": { "label": "配件与包装清单", "need_topics": ["package", "accessories"], "proof_hint": "随机附带的配件按版本核对;赠品不属于包装清单,不得混写" }
+  },
+  "scenes": {
+    "back_to_school": {
+      "label": "开学季",
+      "aliases": ["开学季", "开学", "新生", "大学新生", "返校", "back_to_school"],
+      "audiences": ["大学新生", "新生家长", "高年级换机学生"],
+      "angles": [
+        { "id": "bts_morning_class", "title": "一天课表背得动、用得上", "when": "客户描述里有赶早八、跨校区、背包重、课间转场", "rationale": "学生的第一痛点是每天带着走;先讲重量与厚度,再讲续航与充电,最后讲课堂记录" },
+        { "id": "bts_dorm_multi", "title": "宿舍与教室之间的多设备衔接", "when": "客户提到手机平板并用、宿舍插座少、小组作业传文件", "rationale": "把协同功能落在“传课件、接续笔记”这类动作上,而不是罗列功能名" },
+        { "id": "bts_parent_decision", "title": "写给陪孩子选机的家长", "when": "目标人群为家长,或描述里有预算顾虑、担心孩子沉迷游戏", "rationale": "家长关心耐用、够用四年、护眼与售后入口;用配置档位与屏幕说明回应,不给任何性能承诺" },
+        { "id": "bts_major_fit", "title": "按专业选配置", "when": "客户已说明专业(文科/理工/设计)", "rationale": "把专业任务拆成文档、代码、绘图三类,只引用对应的配置档位事实" }
+      ],
+      "selling_priority": [
+        { "key": "portability", "weight": 100, "note": "每天背着走" },
+        { "key": "battery_charging", "weight": 90, "note": "插座紧张的宿舍与教室" },
+        { "key": "display_comfort", "weight": 80, "note": "长时间看课件与文献" },
+        { "key": "multi_device", "weight": 70, "note": "手机平板协同记笔记" },
+        { "key": "pen_input", "weight": 60, "note": "手写笔记" },
+        { "key": "performance_memory", "weight": 50, "note": "够用的配置档位" },
+        { "key": "keyboard_typing", "weight": 40, "note": "赶论文" }
+      ],
+      "taboos": [
+        { "id": "bts_no_single_perf", "text": "不要把所有学生需求归结为单一性能指标;成稿须同时覆盖学习、携带、续航中的至少两项", "check": { "kind": "require_groups", "groups": { "study": ["display_type", "resolution", "keyboard", "pen", "apps_collab"], "carry": ["weight", "thickness", "dimensions"], "battery": ["battery", "charging"] }, "min": 2 } },
+        { "id": "bts_no_game_promise", "text": "不承诺游戏帧率、不宣称“学生必选”“毕业不换”", "check": { "kind": "forbid_regex", "patterns": ["游戏.{0,6}(流畅|畅玩|满帧)", "学生必选", "毕业不换", "四年不卡", "用到毕业"], "except_near": null } },
+        { "id": "bts_no_edu_discount", "text": "教育优惠、开学礼、学生价一律不写,转待确认", "check": { "kind": "pending_if_requested", "triggers": ["教育优惠", "学生价", "开学礼", "开学立减", "学生认证", "校园价", "教育券"], "topic": "subsidy", "next_owner": "store_manager" } }
+      ],
+      "single_point": false,
+      "max_points": 4,
+      "purchase_stage_default": "consideration",
+      "content_goal_default": "inquiry",
+      "default_persona": {
+        "persona": "即将入学的大学新生,及陪同选机的家长",
+        "usage_scene": "教室、图书馆、宿舍之间转场,课件、笔记、论文写作为主",
+        "core_situation": "第一次自己买电脑,预算有限,既怕太重背不动又怕配置不够用四年",
+        "concerns": ["每天背着走太重", "教室和宿舍插座不够用", "不确定配置够不够用到毕业", "预算有限怕买贵"],
+        "empathy_anchors": [
+          { "text": "背着电脑赶早八,从宿舍走到教学楼还要爬楼梯", "detail_tags": ["赶早八", "背电脑", "爬楼梯"] },
+          { "text": "宿舍书桌边的插座被室友的台灯和风扇占满", "detail_tags": ["宿舍", "插座紧张"] }
+        ]
+      },
+      "default_strategy": { "angle_id": "bts_morning_class", "point_keys": ["portability", "battery_charging", "display_comfort"] },
+      "default_demo_outline": [
+        { "action": "让客户单手拿起样机,再放进他平时背的书包", "say_frame": "您先掂一下手感。{{fact:weight}}" },
+        { "action": "合上再打开屏幕,请客户看一页自己的课件或文档", "say_frame": "屏幕这里,{{fact:display_type}}" },
+        { "action": "展示充电器并放到客户的背包里对比体积", "say_frame": "充电这块,{{fact:charging}}" }
+      ],
+      "next_action_templates": [
+        { "action": "约定客户带上平时用的课件或软件清单到店试用", "when": "客户表示感兴趣的当天", "script_frame": "周末您方便的话带上您常用的资料来店里,我把样机按您的课表场景走一遍", "needs_pending": false },
+        { "action": "向店长确认当前是否有可对外承诺的教育类权益", "when": "客户询问优惠时", "script_frame": "优惠这块我需要先跟店长确认后再回复您,确认前我不给您口头承诺", "needs_pending": true }
+      ],
+      "recommended_models": [
+        { "model_id": "matebook-14-hm", "fit_topics": ["weight", "thickness", "dimensions", "display_type", "resolution", "display_size", "refresh", "ports"], "note": "鸿蒙路线的日常学习取向,需先确认客户的软件路线" },
+        { "model_id": "matebook-pro-s", "fit_topics": ["weight", "thickness", "dimensions", "display_type", "resolution", "display_size", "refresh", "pen", "keyboard"], "note": "轻便取向,需区分屏幕版本与手写笔等配件,按版本确认" },
+        { "model_id": "matebook-d-14", "fit_topics": ["ports", "keyboard"], "note": "Windows 路线的入门取向,商城原页下架,报价走待确认" }
+      ]
+    },
+    "business_office": {
+      "label": "职场办公",
+      "aliases": ["职场办公", "办公", "商务", "出差", "移动办公", "business_office"],
+      "audiences": ["商务人士", "经常出差的职场人", "移动办公者", "团队负责人"],
+      "angles": [
+        { "id": "bo_trip_day", "title": "出差当天的包里少一件负担", "when": "描述里有出差、高铁、机场、酒店办公", "rationale": "把重量、充电、接口放在“出门前整理包”的动作里讲" },
+        { "id": "bo_meeting_flow", "title": "会前会中会后的文件接力", "when": "描述里有频繁会议、投屏、跨设备传文件", "rationale": "协同与会议音视频放在一次会议流程里,每一步对应一个功能名" },
+        { "id": "bo_privacy_public", "title": "在咖啡厅和高铁上也能放心打开文件", "when": "描述里有公共场所办公、保密文件、偷看屏幕的顾虑", "rationale": "只讲知识库记载的隐私开关与防窥版本,强调适用的具体版本" },
+        { "id": "bo_docs_multitask", "title": "文档表格多窗口并行", "when": "描述里有大量文档、表格、多任务", "rationale": "用屏幕比例、分辨率与内存档位回应多窗口,不写“流畅不卡”" }
+      ],
+      "selling_priority": [
+        { "key": "multi_device", "weight": 100, "note": "会前会中会后的文件接力与多任务协同" },
+        { "key": "portability", "weight": 92, "note": "差旅携带" },
+        { "key": "privacy_security", "weight": 84, "note": "公共场所办公" },
+        { "key": "audio_meeting", "weight": 78, "note": "视频会议" },
+        { "key": "battery_charging", "weight": 70, "note": "机场高铁的补电" },
+        { "key": "display_comfort", "weight": 62, "note": "长时间文档" },
+        { "key": "ports_expansion", "weight": 54, "note": "投屏与外设" },
+        { "key": "performance_memory", "weight": 46, "note": "多任务配置档位" }
+      ],
+      "taboos": [
+        { "id": "bo_no_absolute_security", "text": "不写“绝对安全”“防泄密”“商业机密无忧”;安全表述只限知识库记载的开关与功能,并注明适用版本", "check": { "kind": "forbid_regex", "patterns": ["绝对安全", "防泄密", "万无一失", "机密无忧", "100%安全", "绝不泄露"], "except_near": null } },
+        { "id": "bo_no_runtime_promise", "text": "不写“一天不用充电”“全天续航”等无依据时长", "check": { "kind": "forbid_regex", "patterns": ["一天不用充", "全天续航", "出差不用带充电器", "不用找插座"], "except_near": "待确认|以实际.{0,6}为准" } },
+        { "id": "bo_no_compat_all", "text": "不写“兼容所有办公软件/外设”;兼容性建议客户携带软件到店验证", "check": { "kind": "forbid_regex", "patterns": ["兼容所有", "全部兼容", "任何软件都能", "无缝兼容"], "except_near": null } }
+      ],
+      "single_point": false,
+      "max_points": 4,
+      "purchase_stage_default": "comparison",
+      "content_goal_default": "compare",
+      "default_persona": {
+        "persona": "经常出差、会议密集的商务人士",
+        "usage_scene": "机场、高铁、酒店、客户会议室,文档、邮件、视频会议为主",
+        "core_situation": "每周至少一次出差,包里已经很满,最怕会议前设备出状况",
+        "concerns": ["包太重", "会议中途没电", "公共场所屏幕被人看到", "手机和电脑之间传文件麻烦"],
+        "empathy_anchors": [
+          { "text": "出差前一晚往包里塞电脑、充电器、转接头,还担心漏带", "detail_tags": ["出差前整理包", "充电器", "转接头"] },
+          { "text": "高铁小桌板上开会议材料,旁边的人探头看屏幕", "detail_tags": ["高铁小桌板", "旁人偷看"] }
+        ]
+      },
+      "default_strategy": { "angle_id": "bo_meeting_flow", "point_keys": ["multi_device", "portability", "privacy_security"] },
+      "default_demo_outline": [
+        { "action": "演示手机与电脑之间传一份文件的步骤", "say_frame": "文件接力用到的是这个功能,{{fact:apps_collab}}" },
+        { "action": "请客户把样机和充电器一起放进他的出差包,感受整体重量", "say_frame": "机身这边,{{fact:weight}}" },
+        { "action": "演示隐私开关或防窥开关的位置与操作(仅限具备该功能的版本)", "say_frame": "隐私这边,{{fact:privacy}}" }
+      ],
+      "next_action_templates": [
+        { "action": "邀请客户带上最常用的会议软件和文件到店实机验证", "when": "客户对兼容性有疑问时", "script_frame": "您把常用的会议软件和那份最大的表格带来,我们现场打开,看着结果再决定", "needs_pending": false },
+        { "action": "向授权渠道确认企业发票与对公购买流程", "when": "客户需要报销或对公付款时", "script_frame": "发票和对公流程我向授权渠道确认后给您准确答复", "needs_pending": true }
+      ],
+      "recommended_models": [
+        { "model_id": "matebook-pro-s", "fit_topics": ["weight", "thickness", "dimensions", "privacy", "display_type", "resolution", "display_size", "refresh"], "note": "出差携带取向,需先确认鸿蒙软件路线与版本差异" },
+        { "model_id": "matebook-pro", "fit_topics": ["weight", "thickness", "dimensions", "apps_collab"], "note": "出差携带取向,需确认外设与扩展坞需求" },
+        { "model_id": "matebook-14-ultra", "fit_topics": ["ports", "display_type", "resolution", "display_size", "refresh"], "note": "Windows 通用软件取向,商城原页下架,报价走待确认" }
+      ]
+    },
+    "content_creation": {
+      "label": "内容创作",
+      "aliases": ["内容创作", "创作", "设计", "摄影", "视频剪辑", "剪辑", "创作者", "content_creation"],
+      "audiences": ["平面与UI设计师", "摄影师", "视频创作者", "自媒体创作者"],
+      "angles": [
+        { "id": "cc_screen_first", "title": "改图调色先看屏幕", "when": "描述里有修图、调色、看片、对色", "rationale": "创作者先问屏幕;色域、色准、分辨率按知识库原文逐项引用,亮度必须带条件" },
+        { "id": "cc_asset_flow", "title": "素材在手机、平板和电脑之间流转", "when": "描述里有外拍素材、手机拍摄后回传、跨设备续做", "rationale": "把协同功能落在“素材回传、接续编辑”的动作上" },
+        { "id": "cc_pen_sketch", "title": "手写笔与触控带来的草图工作流", "when": "描述里有手绘、标注、草图、批注", "rationale": "手写与触控按版本确认,典藏版才随附手写笔这类差异必须点明" },
+        { "id": "cc_capacity_plan", "title": "素材越攒越多,容量与内存怎么选", "when": "描述里有大量素材、工程文件、多软件并开", "rationale": "只比较内存与存储档位,明确这是配置选择而非软件性能承诺" }
+      ],
+      "selling_priority": [
+        { "key": "color_creation", "weight": 100, "note": "色域色准与分辨率" },
+        { "key": "display_comfort", "weight": 90, "note": "屏幕尺寸比例与刷新率" },
+        { "key": "multi_device", "weight": 82, "note": "素材流转" },
+        { "key": "performance_memory", "weight": 74, "note": "内存与存储档位" },
+        { "key": "pen_input", "weight": 66, "note": "手写与触控" },
+        { "key": "ports_expansion", "weight": 58, "note": "读卡与外接显示" },
+        { "key": "portability", "weight": 50, "note": "外拍携带" }
+      ],
+      "taboos": [
+        { "id": "cc_no_fake_benchmark", "text": "不得虚构软件测试结果:不写任何具体软件的渲染时长、导出耗时、跑分、帧率,除非知识库有原文且附测试条件", "check": { "kind": "forbid_regex", "patterns": ["(?<![A-Za-z])(PS|Photoshop|PR|Premiere|AE|After Effects|Blender)(?![A-Za-z]).{0,12}(秒|分钟|倍|帧|fps|跑分|流畅|不卡)|(剪映|达芬奇).{0,12}(秒|分钟|倍|帧|fps|跑分|流畅|不卡)", "(导出|渲染).{0,8}(\\d+\\s*(秒|分钟|s|min))", "跑分.{0,6}\\d+", "\\d+\\s*(fps|帧)"], "except_near": null } },
+        { "id": "cc_no_pro_color_claim", "text": "不写“专业级调色”“可替代专业显示器”“色彩100%准确”", "check": { "kind": "forbid_regex", "patterns": ["专业级调色", "替代专业显示器", "色彩.{0,4}100%", "绝对还原", "零色差"], "except_near": null } },
+        { "id": "cc_pending_software_test", "text": "客户要求写入某软件跑分/测试结果时,拒绝并标待确认,建议到店用客户自己的工程文件现场验证", "check": { "kind": "pending_if_requested", "triggers": ["跑分", "渲染时间", "导出时间", "软件测试", "benchmark", "帧率测试"], "topic": "other", "next_owner": "authorized_channel" } }
+      ],
+      "single_point": false,
+      "max_points": 4,
+      "purchase_stage_default": "comparison",
+      "content_goal_default": "compare",
+      "default_persona": {
+        "persona": "做修图、剪辑或设计的内容创作者",
+        "usage_scene": "工作室或咖啡厅里修图调色、整理素材、对客户出稿",
+        "core_situation": "素材量大,屏幕观感直接影响交付,换机最怕买回来发现屏幕和预期不一致",
+        "concerns": ["屏幕颜色和成品不一致", "素材多存储不够", "外拍后要把素材传回电脑", "怕被夸大宣传误导"],
+        "empathy_anchors": [
+          { "text": "咖啡厅里改客户的图,屏幕颜色和成品对不上又得重新调", "detail_tags": ["改客户的图", "颜色对不上", "返工"] },
+          { "text": "外拍存了一手机素材,回到工作室还要线缆一个个导", "detail_tags": ["外拍素材", "手机导出"] }
+        ]
+      },
+      "default_strategy": { "angle_id": "cc_screen_first", "point_keys": ["color_creation", "display_comfort", "multi_device"] },
+      "default_demo_outline": [
+        { "action": "请客户打开自己手机里拍的一张照片,通过协同功能传到样机", "say_frame": "素材这样传过来。{{fact:apps_collab}}" },
+        { "action": "全屏显示客户自己的作品,请客户判断观感", "say_frame": "屏幕规格我只念知识库上写的:{{fact:display_type}}" },
+        { "action": "请客户用自己的软件打开一个工程文件,由客户自己判断是否满足", "say_frame": "软件表现我不替您下结论,您自己的工程文件现场看" }
+      ],
+      "next_action_templates": [
+        { "action": "邀请客户带自己的工程文件和常用软件到店实机验证", "when": "客户纠结性能或软件兼容时", "script_frame": "您带着最重的那个工程来,现场用您的软件打开,结果比我说的可靠", "needs_pending": false },
+        { "action": "向授权渠道确认客户所用专业软件的版本支持情况", "when": "客户使用特定专业软件", "script_frame": "您这个软件的版本支持情况我先向授权渠道核实,核实前不下结论", "needs_pending": true }
+      ],
+      "recommended_models": [
+        { "model_id": "matebook-gt-14", "fit_topics": ["color_gamut", "display_type", "brightness", "resolution", "processor", "memory", "storage", "ports"], "note": "创作屏幕与配置余量取向,商城原页下架,报价走待确认" },
+        { "model_id": "matebook-x-pro", "fit_topics": ["display_type", "resolution", "display_size", "refresh", "weight", "thickness", "dimensions", "processor", "memory", "storage"], "note": "Windows 轻薄创作取向,商城原页下架,报价走待确认" },
+        { "model_id": "matebook-fold", "fit_topics": ["display_size", "resolution", "display_type", "pen", "keyboard", "apps_collab"], "note": "大画布与手写取向,需确认端口与软件路线" },
+        { "model_id": "matebook-pro-s", "fit_topics": ["display_type", "resolution", "display_size", "refresh", "pen", "keyboard", "weight", "thickness", "dimensions"], "note": "屏幕与手写取向,需按版本确认配件" }
+      ]
+    },
+    "home_upgrade": {
+      "label": "家庭换新",
+      "aliases": ["家庭换新", "换新", "换机", "旧机换新", "全家使用", "家用", "home_upgrade"],
+      "audiences": ["家庭用户", "为父母或孩子换电脑的子女", "旧机换新用户"],
+      "angles": [
+        { "id": "hu_old_to_new", "title": "旧电脑里的东西怎么搬过去", "when": "描述里有旧电脑、照片文档、担心数据丢失", "rationale": "家庭换新最大的心理障碍是数据迁移;只讲知识库有依据的迁移与协同条件,其余转问店员现场演示" },
+        { "id": "hu_everyone_uses", "title": "一台电脑,全家轮流用", "when": "描述里有孩子网课、老人视频、夫妻办公共用", "rationale": "易用性与屏幕观感优先,避免参数堆叠" },
+        { "id": "hu_long_term", "title": "买一台能放心用几年的", "when": "描述里有“用得久”“不想频繁换”", "rationale": "只比较配置余量(内存、存储),不承诺使用年限" },
+        { "id": "hu_parents_easy", "title": "给爸妈换电脑:大屏、好上手", "when": "目标是长辈使用", "rationale": "大屏、键盘手感、操作门槛;迁移与远程协助相关内容必须有知识库依据" }
+      ],
+      "selling_priority": [
+        { "key": "migration_ease", "weight": 100, "note": "换机迁移" },
+        { "key": "display_comfort", "weight": 92, "note": "全家看得舒服" },
+        { "key": "long_use", "weight": 84, "note": "配置余量" },
+        { "key": "keyboard_typing", "weight": 72, "note": "好用的键盘" },
+        { "key": "multi_device", "weight": 66, "note": "与家人手机互通" },
+        { "key": "big_canvas", "weight": 56, "note": "大屏观影与网课" },
+        { "key": "accessory_bundle", "weight": 44, "note": "包装清单内的随附配件" }
+      ],
+      "taboos": [
+        { "id": "hu_no_data_safe_promise", "text": "不承诺“数据零丢失”“一键全部迁移”;迁移只写知识库有依据的功能与条件,并提示迁移前先备份", "check": { "kind": "forbid_regex", "patterns": ["零丢失", "一键全部迁移", "所有数据.{0,4}(无损|完整迁移)", "保证.{0,4}不丢"], "except_near": null } },
+        { "id": "hu_no_long_use_promise", "text": "不写“用十年”“永不过时”“再也不用换”", "check": { "kind": "forbid_regex", "patterns": ["用十年", "永不过时", "再也不用换", "一步到位", "买一次用到老"], "except_near": null } },
+        { "id": "hu_no_trade_in", "text": "旧机折价、以旧换新补贴一律不写具体数字,转待确认", "check": { "kind": "pending_if_requested", "triggers": ["以旧换新", "旧机折价", "折价回收", "回收价", "置换补贴", "国补"], "topic": "trade_in", "next_owner": "store_manager" } }
+      ],
+      "single_point": false,
+      "max_points": 4,
+      "purchase_stage_default": "consideration",
+      "content_goal_default": "visit",
+      "default_persona": {
+        "persona": "准备给家里换一台电脑的家庭用户",
+        "usage_scene": "客厅或书房,孩子网课、老人视频通话、夫妻处理文档轮流使用",
+        "core_situation": "旧电脑越来越慢,最担心的是照片和文档搬不过去、新电脑一家人不会用",
+        "concerns": ["旧电脑里的照片文档怎么搬", "家里老人不会用", "买贵了或买错了", "能不能多人轮流用"],
+        "empathy_anchors": [
+          { "text": "旧电脑里存着孩子从小到大的照片,谁都不敢乱动", "detail_tags": ["孩子的照片", "不敢乱动"] },
+          { "text": "孩子上网课、老人视频通话,常常抢同一台电脑", "detail_tags": ["上网课", "视频通话", "轮流用"] }
+        ]
+      },
+      "default_strategy": { "angle_id": "hu_old_to_new", "point_keys": ["migration_ease", "display_comfort", "long_use"] },
+      "default_demo_outline": [
+        { "action": "请客户说出旧电脑里最不能丢的一类文件,按店内可演示的方式演示协同或传输步骤", "say_frame": "迁移这件事,知识库写的是:{{fact:apps_collab}}" },
+        { "action": "请长辈或孩子本人坐下操作键盘和触控", "say_frame": "您自己上手试一下。{{fact:keyboard}}" },
+        { "action": "展示屏幕在家里常见场景下的观感,如视频通话", "say_frame": "屏幕这边:{{fact:display_type}}" }
+      ],
+      "next_action_templates": [
+        { "action": "约客户带旧电脑到店,现场演示一次文件迁移的操作流程(客户自行备份后)", "when": "客户担心数据迁移", "script_frame": "您周末带着旧电脑来,我们一步一步演示,迁移前我先提醒您备份", "needs_pending": false },
+        { "action": "向店长确认以旧换新的政策与资格", "when": "客户询问旧机折价或补贴", "script_frame": "以旧换新有没有资格、怎么算,我跟店长确认后书面告诉您", "needs_pending": true }
+      ],
+      "recommended_models": [
+        { "model_id": "matebook-14-hm", "fit_topics": ["display_type", "resolution", "display_size", "refresh", "keyboard", "ports"], "note": "鸿蒙路线的家用取向,需确认家里常用软件" },
+        { "model_id": "matebook-pro", "fit_topics": ["display_type", "resolution", "display_size", "refresh", "os", "apps_collab"], "note": "轻量取向,需确认外设需求" },
+        { "model_id": "matebook-d-16", "fit_topics": ["display_size", "resolution", "display_type", "keyboard"], "note": "大屏家用取向,商城原页下架,报价走待确认" }
+      ]
+    },
+    "enterprise_procurement": {
+      "label": "企业采购",
+      "aliases": ["企业采购", "团队采购", "集中采购", "批量采购", "中小企业", "对公", "enterprise_procurement"],
+      "audiences": ["中小企业主", "行政与IT采购负责人", "团队负责人"],
+      "angles": [
+        { "id": "ep_standard_fleet", "title": "一批电脑,配置统一好管理", "when": "描述里有多台采购、统一配置、新员工入职", "rationale": "采购方关心的是型号与配置统一、交付可核对;只写知识库有的配置信息,部署与管理政策无依据即待确认" },
+        { "id": "ep_total_cost_clarity", "title": "报价看得清、算得出", "when": "描述里有预算审批、对比报价、要数量总价", "rationale": "报价只引用带 SKU 与核验日期的官方公开价,展示算式;商用询价类不输出数字" },
+        { "id": "ep_verify_before_buy", "title": "先小批量验证业务软件再批量买", "when": "描述里有业务系统、财务软件、安全策略顾虑", "rationale": "兼容性无法由销售确认;给出可执行的验证清单而不是承诺" },
+        { "id": "ep_service_questions", "title": "采购前必须问清的服务问题", "when": "描述里有保修、发票、对公服务、驻场", "rationale": "服务与发票政策知识库没有就不写,转授权渠道确认" }
+      ],
+      "selling_priority": [
+        { "key": "deployment_manage", "weight": 100, "note": "统一配置、可核对" },
+        { "key": "performance_memory", "weight": 88, "note": "统一的配置档位" },
+        { "key": "ports_expansion", "weight": 80, "note": "既有外设与投屏接口" },
+        { "key": "privacy_security", "weight": 70, "note": "隐私功能(限知识库记载)" },
+        { "key": "portability", "weight": 60, "note": "移动办公岗位" },
+        { "key": "accessory_bundle", "weight": 50, "note": "随附配件清单" },
+        { "key": "battery_charging", "weight": 44, "note": "出差岗位" }
+      ],
+      "taboos": [
+        { "id": "ep_no_unknown_policy", "text": "知识库没有的政策不得承诺:免费上门部署、延保、驻场、批量折扣、账期、返利、项目价、交期", "check": { "kind": "pending_if_requested", "triggers": ["免费上门", "上门部署", "延保", "驻场", "批量折扣", "团购价", "项目价", "账期", "返利", "交期保证", "优先供货", "专属客服", "三年保修", "免费换新"], "topic": "policy", "next_owner": "authorized_channel" } },
+        { "id": "ep_no_policy_wording", "text": "成稿中不得出现“可提供上门部署/批量优惠/延保服务”等未经知识库支持的服务承诺", "check": { "kind": "forbid_regex", "patterns": ["(可|能|免费)?提供.{0,6}(上门|驻场|部署服务)", "批量.{0,4}(优惠|折扣|让利)", "(延长|延)保(修)?服务", "统一管理平台", "企业专属"], "except_near": "待确认|需.{0,6}确认" } },
+        { "id": "ep_no_commercial_price_guess", "text": "商用型号(擎云系列、Fold 企业版)官方仅询价,不得输出任何金额,不得用消费款价格代替", "check": { "kind": "forbid_regex", "patterns": ["擎云.{0,20}\\d+\\s*元", "企业版.{0,20}\\d+\\s*元"], "except_near": null } }
+      ],
+      "single_point": false,
+      "max_points": 3,
+      "purchase_stage_default": "decision",
+      "content_goal_default": "decide",
+      "default_persona": {
+        "persona": "为团队批量采购办公电脑的中小企业负责人或行政采购",
+        "usage_scene": "新员工入职配机、老设备统一更新,需要提交预算审批",
+        "core_situation": "要在预算内买得清楚、对账方便,最怕采购后发现软件不兼容或售后说不清",
+        "concerns": ["业务软件是否兼容", "报价能否对账", "售后与发票政策是否清楚", "各岗位配置如何分档"],
+        "empathy_anchors": [
+          { "text": "财务要报价单、老板要看总价,采购夹在中间反复核对型号和配置", "detail_tags": ["报价单", "总价", "核对配置"] },
+          { "text": "新员工周一入职,电脑到了才发现业务软件装不上", "detail_tags": ["新员工入职", "软件装不上"] }
+        ]
+      },
+      "default_strategy": { "angle_id": "ep_total_cost_clarity", "point_keys": ["deployment_manage", "performance_memory", "ports_expansion"] },
+      "default_demo_outline": [
+        { "action": "请采购方说出需要验证的业务软件,安排到店用样机实际打开一次", "say_frame": "软件兼容我不口头保证,我们现场打开验证" },
+        { "action": "对照知识库规格页逐项核对型号、内存、存储、接口", "say_frame": "配置这边:{{fact:memory}}" },
+        { "action": "按官方公开价和数量现场算一次总价,并说明哪些条件待确认", "say_frame": "总价按官方公开价乘以数量,算式和出处都给您" }
+      ],
+      "next_action_templates": [
+        { "action": "请客户列出业务软件清单与岗位配置分档,约小批量到店验证", "when": "客户进入对比阶段", "script_frame": "您先把用到的软件列给我,我们挑一台样机把关键的几个都验证一遍", "needs_pending": false },
+        { "action": "向授权渠道确认对公报价、发票、服务与交付条件", "when": "客户提出批量、对公、服务相关问题", "script_frame": "对公报价、发票和服务条件我向授权渠道确认,确认前不给承诺", "needs_pending": true }
+      ],
+      "recommended_models": [
+        { "model_id": "matebook-14-hm", "fit_topics": ["ports", "os", "privacy"], "note": "统一配置取向,需先确认鸿蒙路线与业务软件" },
+        { "model_id": "matebook-pro-s", "fit_topics": ["privacy", "weight", "thickness", "dimensions"], "note": "管理层与出差岗位取向,需按版本确认功能" },
+        { "model_id": "matebook-14-ultra", "fit_topics": ["ports", "os", "privacy"], "note": "Windows 通用软件取向,商城原页下架,报价走待确认" }
+      ]
+    },
+    "store_visit": {
+      "label": "门店到访",
+      "aliases": ["门店到访", "到店", "到访", "附近客户", "路过", "店内引流", "store_visit"],
+      "audiences": ["附近的潜在顾客", "路过门店的客流", "朋友圈里的本地好友"],
+      "angles": [
+        { "id": "sv_one_thing_to_try", "title": "来店里摸一下这一个点", "when": "默认;客户信息很少时", "rationale": "门店到访只讲一个明确卖点和一个到店体验理由,避免信息堆叠" },
+        { "id": "sv_bring_your_own", "title": "带上您自己的东西来试", "when": "描述里有明确的使用场景或软件", "rationale": "把体验变成“用您自己的文件试”,降低到店门槛" },
+        { "id": "sv_compare_in_hand", "title": "两台放在手里比一比", "when": "描述里有两款犹豫、需要对比", "rationale": "到店理由是现场对比重量或屏幕;对比仅限本店同系列自家型号,不涉及竞品" }
+      ],
+      "selling_priority": [
+        { "key": "display_comfort", "weight": 100, "note": "一看就知道" },
+        { "key": "portability", "weight": 94, "note": "一掂就知道" },
+        { "key": "multi_device", "weight": 70, "note": "现场连手机" },
+        { "key": "pen_input", "weight": 60, "note": "现场写一写" }
+      ],
+      "taboos": [
+        { "id": "sv_single_point", "text": "只突出一个明确卖点;不堆叠参数", "check": { "kind": "max_points", "n": 1 } },
+        { "id": "sv_no_fake_scarcity", "text": "不写“限量”“最后几台”“今天最后一天”等稀缺或紧迫表述,门店库存与活动无依据即待确认", "check": { "kind": "forbid_regex", "patterns": ["限量", "最后.{0,3}台", "仅剩", "抢完即止", "今日截止", "手慢无", "到店即送", "到店有礼"], "except_near": null } },
+        { "id": "sv_pending_event", "text": "到店礼、活动、价格由店长确认后才可写入,默认不写", "check": { "kind": "pending_if_requested", "triggers": ["到店礼", "到店有礼", "到店即送", "到店立减", "限时活动", "今日特价"], "topic": "gift", "next_owner": "store_manager" } }
+      ],
+      "single_point": true,
+      "max_points": 1,
+      "purchase_stage_default": "awareness",
+      "content_goal_default": "visit",
+      "default_persona": {
+        "persona": "住在或工作在门店附近、近期可能换电脑的潜在顾客",
+        "usage_scene": "刷到朋友圈或路过门店时,有半分钟决定要不要进来看看",
+        "core_situation": "对华为电脑有印象但没比较过,需要一个很具体的理由才会专程来",
+        "concerns": ["怕进店被推销", "不知道值不值得专程跑一趟", "不确定适不适合自己"],
+        "empathy_anchors": [
+          { "text": "路过橱窗看到样机,想上手试试又怕店员一直跟着推销", "detail_tags": ["路过橱窗", "怕被推销"] },
+          { "text": "下班顺路,只有二十分钟的时间可以看一眼", "detail_tags": ["下班顺路", "二十分钟"] }
+        ]
+      },
+      "default_strategy": { "angle_id": "sv_one_thing_to_try", "point_keys": ["display_comfort"] },
+      "default_demo_outline": [
+        { "action": "打开屏幕,让客户在样机上看一张自己手机里的照片,不做任何推销", "say_frame": "您先看,不用急着决定。屏幕这边:{{fact:display_type}}" },
+        { "action": "请客户随手打开自己常用的一份文档或网页翻几页", "say_frame": "用您自己的内容看更准。分辨率这边:{{fact:resolution}}" }
+      ],
+      "next_action_templates": [
+        { "action": "约定客户到店时间,准备好样机并提前开机", "when": "客户表示愿意来看看", "script_frame": "您几点方便,我提前把样机准备好,您到了直接上手", "needs_pending": false },
+        { "action": "向店长确认本周到店是否有可对外说明的活动", "when": "客户问到店有没有礼品或优惠", "script_frame": "到店有没有活动我先确认,确认后马上回您", "needs_pending": true }
+      ],
+      "recommended_models": [
+        { "model_id": "matebook-pro-s", "fit_topics": ["weight", "thickness", "dimensions", "display_type", "resolution", "display_size", "refresh"], "note": "上手体验取向" },
+        { "model_id": "matebook-pro", "fit_topics": ["weight", "thickness", "dimensions", "display_type", "resolution", "display_size", "refresh"], "note": "上手体验取向,需如实说明外设取舍" },
+        { "model_id": "matebook-fold", "fit_topics": ["display_size", "resolution", "display_type", "pen", "keyboard"], "note": "现场体验感强的取向,报价以官方页面为准" }
+      ]
+    },
+    "new_launch": {
+      "label": "新品首发",
+      "aliases": ["新品首发", "新品", "首发", "新机发布", "上新", "new_launch"],
+      "audiences": ["关注新品的数码爱好者", "老款用户中有换机意向者", "对新系统路线感兴趣的用户"],
+      "angles": [
+        { "id": "nl_what_changed", "title": "和上一代比,这次变了什么", "when": "描述里有老款用户、想知道升级点", "rationale": "只做同品牌自家型号间的事实对比,逐项来自知识库;不比竞品" },
+        { "id": "nl_who_should_look", "title": "这次新品适合哪一类人", "when": "描述里有“值不值得买”“适合谁”", "rationale": "购买建议以适合人群 + 先验证的事项给出,不替客户下“必买”结论" },
+        { "id": "nl_hands_on_reasons", "title": "为什么建议上手后再决定", "when": "新品信息较多、客户犹豫", "rationale": "把到店体验当作低风险下一步,列出要亲自验证的三件事" }
+      ],
+      "selling_priority": [
+        { "key": "performance_memory", "weight": 100, "note": "处理器与配置档位的变化" },
+        { "key": "display_comfort", "weight": 94, "note": "屏幕变化" },
+        { "key": "portability", "weight": 86, "note": "机身变化" },
+        { "key": "design_look", "weight": 78, "note": "外观与配色" },
+        { "key": "multi_device", "weight": 70, "note": "系统与协同" },
+        { "key": "privacy_security", "weight": 60, "note": "新增隐私功能" },
+        { "key": "accessory_bundle", "weight": 50, "note": "版本差异与随机配件" }
+      ],
+      "taboos": [
+        { "id": "nl_price_rights_basis", "text": "价格与权益必须有资料依据:只引用带 SKU 与日期的官方公开价,首发礼、预约礼、权益一律待确认", "check": { "kind": "pending_if_requested", "triggers": ["首发价", "首发礼", "预约礼", "首发立减", "尝鲜价", "新品补贴", "预售价", "定金膨胀"], "topic": "price", "next_owner": "store_manager" } },
+        { "id": "nl_no_superlative_new", "text": "不写“颠覆”“革命性”“史上最强”“遥遥领先”等", "check": { "kind": "forbid_regex", "patterns": ["颠覆", "革命性", "史上最强", "遥遥领先", "重新定义", "划时代", "封神"], "except_near": null } },
+        { "id": "nl_no_unreleased", "text": "不写知识库没有的新品信息(未发布参数、传闻、预测)", "check": { "kind": "forbid_regex", "patterns": ["据说", "传闻", "爆料", "预计将", "有望", "曝光"], "except_near": null } }
+      ],
+      "single_point": false,
+      "max_points": 3,
+      "purchase_stage_default": "awareness",
+      "content_goal_default": "inquiry",
+      "default_persona": {
+        "persona": "关注华为电脑新品、考虑是否换机的用户",
+        "usage_scene": "在社交平台上刷到新品内容,边看边和现有设备比较",
+        "core_situation": "想知道新品和手上这台有什么实质不同,又担心被宣传词误导",
+        "concerns": ["升级点是不是真的有用", "价格是否合理", "新系统路线能否满足日常软件", "要不要等等再买"],
+        "empathy_anchors": [
+          { "text": "手上这台用了三年,每次看到新品发布都在算要不要换", "detail_tags": ["用了三年", "算要不要换"] },
+          { "text": "刷到新品参数一堆,却分不清哪些和自己日常使用有关", "detail_tags": ["参数一堆", "分不清"] }
+        ]
+      },
+      "default_strategy": { "angle_id": "nl_who_should_look", "point_keys": ["performance_memory", "display_comfort", "portability"] },
+      "default_demo_outline": [
+        { "action": "把新品和客户手上的旧机型(或本店自家型号)的官方规格页并排放,逐项对照处理器、内存、存储", "say_frame": "我们逐项对,只看规格页上写的。{{fact:processor}}" },
+        { "action": "再把两台拿在手里比重量与屏幕", "say_frame": "您先拿着对比。新品这边:{{fact:weight}}" },
+        { "action": "演示新品的一个新特性,并同步说明它依赖的系统与版本条件", "say_frame": "这个功能的条件是:{{fact:apps_collab}}" },
+        { "action": "说明价格以官方商城当日页面为准,现场打开官方页面核对", "say_frame": "价格我们一起看官方页面,不凭印象报" }
+      ],
+      "next_action_templates": [
+        { "action": "邀请客户到店用自己的常用软件验证新品路线是否满足", "when": "客户关心新系统是否能用", "script_frame": "您把常用软件列出来,我们现场逐个验证", "needs_pending": false },
+        { "action": "向店长确认首发权益与库存,确认前不对外承诺", "when": "客户询问首发礼或库存", "script_frame": "首发权益和库存我向店长确认后再答复您", "needs_pending": true }
+      ],
+      "recommended_models": [
+        { "model_id": "matebook-pro-s", "fit_topics": ["weight", "thickness", "dimensions", "display_type", "resolution", "display_size", "refresh", "privacy"], "note": "新一代取向,需区分屏幕版本" },
+        { "model_id": "matebook-fold", "fit_topics": ["display_size", "resolution", "display_type", "identity", "dimensions"], "note": "新形态取向,需确认端口与软件路线" },
+        { "model_id": "matebook-pro", "fit_topics": ["weight", "thickness", "dimensions", "display_type", "resolution", "display_size", "refresh"], "note": "新品对比取向" }
+      ]
+    },
+    "festival": {
+      "label": "节日营销",
+      "aliases": ["节日营销", "节日", "送礼", "礼物", "春节", "中秋", "双十一", "圣诞", "家庭购机", "festival"],
+      "audiences": ["为家人选礼物的人", "节日期间家庭购机的用户", "为伴侣或朋友挑礼物的人"],
+      "angles": [
+        { "id": "fe_gift_for_whom", "title": "送给谁,就按谁的使用场景挑", "when": "描述里有明确收礼对象(父母、孩子、伴侣、同事)", "rationale": "礼物的核心是“收礼人会用到的那一件事”;按收礼人的使用场景选择卖点" },
+        { "id": "fe_family_choose", "title": "节日家庭购机怎么选才不后悔", "when": "家庭共同购机", "rationale": "选择建议比促销更可信:列出三个要先确认的问题,再给匹配的型号方向" },
+        { "id": "fe_unbox_moment", "title": "拆开那一刻的体验", "when": "客户重视仪式感与外观", "rationale": "外观与包装清单是节日场景的真实卖点;只写知识库包装清单和图片说明" }
+      ],
+      "selling_priority": [
+        { "key": "design_look", "weight": 100, "note": "外观与配色" },
+        { "key": "accessory_bundle", "weight": 92, "note": "拆开那一刻:包装清单中的随附配件" },
+        { "key": "portability", "weight": 84, "note": "轻薄便携的手感" },
+        { "key": "display_comfort", "weight": 76, "note": "屏幕观感" },
+        { "key": "migration_ease", "weight": 68, "note": "收礼人好上手" },
+        { "key": "multi_device", "weight": 58, "note": "与家人手机互通" }
+      ],
+      "taboos": [
+        { "id": "fe_no_fake_deal", "text": "不得虚构优惠、补贴、库存:节日价、满减、赠品、礼盒、限量、国补、以旧换新一律不写,转待确认", "check": { "kind": "pending_if_requested", "triggers": ["节日价", "节日特价", "满减", "立减", "赠品", "赠送", "礼盒", "限量", "国补", "补贴", "以旧换新", "双十一价", "年货价", "买一送"], "topic": "subsidy", "next_owner": "store_manager" } },
+        { "id": "fe_no_scarcity_wording", "text": "不写“库存紧张”“售罄在即”“节后涨价”", "check": { "kind": "forbid_regex", "patterns": ["库存紧张", "售罄", "节后涨价", "错过再等", "仅此一次", "全年最低", "史低"], "except_near": null } },
+        { "id": "fe_gift_package_basis", "text": "礼物配件只写包装清单中记载的随附物,且按版本区分;赠品与包装清单不得混写", "check": { "kind": "forbid_regex", "patterns": ["(随机|随机附)赠", "送(鼠标|耳机|包|手写笔)(?!.{0,6}(包装清单|版本))"], "except_near": "包装清单" } }
+      ],
+      "single_point": false,
+      "max_points": 3,
+      "purchase_stage_default": "decision",
+      "content_goal_default": "inquiry",
+      "default_persona": {
+        "persona": "节日期间为家人挑选电脑礼物的人",
+        "usage_scene": "节前一两周在线上线下比较,需要确定送什么、怎么选",
+        "core_situation": "送礼怕送错、怕被促销话术带偏,想知道收礼人到底用不用得上",
+        "concerns": ["收礼人会不会用", "价格是否合理", "外观拿得出手吗", "有没有被夸大宣传"],
+        "empathy_anchors": [
+          { "text": "想给爸妈换台电脑当过年礼物,又担心他们不会用", "detail_tags": ["过年礼物", "爸妈", "不会用"] },
+          { "text": "节前逛了好几家店,促销信息太多反而不知道哪个是真的", "detail_tags": ["逛好几家店", "促销信息多"] }
+        ]
+      },
+      "default_strategy": { "angle_id": "fe_gift_for_whom", "point_keys": ["design_look", "accessory_bundle", "portability"] },
+      "default_demo_outline": [
+        { "action": "请客户说出收礼人是谁,按收礼人的使用场景挑一个样机", "say_frame": "您说的这位日常主要用来做什么?我们就按这一件事来演示" },
+        { "action": "拆开样机包装展示包装清单中的随附配件,并按版本说明差异", "say_frame": "包装里有:{{fact:package}}" },
+        { "action": "说明价格以官方当日页面为准,现场打开官方页面核对,不口头承诺活动", "say_frame": "价格和活动我们一起看官方页面,有的我需要先跟店长确认" }
+      ],
+      "next_action_templates": [
+        { "action": "约定客户带收礼人(或收礼人的使用需求)来店体验", "when": "客户进入选择阶段", "script_frame": "您方便的话带上或者告诉我对方平时怎么用,我们按对方的使用来挑", "needs_pending": false },
+        { "action": "向店长确认本店节日期间可对外说明的活动、礼盒与库存", "when": "客户询问节日优惠", "script_frame": "节日优惠和库存我向店长确认,确认前不给您口头承诺", "needs_pending": true }
+      ],
+      "recommended_models": [
+        { "model_id": "matebook-pro-s", "fit_topics": ["identity", "dimensions", "weight", "thickness"], "note": "外观与便携取向,需区分版本及随机配件" },
+        { "model_id": "matebook-14-hm", "fit_topics": ["display_type", "resolution", "display_size", "refresh", "keyboard"], "note": "屏幕与键盘取向,需确认款式" },
+        { "model_id": "matebook-fold", "fit_topics": ["identity", "dimensions", "display_size", "resolution", "display_type"], "note": "仪式感取向,报价以官方页面为准" }
+      ]
+    }
+  }
+}
