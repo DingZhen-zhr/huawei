@@ -101,7 +101,100 @@ export const KB_FILES: KbFile[] = [
     path: `${KB_ROOT}/P6-营销素材库/11-完整软文成稿库/HUAWEI MateBook Pro/小红书完整成稿.md`,
     keywords: ["成稿", "案例", "小红书"],
   },
+  {
+    id: "p6-mp",
+    label: "微信公众号图文模板",
+    board: "P6-营销素材库",
+    path: `${KB_ROOT}/P6-营销素材库/02-平台模板/微信公众号图文模板.md`,
+    keywords: ["公众号", "微信", "平台"],
+  },
+  {
+    id: "p6-moments",
+    label: "销售朋友圈模板",
+    board: "P6-营销素材库",
+    path: `${KB_ROOT}/P6-营销素材库/02-平台模板/销售朋友圈模板.md`,
+    keywords: ["朋友圈", "平台"],
+  },
+  {
+    id: "p6-poster",
+    label: "门店海报图文模板",
+    board: "P6-营销素材库",
+    path: `${KB_ROOT}/P6-营销素材库/02-平台模板/门店海报图文模板.md`,
+    keywords: ["海报", "门店", "平台"],
+  },
+  {
+    id: "p1-facts-14",
+    label: "HUAWEI MateBook 14（鸿蒙版）｜产品事实",
+    board: "P1-产品参数库",
+    path: `${KB_ROOT}/P1-产品参数库/01-鸿蒙电脑/HUAWEI MateBook 14/产品事实.md`,
+    keywords: ["matebook 14", "参数", "规格", "事实"],
+  },
+  {
+    id: "p1-facts-pros",
+    label: "HUAWEI MateBook Pro S｜产品事实",
+    board: "P1-产品参数库",
+    path: `${KB_ROOT}/P1-产品参数库/01-鸿蒙电脑/HUAWEI MateBook Pro S/产品事实.md`,
+    keywords: ["pro s", "参数", "规格", "事实"],
+  },
+  {
+    id: "p1-selling-14",
+    label: "MateBook 14｜卖点与限制",
+    board: "P1-产品参数库",
+    path: `${KB_ROOT}/P1-产品参数库/01-鸿蒙电脑/HUAWEI MateBook 14/卖点与限制.md`,
+    keywords: ["卖点", "限制", "matebook 14"],
+  },
+  {
+    id: "p1-selling-pros",
+    label: "MateBook Pro S｜卖点与限制",
+    board: "P1-产品参数库",
+    path: `${KB_ROOT}/P1-产品参数库/01-鸿蒙电脑/HUAWEI MateBook Pro S/卖点与限制.md`,
+    keywords: ["卖点", "限制", "pro s"],
+  },
+  {
+    id: "p1-price-14h",
+    label: "MateBook 14（鸿蒙版）｜官方公开价格卡",
+    board: "P1-产品参数库/08",
+    path: `${KB_ROOT}/P1-产品参数库/08-官方公开价格快照/01-消费级PC/HUAWEI MateBook 14（鸿蒙版）-价格卡.md`,
+    keywords: ["价格", "matebook 14", "报价"],
+  },
+  {
+    id: "p1-price-pros",
+    label: "MateBook Pro S｜官方公开价格卡",
+    board: "P1-产品参数库/08",
+    path: `${KB_ROOT}/P1-产品参数库/08-官方公开价格快照/01-消费级PC/HUAWEI MateBook Pro S-价格卡.md`,
+    keywords: ["价格", "pro s", "报价"],
+  },
 ];
+
+/** 按型号读取图片索引 CSV（真实检索图片来源） */
+export interface KbImage {
+  file: string;
+  url: string;
+  caption: string;
+  usage: string;
+}
+
+export async function fetchImageIndex(modelDir: string): Promise<KbImage[]> {
+  const csv = await fetchKbFile(
+    `${KB_ROOT}/P1-产品参数库/01-鸿蒙电脑/${modelDir}/图片索引.csv`
+  );
+  return csv
+    .split("\n")
+    .slice(1)
+    .filter((l) => l.trim())
+    .map((line) => {
+      // 简单 CSV 解析：前5列（文件名,型号,来源页,URL,说明）
+      const m = line.match(/^([^,]+),[^,]*,[^,]*,([^,]*),([^,]*),/);
+      const usage = line.split(",").slice(-1)[0] || "";
+      return {
+        file: m?.[1]?.trim() ?? line.slice(0, 40),
+        url: m?.[2]?.trim() ?? "",
+        caption: m?.[3]?.trim() || "（官网图片）",
+        usage: usage.trim(),
+      };
+    })
+    .filter((img) => img.file);
+}
 
 export async function fetchKbFile(path: string): Promise<string> {
   const res = await fetch(`/@fs/${encodeURI(path)}`);
