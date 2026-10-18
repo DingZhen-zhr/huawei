@@ -1,1 +1,14 @@
-{"name":"huawei-pc-marketing-agent","version":"0.1.0","private":true,"type":"module"}
+{
+  "name": "huawei-pc-marketing-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/init.mjs",
+    "test": "node --test server/*.test.mjs",
+    "selfcheck": "node scripts/selfcheck.mjs"
+  },
+  "devDependencies": {
+    "ajv": "8.17.1"
+  }
+}

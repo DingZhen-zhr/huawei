@@ -1,0 +1,2 @@
+# Windows command files must keep CRLF in release archives.
+*.cmd -text

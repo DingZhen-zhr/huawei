@@ -18,10 +18,10 @@
 <button class="primary" id="btn-submit" type="submit">生成本次营销方案 <span>→</span></button><p class="form-hint">信息不足时会先追问。无依据的参数与优惠不会作为事实输出。</p>
 </form><form id="ask-form" class="followup" hidden><h3>还需要了解几件事</h3><div id="questions"></div><button id="btn-ask-submit" class="primary">补充并继续</button></form>
 </aside>
-<section class="results"><div class="result-heading"><div><div class="eyebrow">本次方案</div><h2>让每一步，都有依据</h2></div><div class="actions"><button id="btn-copy" class="secondary" disabled>复制全文</button><button id="btn-export" class="secondary" disabled>导出文本 ↓</button></div></div>
+<section class="results"><div class="result-heading"><div><div class="eyebrow">本次方案</div><h2>让每一步，都有依据</h2></div><div class="actions"><button id="btn-copy" class="secondary" disabled>复制全文</button><button id="btn-export" class="secondary" disabled>预览全文</button><a id="download-text" class="secondary" hidden>下载文本 ↓</a></div></div>
 <div id="progress" class="progress" aria-live="polite"></div><div id="notice" class="notice" role="status" hidden></div><div id="blocked-banner" class="warning" role="alert" hidden></div>
 <div id="empty-state" class="empty-state"><div class="empty-mark">↗</div><h3>下一份好内容，从理解客户开始</h3><p>填写左侧任务，或选择一个示例。<br>生成后在这里查看洞察、内容、依据与下一步动作。</p><div class="empty-chips"><span>客户洞察</span><span>图文软文</span><span>事实核验</span><span>门店行动</span></div></div>
-<div id="output" hidden>
+<section id="text-preview" class="output-card revise" hidden><h3>全文预览与手动复制</h3><p class="form-hint">点击文本框，按 Ctrl+A / Ctrl+C 复制；Mac 使用 Command。可核对内容后下载文本。</p><textarea id="copy-preview" rows="16" readonly aria-label="方案全文预览"></textarea></section><div id="output" hidden>
 <details class="output-card" id="sec-insight" open><summary><span>客户洞察卡</span><small>读懂眼前的人</small></summary><div class="section-content"></div></details>
 <details class="output-card" id="sec-scene" open><summary><span>一、场景判断</span><small>切入点与平台策略</small></summary><div class="section-content"></div></details>
 <details class="output-card" id="sec-basis"><summary><span>二、知识库依据</span><small>产品事实与资料来源</small></summary><div class="section-content"></div></details>
