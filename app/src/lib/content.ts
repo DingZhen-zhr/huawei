@@ -1,3 +1,4 @@
+import { createRuleBundle, taskKey, type ArticleBundle } from "./creative";
 // 软文生成引擎：任务输入 → 9 阶段流水线
 // 事实基准：华为 PC 全板块深度知识库 v7（2026-10-17 官方页面快照）
 // 所有型号参数、价格、图片来源均可回溯到 P1 / P1-08 / 图片索引
@@ -289,15 +290,6 @@ export interface StageOut {
   ok?: boolean; // 核验类阶段
 }
 
-const PRICE_LINES: Record<ModelId, string> = {
-  "matebook-pro":
-    "官方商城页面价（2026-10-17 快照）：24GB/512GB ¥9,999 起；24GB/1TB 柔光版 ¥12,499（券后预估约 ¥11,999，以结算页为准）",
-  "matebook-14":
-    "官方商城页面价（2026-10-17 快照）：16GB/512GB ¥5,899；24GB/512GB ¥6,599；24GB/1TB ¥7,599",
-  "matebook-pro-s":
-    "官方商城页面价（2026-10-17 快照）：16GB/512GB ¥7,999；24GB/1TB ¥10,499；24GB/512GB 柔光版 ¥9,999",
-};
-
 /** 事实点提取：按场景切入点从型号事实底座取 4 条 */
 function factPoints(m: ModelInfo, s: ScenarioInfo): string[] {
   const pts = [
@@ -310,100 +302,10 @@ function factPoints(m: ModelInfo, s: ScenarioInfo): string[] {
   return pts;
 }
 
-/** 软文正文生成：结构/语气/图片数量随平台变化，切入点随场景变化 */
-export function generateArticle(task: TaskInput): { title: string; body: string; images: string } {
-  const m = MODELS[task.modelId];
-  const s = SCENARIOS[task.scenario];
-  const angle = s.angle[task.modelId] ?? m.positioning;
-  const priceLine = task.withPrice && (task.scenario === "新品首发" || task.platform === "门店海报" || task.scenario === "门店到访")
-    ? `\n\n${PRICE_LINES[task.modelId]}。${PRICE_POLICY}`
-    : "\n\n价格与权益以当前官方渠道核验为准。";
-  const tags = `#电脑选购 #华为电脑 #${task.scenario} #购机核验`;
-
-  if (task.platform === "小红书") {
-    const title = `${m.name.replace(/（.*?）/, "")} 适不适合${task.scenario}？先说结论再看条件`;
-    const body = [
-      `**导语**：先给结论：${m.positioning}。但值不值得买，取决于你的任务，不看形容词。`,
-      ``,
-      `我的场景是「${s.problem}」。这台机器对上这个场景的点在于：${angle}。`,
-      ``,
-      `核对过的硬事实（来源：华为官方规格页，核验 2026-10-17）：`,
-      `1. 重量 ${m.weight}、${m.size}——官方规格值，实际随配置和测量方法有差异；`,
-      `2. ${m.screen}；`,
-      `3. ${m.cpu}，${m.mem} 内存，${m.ssd}；`,
-      `4. 接口：${m.ports}。`,
-      ``,
-      `也要说清楚取舍：${m.tradeoff}。这一步没验证之前，别急着下单。`,
-      ``,
-      `适合继续了解的人：${s.crowd}，且接受上面的条件。需要先停下来验证的人：必装软件/外设还没确认兼容的。`,
-      `${priceLine}`,
-      ``,
-      `**行动引导**：你是什么场景？评论区留下你的任务和预算，我帮你列一份核验清单。`,
-      ``,
-      tags,
-    ].join("\n");
-    return { title, body, images: "" };
-  }
-
-  if (task.platform === "公众号") {
-    const title = `${task.scenario}购机怎么选：${m.name} 的适用条件与核验清单`;
-    const body = [
-      `**导语**`,
-      `这篇内容只解决一个问题：${s.crowd}在「${s.problem}」时，${m.name} 是否值得进入候选清单。结论先行：${m.positioning}；但${m.tradeoff}。以下事实均来自华为官方产品页与规格页（核验日期 2026-10-17），动态信息以官方渠道当日页面为准。`,
-      ``,
-      `## 一、这台机器是谁`,
-      `${m.identityNote}核心规格：${m.cpu}，${m.mem} 内存，${m.ssd} SSD，${m.battery} 电池；系统为 ${m.os}。`,
-      ``,
-      `## 二、对上了${task.scenario}的哪些点`,
-      `${angle}。围绕「${s.focus}」，这台机器能直接对应的已验证事实是：重量 ${m.weight}（官方规格值）、${m.screen}、接口配置为「${m.ports}」。`,
-      ``,
-      `## 三、必须先说清楚的取舍`,
-      `${m.tradeoff}。规格说明「具备某接口或功能」不等于你的具体软件、外设、账号环境已经兼容；请以真实任务到店或在授权环境验证后再下结论。`,
-      ``,
-      `## 四、适合与不适合`,
-      `适合：${s.crowd}中，接受上述条件、愿意按清单核验的人。不适合：把未验证兼容的软件/外设当作购买前提，或要求无条件承诺体验结果的人。`,
-      ``,
-      `## 五、价格口径`,
-      task.withPrice ? `${PRICE_LINES[task.modelId]}。${PRICE_POLICY}` : `本文不引用具体金额；${PRICE_POLICY}`,
-      ``,
-      `**结尾行动引导**：${s.cta}。以上结论只对应已核验的型号、版本与日期；未确认项请以实机验证和官方当日页面为准。`,
-    ].join("\n");
-    return { title, body, images: "" };
-  }
-
-  if (task.platform === "门店朋友圈") {
-    const title = `${task.scenario}选电脑，一个最该先看的点`;
-    const body = [
-      `**钩子**：【${task.scenario}选机】${angle}。`,
-      ``,
-      `**核心卖点**：已核对事实（官方规格页，核验 2026-10-17）：${m.weight}、${m.screen.split("，")[0]}。`,
-      `取舍也直说：${m.tradeoff}。`,
-      `${task.withPrice ? PRICE_LINES[task.modelId] + "。" : "价格以当前官方渠道核验为准。"}`,
-      ``,
-      `**行动引导**：${s.cta}。`,
-    ].join("\n");
-    return { title, body, images: "" };
-  }
-
-  // 门店海报
-  const title = `${m.name.replace(/（.*?）/, "")}｜${task.scenario}之选`;
-  const body = [
-    `**主标题**（12–22 字）：${angle.slice(0, 18)}`,
-    ``,
-    `**副标题**：${m.positioning}`,
-    ``,
-    `**卖点（≤3 个，含条件）**：`,
-    `1. ${m.weight} / ${m.size}（官方规格值）`,
-    `2. ${m.screen.split("，").slice(0, 2).join("，")}`,
-    `3. ${m.cpu} · ${m.mem} · ${m.ssd}`,
-    ``,
-    `**活动说明**：${task.withPrice ? PRICE_LINES[task.modelId] : "价格与权益以门店当日官方渠道核验为准"}；赠品/活动以当日页面为准，不虚构优惠与库存。`,
-    ``,
-    `**参数脚注（与主张同屏）**：${m.screenNote ?? "不同版本配置不同，以实际销售 SKU 为准"}；系统 ${m.os}。`,
-    ``,
-    `**到店引导**：${s.cta}`,
-  ].join("\n");
-  return { title, body, images: "" };
+/** All consumers receive the same per-run immutable article; no re-generation during export. */
+export function generateArticle(task: TaskInput, bundle?: ArticleBundle): { title: string; body: string; images: string } {
+  if (bundle && bundle.key !== taskKey(task)) throw new Error("成稿与当前任务不一致，请重新生成");
+  return (bundle ?? createRuleBundle(task)).article;
 }
 
 /** 合规扫描：返回命中的违规项 */
@@ -417,11 +319,11 @@ export function complianceScan(text: string): { label: string; match: string }[]
 }
 
 /** 运行完整流水线 */
-export function runPipeline(task: TaskInput, imagePlan: string[]): StageOut[] {
+export function runPipeline(task: TaskInput, imagePlan: string[], bundle?: ArticleBundle): StageOut[] {
   const m = MODELS[task.modelId];
   const s = SCENARIOS[task.scenario];
   const p = PLATFORMS[task.platform];
-  const art = generateArticle(task);
+  const art = generateArticle(task, bundle);
   const facts = factPoints(m, s);
   const scan = complianceScan(`${art.title}\n${art.body}`);
 
@@ -572,14 +474,24 @@ export function runPipeline(task: TaskInput, imagePlan: string[]): StageOut[] {
       evidenceIds: [],
     },
   ];
+  const creative = bundle ?? createRuleBundle(task, imagePlan);
+  const append = (id: string, text: string) => { const stage = stages.find(s => s.id === id); if (stage) stage.detail += "\n\n" + text; };
+  append("parse", `**创意简报**\n${creative.beats.slice(0, 2).join("\n")}\n${creative.notices.join("\n")}`);
+  append("platform", `**角度择优（评分为编辑辅助）**\n${creative.candidates.map(c => `- ${c.title}｜${c.angle}｜${c.score}/25`).join("\n")}`);
+  append("compose", `**线性叙事节拍**\n${creative.beats.map((b,i)=>`${i+1}. ${b}`).join("\n")}`);
+  append("generate", `**创意编辑记录**\n${creative.review.join("\n")}\n${creative.notices.join("\n")}\n\n**正文事实标识来源**\n${creative.facts.map(f=>`〔${f.id}〕${f.source}`).join("\n")}`);
+  const verify = stages.find(s => s.id === "verify")!;
+  verify.ok = false;
+  verify.summary = "本地快照事实绑定；实时事实与图片待人工核验";
+  verify.detail = [`- 生成模式：${creative.mode === "model" ? "模型创意流程" : "规则创意预览"}`, ...creative.facts.map(f=>`- 〔${f.id}〕${f.text}｜来源：${f.source}`), "- 来源追踪与数字扫描不能替代语义事实核验；发布前须人工复核。", `- 图片：${imagePlan.length ? "已登记索引，型号、授权和可访问性仍须复核" : "未取得图片，待补齐"}`, ...creative.notices].join("\n");
   return stages;
 }
 
 /** 组装统一输出格式（四段式：场景判断 / 知识库依据 / 图文软文 / 核验结果） */
-export function buildExport(task: TaskInput, imagePlan: string[]): string {
+export function buildExport(task: TaskInput, imagePlan: string[], bundle?: ArticleBundle): string {
   const m = MODELS[task.modelId];
   const s = SCENARIOS[task.scenario];
-  const art = generateArticle(task);
+  const art = generateArticle(task, bundle);
   const imgSection = imagePlan.length
     ? imagePlan.map((l, i) => `图${i + 1}｜${l}`).join("\n")
     : "（本稿不使用图片：未取得索引或平台不支持）";
@@ -610,8 +522,10 @@ export function buildExport(task: TaskInput, imagePlan: string[]): string {
     imgSection,
     ``,
     `## 四、核验结果`,
-    `- 产品事实：✅ 逐项与 P1 一致`,
-    `- 图片型号：✅ 与正文型号一致（来源已登记）`,
+    ...(bundle ?? createRuleBundle(task, imagePlan)).notices.map(n=>`- ${n}`),
+    ...((bundle ?? createRuleBundle(task, imagePlan)).facts.map(f=>`- 〔${f.id}〕${f.source}`)),
+    `- 产品事实：按本地 P1 快照绑定，语义事实与发布日状态待人工核验`,
+    `- 图片型号：${imagePlan.length ? "索引已登记，待人工核验型号及授权" : "无图片，待补齐"}`,
     `- 合规：${complianceScan(`${art.title}\n${art.body}`).length ? "❌ 有命中项需改写" : "✅ 通过"}`,
     `- 待确认信息：知识库未记录的补贴/库存/内部价未写入本文`,
     ``,
@@ -621,10 +535,10 @@ export function buildExport(task: TaskInput, imagePlan: string[]): string {
 }
 
 /** 提取可直接粘贴到平台的发布正文（仅标题+正文+配图建议，去掉四段式审核包装） */
-export function buildPublishText(task: TaskInput, imagePlan: string[]): string {
-  const art = generateArticle(task);
+export function buildPublishText(task: TaskInput, imagePlan: string[], bundle?: ArticleBundle): string {
+  const art = generateArticle(task, bundle);
   const strip = (s: string) => s.replace(/\*\*/g, "");
-  const parts: string[] = [strip(art.title), "", strip(art.body)];
+  const parts: string[] = [strip(art.title), "", strip(art.body), "", ...(bundle ?? createRuleBundle(task, imagePlan)).notices, ...(bundle ?? createRuleBundle(task, imagePlan)).facts.map(f=>`〔${f.id}〕${f.source}`)];
   if (imagePlan.length) {
     parts.push("", "配图：", ...imagePlan.map((l, i) => `${i + 1}. ${l}`));
   }

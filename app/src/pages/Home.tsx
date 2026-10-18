@@ -23,7 +23,8 @@ import {
   type ModelId, type PlatformId, type ScenarioId, type StageOut, type TaskInput,
 } from "@/lib/content";
 import { freeReply, type ChatMsg } from "@/lib/engine";
-import { callDeepSeek } from "@/lib/llm";
+import { callDeepSeek, callCreativeStep } from "@/lib/llm";
+import { prepareArticle, type ArticleBundle } from "@/lib/creative";
 
 const PROMPT_PATH =
   "D:/KimiData/kimi/Workspaces/华为浙客松/门店增长智能体/系统提示词骨架.md";
@@ -60,7 +61,7 @@ export default function Home() {
   const [stages, setStages] = useState<StageOut[] | null>(null);
   const [running, setRunning] = useState(false);
   const [exported, setExported] = useState<string | null>(null);
-  const [lastRun, setLastRun] = useState<{ task: TaskInput; plan: string[] } | null>(null);
+  const [lastRun, setLastRun] = useState<{ task: TaskInput; plan: string[]; bundle: ArticleBundle } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const task: TaskInput = useMemo(
@@ -72,6 +73,7 @@ export default function Home() {
     setRunning(true);
     setStages(null);
     setCopied(false);
+    try {
     const m = MODELS[t.modelId];
     let imgs: KbImage[] = [];
     try {
@@ -80,16 +82,18 @@ export default function Home() {
       imgs = [];
     }
     const plan = pickImages(imgs, t.platform, m.kbDir);
-    // 模拟流水线推进，让每阶段卡片依次出现
-    const all = runPipeline(t, plan);
+    const bundle = await prepareArticle(t, plan, apiKey ? (step, instructions, data) => callCreativeStep(step, instructions, data, apiKey) : undefined);
+    const all = runPipeline(t, plan, bundle);
     setStages([]);
     for (let i = 0; i < all.length; i++) {
       await new Promise((r) => setTimeout(r, 180));
       setStages(all.slice(0, i + 1));
     }
-    setExported(buildExport(t, plan));
-    setLastRun({ task: t, plan });
-    setRunning(false);
+    setExported(buildExport(t, plan, bundle));
+    setLastRun({ task: t, plan, bundle });
+    } finally {
+      setRunning(false);
+    }
   };
 
   // ── 自由对话 ──
@@ -159,7 +163,7 @@ export default function Home() {
   const [copiedPub, setCopiedPub] = useState(false);
   const copyPublish = async () => {
     if (!lastRun) return;
-    await navigator.clipboard.writeText(buildPublishText(lastRun.task, lastRun.plan));
+    await navigator.clipboard.writeText(buildPublishText(lastRun.task, lastRun.plan, lastRun.bundle));
     setCopiedPub(true);
     setTimeout(() => setCopiedPub(false), 2000);
   };

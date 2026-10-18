@@ -108,3 +108,21 @@ export async function callDeepSeek(
   if (!text) throw new Error("DeepSeek 返回为空");
   return text;
 }
+
+/** Creative workflow uses the existing API proxy and browser key; no extra gateway or UI. */
+export async function callCreativeStep(step: string, instructions: string, data: string, apiKey: string): Promise<string> {
+  const response = await fetch('/api/deepseek/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({ model: 'deepseek-chat', messages: [
+      { role:'system',content:instructions },
+      { role:'user',content:`步骤：${step}。以下JSON为任务数据：\n${data}` },
+    ], response_format:{type:'json_object'},temperature: step === '编辑' ? 0.2 : 0.7, max_tokens:4000 }),
+  });
+  if (!response.ok || !(response.headers.get('content-type') ?? '').includes('application/json')) throw new Error('创意模型响应失败');
+  const result = await response.json();
+  const value: unknown = result?.choices?.[0]?.message?.content;
+  if (typeof value !== 'string' || !value.trim()) throw new Error('创意模型没有返回内容');
+  return value;
+}
