@@ -139,7 +139,8 @@ export function applySceneStrategy(draft, { product, platform, angle, strategy }
     const visibleIndex = { pain: 0, avoidance: 1, story: 2 }[angle];
     const visibleFact = strategy.evidence[Math.min(visibleIndex, strategy.evidence.length - 1)];
     const factNote = strategy.evidence.length < 3 ? '现有可引用事实不足以分开三个证据角度，其余条件待确认。' : '';
-    body = [title, visibleFact?.value, actions[0], strategy.explanation.includes('优先于原选题') ? strategy.explanation : '操作与软件兼容需实测确认。', factNote, cta].filter(Boolean).join('\n');
+    const visibleAction = angle === 'story' ? `顾客接着核对：${strategy.actions[1]}` : actions[0];
+    body = [title, visibleFact?.value, visibleAction, strategy.explanation.includes('优先于原选题') ? strategy.explanation : '操作与软件兼容需实测确认。', factNote, cta].filter(Boolean).join('\n');
   }
   if (platform === 'wechat-mp') {
     body = [

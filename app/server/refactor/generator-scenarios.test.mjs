@@ -69,6 +69,14 @@ test('moments angles display different evidence in the actual short copy', () =>
   assert.equal(new Set(variants.map((draft) => draft.body.split('\n')[0])).size, 3, 'each angle has a distinct visible heading');
 });
 
+test('moments angles show three distinct operations after narrative prefixes are removed', () => {
+  for (const scenario of [a, c]) {
+    const variants = generatePlatformVariants({ ...scenario, platform: 'moments' });
+    const visibleActions = variants.map((draft) => draft.body.split('\n')[2].replace(/^(?:先展示实际阻碍|先列核对清单|顾客先说明任务并准备|顾客接着核对)：/, ''));
+    assert.equal(new Set(visibleActions).size, 3, 'all three visible operations differ beyond their narrative prefix');
+  }
+});
+
 test('limited evidence is disclosed rather than inventing three visible claims', () => {
   const product = { ...base.product, facts: base.product.facts.filter((fact) => fact.id.endsWith(':portable:1')) };
   const variants = generatePlatformVariants({ ...c, product, platform: 'moments' });
