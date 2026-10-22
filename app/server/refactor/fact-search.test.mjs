@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmdirSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -81,6 +81,11 @@ test("empty official page returns needs_evidence instead of a candidate", async 
   assert.equal(result.sources.length, 0);
 });
 
+test("runtime regression test never recursively removes the repository-root server directory", () => {
+  const source = readFileSync(fileURLToPath(import.meta.url), "utf8");
+  assert.doesNotMatch(source, /rmSync\(resolve\(repo, "server"\), \{ recursive: true, force: true \}\)/);
+});
+
 test("search timeout is explicit and never exposes the API key", async () => {
   const result = await searchOfficialSources("MateBook 14", {
     apiKey: "super-secret-key",
@@ -98,16 +103,24 @@ test("prices older than seven days are stale", () => {
 
 test("runtime location is stable when tests start at the repository root", () => {
   const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+  const wrongRoot = resolve(repo, "server");
   const wrongRuntime = resolve(repo, "server/data/runtime/fact-search.json");
   const correctRuntime = resolve(repo, "app/server/data/runtime/fact-search.json");
-  rmSync(resolve(repo, "server"), { recursive: true, force: true });
+  assert.equal(existsSync(wrongRoot), false, "refusing to touch an existing repository-root server directory");
   try {
     const child = spawnSync(process.execPath, ["--input-type=module", "-e", "import { resetFactSearchRuntime } from './app/server/refactor/ledger.mjs'; resetFactSearchRuntime();"], { cwd: repo, encoding: "utf8" });
     assert.equal(child.status, 0, child.stderr);
     assert.equal(existsSync(wrongRuntime), false, "must never create repository-root server/data runtime files");
     assert.equal(existsSync(correctRuntime), true);
   } finally {
-    rmSync(resolve(repo, "server"), { recursive: true, force: true });
+    // The root directory did not exist before this test. If a regression created
+    // this exact runtime file, clean only that proven test artifact and empty parents.
+    if (existsSync(wrongRuntime)) {
+      rmSync(wrongRuntime, { force: true });
+      for (const path of [resolve(repo, "server/data/runtime"), resolve(repo, "server/data"), wrongRoot]) {
+        try { rmdirSync(path); } catch { /* preserve anything not created solely by this test */ }
+      }
+    }
   }
 });
 
