@@ -1,5 +1,6 @@
 // 门店内容生成器：同一事实快照 + 同一真实细节，生成五个渠道的文案骨架。
 // 这里不调用模型补事实；改写服务可以再接 DeepSeek，但事实仍由 verifier 决定。
+import { resolveScene, applySceneStrategy } from "./scene-strategy.mjs";
 
 const ANGLE_LABEL = { pain: "痛点切入", avoidance: "避坑与选择", story: "真实场景故事" };
 const PLATFORM_LABEL = {
@@ -242,6 +243,7 @@ function videoVariant(product, detail, angle, audience, scene, target) {
 }
 
 export function generatePlatformVariants({ product, platform, realDetail, audience, scene, target }) {
+  const strategy = resolveScene({ product, realDetail, audience, scene, target });
   const angles = ["xiaohongshu", "moments", "video"].includes(platform)
     ? ["pain", "avoidance", "story"]
     : ["pain"];
@@ -264,6 +266,7 @@ export function generatePlatformVariants({ product, platform, realDetail, audien
     else if (platform === "wechat-mp") v = wechatVariant(product, realDetail, audience, scene, target);
     else if (platform === "poster") v = posterVariant(product, realDetail, target);
     else v = videoVariant(product, realDetail, angle, audience, scene, target);
+    v = applySceneStrategy(v, { product, platform, angle, strategy });
     return {
       ...v,
       platform,
@@ -278,25 +281,25 @@ export function generatePlatformVariants({ product, platform, realDetail, audien
       systemVersion: "",
       status: "writing",
       editBurden: "light",
-      imagePlan: imagePlanFor(product, platform, realDetail, target),
+      imagePlan: imagePlanFor(product, platform, v, strategy),
       priceIncluded: product.price?.status !== "conflict" && /¥\s*[\d,]/.test(v.body || ""),
       evidenceIds: v.evidence.map((f) => f.id),
     };
   });
 }
 
-function imagePlanFor(product, platform, realDetail, target) {
+function imagePlanFor(product, platform, variant, strategy) {
   const common = {
     productAssetId: product.id,
-    backgroundBrief: "官方产品本体保持原样，仅生成校园或门店桌面背景与自然光影；背景不出现其他电脑、手机品牌、文字或二维码。",
-    overlayText: [product.shortName, target || "到店看实物"],
+    backgroundBrief: `官方产品本体保持原样；场景为${strategy.focus}，当前角度画面动作参考：${variant.sceneStrategy.actions.join('；')}。只表现计划核对的任务，不表现已验证结果。背景不出现其他电脑、手机品牌、文字或二维码。`,
+    overlayText: [product.shortName, variant.title || strategy.title, ...(platform === "poster" ? variant.body.split('\n') : []), variant.cta],
     required: true,
   };
   if (platform === "xiaohongshu") {
     return [
-      { purpose: "cover", ratio: "3:4", width: 1080, height: 1440, ...common, overlayText: [product.shortName, "真实场景"] },
-      { purpose: "detail", ratio: "3:4", width: 1080, height: 1440, ...common, overlayText: ["屏幕与重量"] },
-      { purpose: "scene", ratio: "3:4", width: 1080, height: 1440, ...common, overlayText: [target || "到店体验"] },
+      { purpose: "cover", ratio: "3:4", width: 1080, height: 1440, ...common, overlayText: [product.shortName, variant.title] },
+      { purpose: "detail", ratio: "3:4", width: 1080, height: 1440, ...common, overlayText: variant.evidence.slice(0, 2).map((fact) => String(fact.value)) },
+      { purpose: "scene", ratio: "3:4", width: 1080, height: 1440, ...common, overlayText: [variant.cta] },
     ];
   }
   if (platform === "moments") return [{ purpose: "scene", ratio: "1:1", width: 1080, height: 1080, ...common }];
