@@ -17,6 +17,25 @@ test("reverse budget wording updates the budget and comparison wording preserves
   assert.equal(ask("预算4000，办公", "预算先不变，只想看看6000左右的差别").slots.budget, 4000);
 });
 
+test("budget events apply in textual order within a turn", () => {
+  assert.equal(ask("预算4000，办公，预算改为6000").slots.budget, 6000);
+  assert.equal(ask("之前预算4000，现在预算6000，办公").slots.budget, 6000);
+  assert.equal(ask("预算4000，预算先不变，只想看看8000左右的差别，最终预算改为6000，办公").slots.budget, 6000);
+});
+
+test("nonexclusive OS requirements remain positive Windows constraints", () => {
+  for (const inclusive of ["不仅", "不只", "不光"]) {
+    const result = ask(`预算10000，办公，${inclusive}要Windows，还要轻一点`);
+    assert.equal(result.slots.os, "Windows");
+    assert.ok(result.cards.length);
+    for (const card of result.cards) {
+      assert.ok(getFacts(card.id).some((fact) => /系统.*Windows|Windows.*系统/.test(String(fact.value))));
+      assert.equal(card.budgetFit, "unknown");
+      assert.equal(card.overBy, null);
+    }
+  }
+});
+
 test("negation ends at a new use and nonexclusive language does not impose constraints", () => {
   assert.equal(ask("预算6000，不做设计只办公").slots.scenario, "办公");
   assert.equal(ask("预算6000，不剪视频只办公").slots.scenario, "办公");

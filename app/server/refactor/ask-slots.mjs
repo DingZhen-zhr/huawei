@@ -5,27 +5,43 @@ const USES = {
   dev: ["编程", "代码", "开发"], game: ["玩游戏", "游戏"],
 };
 
+const BUDGET_RANGE = String.raw`\d{3,5}\s*[-–—~至到]\s*\d{3,5}`;
+const BUDGET_THOUSANDS = String.raw`\d(?:\.\d+)?\s*[千kK]`;
+const BUDGET_VALUE = `(?:${BUDGET_RANGE}|${BUDGET_THOUSANDS}|\\d{3,5})`;
+const BUDGET_EVENTS = new RegExp([
+  String.raw`预算\s*(?:先|暂时|保持|仍然|还)?\s*(?:不变|不改|保持原样)`,
+  String.raw`(?:预算|价格|最多|不超过)\s*(?:改为|改成|调整到|提高到|降低到|大概|最多|不超过|为|是)?\s*${BUDGET_VALUE}`,
+  String.raw`${BUDGET_VALUE}\s*(?:元|块)?\s*(?:预算|左右|以内|以上|\+|元|块)`,
+  BUDGET_RANGE, BUDGET_THOUSANDS,
+].join("|"), "g");
+
+function budgetEvents(text) {
+  return [...text.matchAll(BUDGET_EVENTS)].map(([token]) => {
+    if (/不变|不改|保持原样/.test(token)) return { field: "budget", operation: "hold" };
+    const numbers = [...token.matchAll(/\d+(?:\.\d+)?/g)].map(([number]) => Number(number));
+    const value = numbers.length === 2 ? Math.round((numbers[0] + numbers[1]) / 2) : /[千kK]/.test(token) ? Math.round(numbers[0] * 1000) : numbers[0];
+    return { field: "budget", operation: "set", value, explicit: /预算|价格|最多|不超过/.test(token) };
+  });
+}
+
 function budgetIn(text) {
-  if (/预算\s*(?:先|暂时|保持|仍然|还)?\s*(?:不变|不改|保持原样)/.test(text)) {
-    const explicitChange = text.match(/预算\s*(?:改为|改成|调整到|提高到|降低到)\s*(\d{3,5})/);
-    return explicitChange ? Number(explicitChange[1]) : null;
+  let value = null;
+  let held = false;
+  for (const event of budgetEvents(text)) {
+    if (event.operation === "hold") held = true;
+    else if (event.explicit || !held) { value = event.value; held = false; }
   }
-  const range = text.match(/(\d{3,5})\s*[-–—~至到]\s*(\d{3,5})/);
-  if (range) return Math.round((Number(range[1]) + Number(range[2])) / 2);
-  const direct = text.match(/(?:预算|价格|最多|不超过)[^\d]{0,6}(\d{3,5})|(\d{3,5})\s*(?:元|块)?\s*(?:预算|左右|以内|以上|\+|元|块)/);
-  if (direct) return Number(direct[1] || direct[2]);
-  const thousands = text.match(/(\d(?:\.\d+)?)\s*[千kK]/);
-  return thousands ? Math.round(Number(thousands[1]) * 1000) : null;
+  return value;
 }
 
 // Scope markers are scanned in order. List conjunctions retain polarity;
 // a clause boundary or affirmative contrast opens a new positive scope.
-const SCOPE_MARKERS = /不仅|不只|不光|而是|但是|但|只是|只|还|[，,。；;！!?？]|以及|和|或|、|不打算|不需要|不再|不用|不想|不会|不做|不玩|无需|取消|不/g;
+const SCOPE_MARKERS = /不仅|不只|不光|而是|但是|但|只是|只|还|[，,。；;！!?？]|以及|和|或|、|不一定|不强求|非必需|非必须|不必|不打算|不需要|不再|不用|不想|不会|不做|不玩|无需|取消|不/g;
 const COORDINATORS = new Set(["和", "或", "以及", "、"]);
-const NEGATORS = new Set(["不打算", "不需要", "不再", "不用", "不想", "不会", "不做", "不玩", "无需", "取消", "不"]);
+const NEGATORS = new Set(["不一定", "不强求", "非必需", "非必须", "不必", "不打算", "不需要", "不再", "不用", "不想", "不会", "不做", "不玩", "无需", "取消", "不"]);
 
-function mentions(text) {
-  const pattern = new RegExp(Object.values(USES).flat().sort((a, b) => b.length - a.length).join("|"), "g");
+function conditionEvents(text) {
+  const pattern = new RegExp([...Object.values(USES).flat(), "Windows"].sort((a, b) => b.length - a.length).join("|"), "gi");
   let previousEnd = 0;
   let negative = false;
   return [...text.matchAll(pattern)].map((match) => {
@@ -35,7 +51,7 @@ function mentions(text) {
       negative = NEGATORS.has(marker);
     }
     previousEnd = match.index + match[0].length;
-    return { label: match[0], key: Object.keys(USES).find((kind) => USES[kind].includes(match[0])), negative };
+    return { field: /^Windows$/i.test(match[0]) ? "os" : "use", label: match[0], key: Object.keys(USES).find((kind) => USES[kind].includes(match[0])), negative };
   });
 }
 
@@ -47,7 +63,8 @@ export function extractSlots(messages) {
     const text = String(message.content || "");
     const nextBudget = budgetIn(text);
     if (nextBudget !== null) budget = nextBudget;
-    const turnMentions = mentions(text);
+    const conditions = conditionEvents(text);
+    const turnMentions = conditions.filter((event) => event.field === "use");
     for (const mention of turnMentions) {
       if (mention.negative) {
         for (const [label] of uses) {
@@ -59,10 +76,7 @@ export function extractSlots(messages) {
     if (positives.length) uses = new Map([...positives.map(({ label, key }) => [label, key]), ...uses]);
     const audience = text.match(/大学生|研究生|学生|考研|家长|孩子|爸妈|家庭|职场|上班族|创作者/);
     if (audience) segment = /学生|考研/.test(audience[0]) ? "学生" : /家长|孩子|爸妈|家庭/.test(audience[0]) ? "家庭" : /创作者/.test(audience[0]) ? "创作者" : "职场";
-    for (const match of text.matchAll(/Windows/gi)) {
-      const prefix = text.slice(0, match.index).split(/[，,。；;但]/).at(-1);
-      os = /不一定|不强求|非必需|非必须|不必|不(?:再|需要|用|要求|想要)?[^，,。；;]{0,3}$|无需$/.test(prefix) ? null : "Windows";
-    }
+    for (const event of conditions.filter((event) => event.field === "os")) os = event.negative ? null : "Windows";
     const size = text.match(/(\d{1,2}(?:\.\d+)?)\s*(?:英寸|寸)\s*(以内|以下|左右|级别|以上)?/);
     if (size) {
       const value = Number(size[1]);
