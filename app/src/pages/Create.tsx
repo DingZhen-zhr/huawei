@@ -12,7 +12,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { api, ApiError, type TaskCard } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { createChoices, selectCreateChoice, type CreateChoice } from "@/lib/create-selection";
 import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 
 type Step = 0 | 1 | 2;
@@ -91,15 +92,15 @@ function OptionButton({
 
 export default function Create() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedCard = searchParams.get("taskCardId") || "";
   const requestedProduct = searchParams.get("productId") || "";
   const prefillAudience = searchParams.get("audience") || "";
   const prefillScene = searchParams.get("scene") || "";
   const prefillTarget = searchParams.get("target") || "";
   const prefillBudget = searchParams.get("budget") || "";
-  const [cards, setCards] = useState<TaskCard[]>([]);
-  const [card, setCard] = useState<TaskCard | null>(null);
+  const [cards, setCards] = useState<CreateChoice[]>([]);
+  const [card, setCard] = useState<CreateChoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [step, setStep] = useState<Step>(0);
@@ -118,11 +119,15 @@ export default function Create() {
 
   useEffect(() => {
     let alive = true;
-    api.today()
+    setLoading(true);
+    setLoadError("");
+    setCard(null);
+    api.products()
       .then((result) => {
         if (!alive) return;
-        setCards(result.tasks);
-        const picked = result.tasks.find((t) => t.id === requestedCard) || result.tasks.find((t) => t.productId === requestedProduct) || result.tasks[0] || null;
+        const choices = createChoices(result.products, result.taskCards);
+        setCards(choices);
+        const picked = selectCreateChoice(choices, requestedProduct, requestedCard);
         setCard(picked);
         if (picked) {
           const nextAudience = prefillAudience || picked.audience;
@@ -137,8 +142,9 @@ export default function Create() {
           setCustomTargetOpen(!targetIsOption && Boolean(nextTarget));
           setScene(prefillScene || picked.scene);
           setBudget(prefillBudget);
+          setCustomDetail(picked.detailOptions.length === 0);
         }
-        if (!picked) setLoadError("今天没有可用的真实任务卡。");
+        if (!picked) setLoadError(requestedProduct || requestedCard ? "指定的产品或任务卡不存在，请重新选择真实型号。" : "没有可用的真实产品资料。");
       })
       .catch((e) => { if (alive) setLoadError(e instanceof Error ? e.message : "任务卡加载失败"); })
       .finally(() => { if (alive) setLoading(false); });
@@ -156,7 +162,8 @@ export default function Create() {
     return Boolean(currentTarget);
   }, [step, currentAudience, currentDetail, currentTarget]);
 
-  const chooseCard = (next: TaskCard) => {
+  const chooseCard = (next: CreateChoice) => {
+    setSearchParams({ productId: next.productId });
     setCard(next);
     setAudience(next.audienceOptions.includes(next.audience) ? next.audience : next.audienceOptions[0] || next.audience);
     setTarget(next.targetOptions.includes(next.target) ? next.target : next.targetOptions[0] || next.target);
@@ -164,7 +171,7 @@ export default function Create() {
     setBudget("");
     setStep(0);
     setDetail("");
-    setCustomDetail(false);
+    setCustomDetail(next.detailOptions.length === 0);
     setCustomAudience("");
     setCustomAudienceOpen(false);
     setCustomTarget("");
@@ -186,7 +193,7 @@ export default function Create() {
     setSubmitting(true);
     try {
       const result = await api.createTask({
-        taskCardId: card.id,
+        taskCardId: card.id.startsWith("product:") ? undefined : card.id,
         productId: card.productId,
         audience: currentAudience,
         scene: currentScene,
@@ -255,7 +262,7 @@ export default function Create() {
             <aside className="order-2 space-y-4 lg:order-1">
               <div className="surface overflow-hidden">
                 <div className="aspect-[4/3] bg-[#eee9e1]">
-                  <img src={card.productAsset} alt={card.productName} className="h-full w-full object-cover" />
+                  {card.productAsset ? <img src={card.productAsset} alt={card.productName} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-[12px] text-[var(--muted)]">暂无该型号官方图</div>}
                 </div>
                 <div className="p-4">
                   <p className="text-[10.5px] text-[var(--muted)]">{card.productFamily}</p>
@@ -301,7 +308,7 @@ export default function Create() {
             <section className="surface order-1 flex min-h-[430px] flex-col p-5 sm:p-7 lg:order-2">
               <div className="mb-5 flex items-center gap-3 border-b border-[var(--line)] pb-4 lg:hidden">
                 <div className="h-11 w-11 shrink-0 overflow-hidden rounded-[8px] border border-[var(--line)] bg-[#eee9e1]">
-                  <img src={card.productAsset} alt="" className="h-full w-full object-cover" />
+                  {card.productAsset ? <img src={card.productAsset} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-[9px] text-[var(--muted)]">无官方图</span>}
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-[11.5px] font-medium">{card.productName}</p>

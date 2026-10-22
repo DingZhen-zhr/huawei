@@ -20,6 +20,8 @@ import {
   X,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import ImageDelivery from "@/components/content/ImageDelivery";
+import ExportDelivery from "@/components/content/ExportDelivery";
 import {
   api,
   type ChannelSnapshot,
@@ -331,7 +333,7 @@ function EvidencePanel({ snapshot, variant }: { snapshot: TaskSnapshot; variant:
               <ImageIcon className="mt-1 h-3.5 w-3.5 shrink-0 text-[var(--muted-2)]" />
               <div>
                 <p className="text-[var(--ink)]">{plan.purpose === "cover" ? "封面" : plan.purpose === "poster" ? "海报" : plan.purpose === "video-cover" ? "视频封面" : "场景图"} · {plan.ratio}</p>
-                <p className="text-[10px] text-[var(--muted)]">{plan.width}×{plan.height} · 官方产品图 + AI 背景，待按需生成</p>
+                <p className="text-[10px] text-[var(--muted)]">{plan.width}×{plan.height} · 官方产品图排版，不调用 AI 图片服务</p>
               </div>
             </div>
           ))}
@@ -387,6 +389,7 @@ export default function Workbench() {
   const [error, setError] = useState("");
   const [platform, setPlatform] = useState<Platform>("xiaohongshu");
   const [variantId, setVariantId] = useState("");
+  const [exportSelections, setExportSelections] = useState<Partial<Record<Platform, string>>>({});
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ title: "", body: "", tags: "", script: "" });
   const [busy, setBusy] = useState<"copy" | "save" | "rewrite" | "retry" | null>(null);
@@ -479,6 +482,7 @@ export default function Workbench() {
 
   const pickAngle = (variant: Variant) => {
     setVariantId(variant.id);
+    setExportSelections(current => ({ ...current, [variant.platform]: variant.id }));
     setEditing(false);
     setNotice("");
   };
@@ -688,6 +692,8 @@ export default function Workbench() {
                   <div className="mt-5">
                     <PlatformPreview key={activeVariant.id} variant={activeVariant} task={snapshot.task} />
                   </div>
+                  <ImageDelivery key={activeVariant.id} taskId={snapshot.task.id} variant={activeVariant} assets={snapshot.assets} onRefresh={() => refresh(true)} />
+                  <ExportDelivery key={snapshot.task.id} snapshot={snapshot} selections={exportSelections} onSelect={(channel, id) => setExportSelections(current => ({ ...current, [channel]: id }))} />
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <button className="btn-primary" onClick={() => void copy()} disabled={busy === "copy" || activeVariant.verification.blocked}>
@@ -795,7 +801,7 @@ export default function Workbench() {
                     <div key={`${plan.purpose}-${index}`} className="border-b border-[var(--line)] pb-3">
                       <p className="text-[12px] font-medium">{plan.purpose} · {plan.ratio}</p>
                       <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">{plan.width}×{plan.height} · {plan.overlayText.join(" / ")}</p>
-                      <p className="mt-1 text-[10px] leading-5 text-[var(--muted-2)]">官方产品图或门店实拍；AI 只生成背景。当前状态：待按需生成。</p>
+                      <p className="mt-1 text-[10px] leading-5 text-[var(--muted-2)]">官方产品图排版，不调用 AI 图片服务。请在工作台的图片交付区生成和下载。</p>
                     </div>
                   ))}
                 </div>

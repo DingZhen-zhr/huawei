@@ -27,6 +27,8 @@ import { rewriteVariant } from "./rewrite.mjs";
 import { verifyContent } from "./verifier.mjs";
 import { analyzeCopy } from "./copy-quality.mjs";
 import { localAsk } from "./ask.mjs";
+import { assetRepository } from "./content-assets.mjs";
+import { exportContent } from "./content-export.mjs";
 
 export const router = Router();
 
@@ -193,7 +195,37 @@ router.get("/content/tasks", requireStore, (req, res) => {
 router.get("/content/tasks/:id", requireStore, (req, res) => {
   const snapshot = getTaskSnapshot(req.params.id, req.store.id);
   if (!snapshot) return res.status(404).json({ error: "任务不存在" });
-  res.json(snapshot);
+  try {
+    snapshot.assets = assetRepository().list(getTask(req.params.id, req.store.id), req.store);
+    res.json(snapshot);
+  } catch (error) { fail(res, error); }
+});
+
+router.get("/content/tasks/:id/assets", requireStore, (req, res) => {
+  try { res.json({ assets: assetRepository().list(getTask(req.params.id, req.store.id), req.store) }); }
+  catch (error) { fail(res, error); }
+});
+
+router.post("/content/tasks/:id/assets", requireStore, async (req, res) => {
+  try {
+    if (Object.keys(req.body || {}).some(key => key !== "variantId")) return res.status(400).json({ error: "仅允许指定版本，素材与尺寸由服务端决定" });
+    res.json({ assets: await assetRepository().generate(getTask(req.params.id, req.store.id), req.store, req.body?.variantId) });
+  } catch (error) { fail(res, error); }
+});
+
+router.get("/content/tasks/:id/assets/:assetId/download", requireStore, async (req, res) => {
+  try {
+    const png = await assetRepository().download(getTask(req.params.id, req.store.id), req.store, req.params.assetId);
+    res.set({ "Content-Type": "image/png", "Content-Disposition": `inline; filename="${req.params.assetId}.png"`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" }).send(png);
+  } catch (error) { fail(res, error); }
+});
+
+router.post("/content/tasks/:id/export", requireStore, async (req, res) => {
+  try {
+    if (Object.keys(req.body || {}).some(key => key !== "selections")) return res.status(400).json({ error: "导出参数无效" });
+    const zip = await exportContent({ task: getTask(req.params.id, req.store.id), store: req.store, repository: assetRepository(), selections: req.body?.selections });
+    res.set({ "Content-Type": "application/zip", "Content-Disposition": "attachment; filename=content-delivery.zip", "Cache-Control": "private, no-store" }).send(zip);
+  } catch (error) { fail(res, error); }
 });
 
 router.get("/content/tasks/:id/events", requireStore, (req, res) => {
@@ -305,15 +337,20 @@ router.post("/ask", requireStore, (req, res) => {
 router.post("/ask/to-content", requireStore, (req, res) => {
   const p = req.body || {};
   const product = getProduct(p.productId || "");
+  if (!product) return res.status(404).json({ error: "产品不存在", code: "PRODUCT_NOT_FOUND" });
+  const rawBudget = typeof p.budget === "string" || typeof p.budget === "number" ? String(p.budget).trim() : "";
+  const budgetMatch = rawBudget.match(/^(\d{1,6})(?:\s*[-–—~至]\s*(\d{1,6}))?$/);
+  const budget = budgetMatch && Number(budgetMatch[1]) > 0 && (!budgetMatch[2] || Number(budgetMatch[2]) >= Number(budgetMatch[1])) ? rawBudget : "";
   res.json({
     prefill: {
       productId: product?.id || p.productId || "",
+      budget,
       audience: String(p.audience || ""),
       scene: String(p.scene || ""),
       target: String(p.target || "到店看实物"),
       facts: Array.isArray(p.factIds) ? p.factIds : [],
-      realDetail: p.realDetail?.text
-        ? { text: String(p.realDetail.text), source: "sales_provided", confirmed: true }
+      realDetail: p.realDetail?.source === "sales_provided" && p.realDetail?.confirmed === true && typeof p.realDetail?.text === "string" && p.realDetail.text.trim()
+        ? { text: p.realDetail.text.trim(), source: "sales_provided", confirmed: true }
         : null,
     },
   });
