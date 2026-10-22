@@ -1,5 +1,7 @@
 // 事实账本：从 v7 知识库快照生成可追溯的产品事实，价格冲突显式冻结。
 import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { loadKB } from "../agent/kb-index.mjs";
 
 const hash = (s) => createHash("sha1").update(String(s)).digest("hex").slice(0, 12);
@@ -216,6 +218,73 @@ const products = PRODUCT_DEFS.map((def) => {
 
 const byId = new Map(products.map((p) => [p.id, p]));
 const byName = new Map(products.map((p) => [p.name, p]));
+const resolutions = new Map();
+const runtimeFile = join(process.cwd(), "server", "data", "runtime", "fact-search.json");
+
+function saveRuntime() {
+  try {
+    mkdirSync(dirname(runtimeFile), { recursive: true });
+    writeFileSync(runtimeFile, JSON.stringify({ resolutions: [...resolutions.entries()] }, null, 2));
+  } catch {
+    // Read-only/serverless runtimes retain the in-memory safety state for this request.
+  }
+}
+
+function loadRuntime() {
+  try {
+    const saved = JSON.parse(readFileSync(runtimeFile, "utf8"));
+    for (const [id, records] of saved.resolutions || []) resolutions.set(id, records);
+  } catch {
+    // No local runtime state is normal on first boot.
+  }
+}
+
+function productForConflict(id) {
+  return products.find((product) => product.conflict?.id === id) || null;
+}
+
+function requiredResolution(input) {
+  for (const field of ["sku", "region", "effectiveFrom", "sourceId", "conclusion"]) {
+    if (!String(input?.[field] || "").trim()) throw new Error(`管理员确认缺少 ${field === "sku" ? "SKU" : field}`);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.effectiveFrom))) throw new Error("生效日期必须是 YYYY-MM-DD");
+}
+
+export function resolveConflict(conflictId, input) {
+  const product = productForConflict(conflictId);
+  if (!product) throw new Error("价格冲突不存在");
+  requiredResolution(input);
+  const record = {
+    id: `audit:${conflictId}:${Date.now()}`,
+    sku: String(input.sku).trim(),
+    region: String(input.region).trim(),
+    effectiveFrom: String(input.effectiveFrom),
+    sourceId: String(input.sourceId).trim(),
+    conclusion: String(input.conclusion).trim(),
+    value: Number.isFinite(Number(input.value)) ? Number(input.value) : undefined,
+    confirmedAt: new Date().toISOString(),
+  };
+  const existing = resolutions.get(conflictId) || [];
+  resolutions.set(conflictId, [...existing.filter((item) => item.sku !== record.sku), record]);
+  saveRuntime();
+  return getConflict(product.id);
+}
+
+export function resetFactSearchRuntime() {
+  resolutions.clear();
+  saveRuntime();
+}
+
+export function getPriceResolution(productId, sku, value) {
+  const conflict = getProduct(productId)?.conflict;
+  if (!conflict) return null;
+  return (resolutions.get(conflict.id) || []).find((item) => item.sku === sku && (item.value === undefined || item.value === Number(value))) || null;
+}
+
+export function isPriceFrozen(productId, sku, value) {
+  const conflict = getProduct(productId)?.conflict;
+  return Boolean(conflict && !getPriceResolution(productId, sku, value));
+}
 
 export function listProducts() {
   return products.map(publicProduct);
@@ -258,7 +327,15 @@ export function getPriceFacts(productId) {
 }
 
 export function getConflict(productId) {
-  return getProduct(productId)?.conflict || null;
+  const product = getProduct(productId);
+  if (!product?.conflict) return null;
+  const audit = resolutions.get(product.conflict.id) || [];
+  return {
+    ...product.conflict,
+    status: audit.length ? "partially_resolved" : "open",
+    resolution: audit.length ? audit[audit.length - 1] : null,
+    audit,
+  };
 }
 
 export function getEvidence(productId, ids = []) {
@@ -297,3 +374,5 @@ export function productContext(productId) {
 export function productsForTaskCards() {
   return products.filter((p) => p.hasAssets).map(publicProduct);
 }
+
+loadRuntime();

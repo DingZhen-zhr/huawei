@@ -1,5 +1,5 @@
 // 确定性核验：不改稿、不替模型背书；数字必须落到同型号、同字段、同单位的事实。
-import { getFacts, getPriceFacts, getConflict } from "./ledger.mjs";
+import { getFacts, getPriceFacts, getConflict, getPriceResolution, isPriceFrozen } from "./ledger.mjs";
 import { getSpec } from "../mcp/core.mjs";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -61,7 +61,7 @@ function platformBanned(text, platform) {
  * @param {string} productId
  * @param {{ platform?: string }} options
  */
-export function verifyContent(text, productId, { platform } = {}) {
+export function verifyContent(text, productId, { platform, sku } = {}) {
   const t = String(text || "");
   const facts = specClaims(getFacts(productId, { includePrice: true }));
   const priceFacts = getPriceFacts(productId);
@@ -71,10 +71,11 @@ export function verifyContent(text, productId, { platform } = {}) {
 
   for (const match of t.matchAll(/¥\s*([\d,]+)(?:\s*起)?/g)) {
     const value = normalizePrice(match[1]);
-    const blockedByConflict = Boolean(conflict && conflict.status === "open");
+    const resolution = getPriceResolution(productId, sku, value);
+    const blockedByConflict = Boolean(conflict && isPriceFrozen(productId, sku, value));
     const exact = priceFacts.find((f) => Number(f.value) === value);
     const stale = exact ? daysSince(exact.capturedAt) > 7 : false;
-    const status = blockedByConflict ? "conflict" : exact ? (stale ? "stale" : "supported") : "unsupported";
+    const status = blockedByConflict ? "blocked" : resolution ? "supported" : exact ? (stale ? "stale" : "supported") : "blocked";
     claims.push({
       type: "price",
       text: match[0],
@@ -82,14 +83,14 @@ export function verifyContent(text, productId, { platform } = {}) {
       unit: "CNY",
       status,
       span: { start: match.index || 0, end: (match.index || 0) + match[0].length },
-      evidenceIds: exact ? [exact.id] : [],
+      evidenceIds: resolution ? [resolution.id] : exact ? [exact.id] : [],
       reason: blockedByConflict
         ? "该型号价格存在未解决冲突，价格字段冻结"
         : exact
           ? stale
             ? "价格快照超过 7 天，需要重新确认"
             : "匹配到同型号官方价格事实"
-          : "事实账本没有这个价格",
+          : "事实账本没有同型号、同 SKU 的这个价格",
     });
     if (status !== "supported") reasons.push(`价格 ${match[0]}：${claims[claims.length - 1].reason}`);
   }
@@ -104,7 +105,7 @@ export function verifyContent(text, productId, { platform } = {}) {
       text: match[0],
       value: Number(value),
       unit,
-      status: supported ? "supported" : "unsupported",
+      status: supported ? "supported" : "blocked",
       span: { start: match.index || 0, end: (match.index || 0) + match[0].length },
       reason: supported ? "匹配到同型号、同单位事实" : "没有同型号、同单位事实",
     });
@@ -118,7 +119,7 @@ export function verifyContent(text, productId, { platform } = {}) {
       text: match[0],
       value: `${match[1]}×${match[2]}`,
       unit: "px",
-      status: supported ? "supported" : "unsupported",
+      status: supported ? "supported" : "blocked",
       span: { start: match.index || 0, end: (match.index || 0) + match[0].length },
       reason: supported ? "匹配到同型号屏幕分辨率事实" : "没有同型号屏幕分辨率事实",
     });
@@ -132,7 +133,7 @@ export function verifyContent(text, productId, { platform } = {}) {
       type: "commercial",
       text: match[0],
       value: match[0],
-      status: supported ? "supported" : "unsupported",
+      status: supported ? "supported" : "blocked",
       span: { start: match.index || 0, end: (match.index || 0) + match[0].length },
       reason: supported ? "事实中包含该商业条件，发布前仍需核对门店实际" : "商业承诺没有事实依据",
     });
@@ -140,7 +141,7 @@ export function verifyContent(text, productId, { platform } = {}) {
   }
 
   for (const item of platformBanned(t, platform)) {
-    claims.push({ type: "banned", text: item.term, value: item.term, status: "unsupported", reason: item.reason });
+    claims.push({ type: "banned", text: item.term, value: item.term, status: "blocked", reason: item.reason });
     reasons.push(`${item.term}：${item.reason}`);
   }
 

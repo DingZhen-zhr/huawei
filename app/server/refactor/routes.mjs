@@ -11,7 +11,9 @@ import {
 } from "./auth.mjs";
 import { demoMode, findStoreByCode, getDemoCredentials, publicStore, updateStoreProfile, verifyStorePin } from "./store-repo.mjs";
 import { getTaskCards } from "./task-cards.mjs";
-import { getProduct, listProducts, publicProduct } from "./ledger.mjs";
+import { getConflict, getProduct, listProducts, publicProduct, resolveConflict } from "./ledger.mjs";
+import { commitProposedFacts, createProposedFacts, listProposedFacts, listSources } from "./fact-import.mjs";
+import { searchOfficialSources } from "./tavily.mjs";
 import {
   createTask,
   getTask,
@@ -101,9 +103,7 @@ router.get("/admin/demo-redirect", (_req, res) => {
 
 router.get("/admin/conflicts", requireAdmin, (_req, res) => {
   const conflicts = listProducts()
-    .map((p) => getProduct(p.id))
-    .filter(Boolean)
-    .map((p) => p.conflict)
+    .map((p) => getConflict(p.id))
     .filter(Boolean);
   res.json({ conflicts });
 });
@@ -112,12 +112,51 @@ router.get("/admin/overview", requireAdmin, (_req, res) => {
   res.json({
     products: listProducts(),
     conflicts: listProducts()
-      .map((p) => getProduct(p.id))
-      .filter(Boolean)
-      .map((p) => p.conflict)
+      .map((p) => getConflict(p.id))
       .filter(Boolean),
     tasks: listTasks(null, 20),
   });
+});
+
+// P2 fact-admin APIs. They are deliberately admin-only: search output remains proposed
+// until an operator reviews evidence and resolves any price conflict with an audit record.
+router.post("/admin/import/preview", requireAdmin, (req, res) => {
+  try {
+    const candidates = Array.isArray(req.body?.facts) ? req.body.facts : [req.body];
+    const proposed = candidates.map((candidate) => createProposedFacts(candidate)).flat();
+    res.status(201).json({ status: "proposed", facts: proposed });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+router.post("/admin/import/commit", requireAdmin, (req, res) => {
+  try {
+    const facts = commitProposedFacts(Array.isArray(req.body?.ids) ? req.body.ids : []);
+    res.json({ status: "committed", facts });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+router.get("/admin/sources", requireAdmin, (_req, res) => {
+  res.json({ sources: listSources(), proposed: listProposedFacts() });
+});
+
+router.post("/admin/conflicts/:id/resolve", requireAdmin, (req, res) => {
+  try {
+    const conflict = resolveConflict(req.params.id, req.body || {});
+    res.json({ conflict, audit: conflict.audit });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+router.post("/admin/recheck-prices", requireAdmin, async (req, res) => {
+  const product = getProduct(req.body?.productId || "");
+  if (!product) return res.status(404).json({ error: "产品不存在" });
+  const result = await searchOfficialSources(`${product.name} 价格`);
+  res.json({ ...result, note: "搜索结果仅作为 proposed 来源候选，未写入事实账本" });
 });
 
 router.get("/tasks/today", requireStore, (req, res) => {
