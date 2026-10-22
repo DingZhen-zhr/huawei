@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, rmSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import express from "express";
@@ -96,7 +97,7 @@ test("prices older than seven days are stale", () => {
 });
 
 test("runtime location is stable when tests start at the repository root", () => {
-  const repo = resolve(process.cwd(), "..");
+  const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
   const wrongRuntime = resolve(repo, "server/data/runtime/fact-search.json");
   const correctRuntime = resolve(repo, "app/server/data/runtime/fact-search.json");
   rmSync(resolve(repo, "server"), { recursive: true, force: true });
