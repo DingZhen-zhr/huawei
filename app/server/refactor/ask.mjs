@@ -2,16 +2,19 @@
 import { getFacts, getProduct, listProducts } from "./ledger.mjs";
 import { extractSlots } from "./ask-slots.mjs";
 
-export function budgetAssessment(product, budget, now = new Date()) {
+export function budgetAssessment(product, budget, now = new Date(), { os = null } = {}) {
   const price = product.price;
-  const facts = (product.facts || []).filter((fact) => fact.field === "price" && fact.status === "active" && Number(fact.value) === price?.min);
-  const usable = facts.some((fact) => {
+  const facts = (product.facts || []).filter((fact) => fact.field === "price" && fact.status === "active" && Number.isFinite(Number(fact.value)));
+  const usable = facts.filter((fact) => {
     const captured = Date.parse(fact.capturedAt);
     const age = now.getTime() - captured;
-    return fact.productId === product.id && Boolean(fact.sku) && Number.isFinite(captured) && age >= 0 && age <= 7 * 86400000;
+    const configuration = [fact.sku, fact.conditions, fact.systemVersion].filter(Boolean).join(" ");
+    const matchesOS = os !== "Windows" || (/Windows/i.test(configuration) && !/Linux|HarmonyOS|鸿蒙|不支持\s*Windows|非\s*Windows/i.test(configuration));
+    return matchesOS && fact.productId === product.id && Boolean(fact.sku) && Number.isFinite(captured) && age >= 0 && age <= 7 * 86400000;
   });
-  if (!budget || price?.status !== "active" || !Number.isFinite(price.min) || !usable) return { budgetFit: "unknown", overBy: null };
-  return { budgetFit: price.min > budget ? "over" : "within", overBy: Math.max(0, price.min - budget) };
+  const amount = os ? Math.min(...usable.map((fact) => Number(fact.value))) : price?.min;
+  if (!budget || price?.status !== "active" || !Number.isFinite(amount) || !usable.some((fact) => Number(fact.value) === amount)) return { budgetFit: "unknown", overBy: null, price: null };
+  return { budgetFit: amount > budget ? "over" : "within", overBy: Math.max(0, amount - budget), price: amount };
 }
 
 function matchesConstraints(product, slots) {
@@ -53,19 +56,19 @@ export function localAsk({ messages = [], now = new Date() } = {}) {
     options = ["剪视频/做设计", "上网课/学习", "办公/通勤", "游戏/高性能"];
   } else {
     const candidates = listProducts().map((product) => getProduct(product.id)).filter((product) => matchesConstraints(product, slots))
-      .map((product) => ({ product, ...budgetAssessment(product, budget, now) }))
+      .map((product) => ({ product, ...budgetAssessment(product, budget, now, slots) }))
       .sort((a, b) => score(b.product, scenarioKey) - score(a.product, scenarioKey) || a.product.price.min - b.product.price.min);
     const within = candidates.filter((item) => item.budgetFit === "within");
     const over = candidates.filter((item) => item.budgetFit === "over").sort((a, b) => a.overBy - b.overBy);
     const unknown = candidates.filter((item) => item.budgetFit === "unknown");
     const picked = (within.length ? within : over.length ? over : unknown).slice(0, 2);
-    cards = picked.map(({ product, budgetFit, overBy }) => {
+    cards = picked.map(({ product, budgetFit, overBy, price }) => {
       const facts = getFacts(product.id);
       const reason = facts.find((fact) => fact.field === "audience") || facts[0];
       const limitation = facts.find((fact) => /确认|限制|兼容|仅|没有/.test(String(fact.value)))?.value || "具体配置需按 SKU 确认";
       return {
         id: product.id, model: product.name, shortName: product.shortName,
-        priceLabel: budgetFit === "unknown" ? "价格待确认 · 预算适配未知" : product.price.label,
+        priceLabel: budgetFit === "unknown" ? `${slots.os === "Windows" ? "Windows配置报价待确认" : "价格待确认"} · 预算适配未知` : slots.os === "Windows" ? `Windows配置参考价 ¥${price.toLocaleString("zh-CN")}` : product.price.label,
         priceStatus: product.price.status, budgetFit, overBy,
         reason: String(reason?.value || "已收录同型号官方事实").slice(0, 82),
         limitation: `${slots.os === "Windows" ? "请选择Windows配置；" : ""}${limitation}`,

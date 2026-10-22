@@ -12,6 +12,47 @@ test("later explicit budget overrides the earlier budget and preserves the use",
   assert.equal(result.slots.scenario, "办公");
 });
 
+test("reverse budget wording updates the budget and comparison wording preserves it", () => {
+  assert.equal(ask("预算6000，办公", "5000预算").slots.budget, 5000);
+  assert.equal(ask("预算4000，办公", "预算先不变，只想看看6000左右的差别").slots.budget, 4000);
+});
+
+test("negation ends at a new use and nonexclusive language does not impose constraints", () => {
+  assert.equal(ask("预算6000，不做设计只办公").slots.scenario, "办公");
+  assert.equal(ask("预算6000，不剪视频只办公").slots.scenario, "办公");
+  assert.equal(ask("预算6000，不仅办公还剪视频").slots.scenario, "办公");
+  assert.equal(ask("预算6000，办公，不一定非要Windows").slots.os, null);
+});
+
+test("real mixed-OS ledger prices cannot imply the Windows configuration fits the budget", () => {
+  const result = ask("预算6000，办公，需要Windows");
+  assert.ok(result.cards.some((card) => card.id === "matebook-d-14"));
+  assert.ok(result.cards.some((card) => card.id === "matebook-d-16"));
+  for (const card of result.cards) {
+    assert.equal(card.budgetFit, "unknown");
+    assert.equal(card.overBy, null);
+    assert.match(card.priceLabel, /Windows配置报价.*确认/);
+  }
+});
+
+test("OS budget assessment uses the matching configuration price, not the generic minimum", async () => {
+  const { budgetAssessment } = await import("./ask.mjs");
+  const p = getProduct("matebook-d-14");
+  const fact = p.facts.find((item) => item.field === "price");
+  const now = new Date("2026-10-22T00:00:00Z");
+  const configured = { ...p, facts: [...p.facts, { ...fact, id: "windows-test", sku: "Windows 11 / i5 / 16GB", value: 6299 }] };
+  assert.equal(budgetAssessment(p, 6000, now, { os: "Windows" }).budgetFit, "unknown");
+  const assessed = budgetAssessment(configured, 6000, now, { os: "Windows" });
+  assert.equal(assessed.budgetFit, "over");
+  assert.equal(assessed.overBy, 299);
+  assert.equal(assessed.price, 6299);
+  for (const configuration of ["Windows或Linux对应版本", "不支持Windows", "仅HarmonyOS，Windows不可用"]) {
+    const ambiguous = { ...p, facts: [{ ...fact, sku: configuration }] };
+    assert.equal(budgetAssessment(ambiguous, 6000, now, { os: "Windows" }).budgetFit, "unknown");
+  }
+  assert.equal(budgetAssessment({ ...configured, price: { ...p.price, status: "conflict" } }, 6000, now, { os: "Windows" }).overBy, null);
+});
+
 test("negated uses and operating system do not become positive requirements", () => {
   assert.equal(ask("预算6000，不剪视频不玩游戏，只办公").slots.scenario, "办公");
   assert.equal(ask("预算8000，不做设计但剪视频").slots.scenario, "剪视频");
@@ -44,7 +85,7 @@ test("known within-budget products precede overruns and products without images 
   const result = ask("预算6000，办公");
   assert.ok(result.cards.some((card) => card.id === "matebook-d-14"));
   assert.ok(result.cards.every((card) => card.budgetFit === "within"));
-  const low = ask("预算3000，办公，必须Windows");
+  const low = ask("预算3000，办公");
   assert.ok(low.cards.every((card) => card.budgetFit === "over" && card.overBy > 0));
   assert.match(low.reply, /备选/);
 });

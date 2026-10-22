@@ -6,9 +6,13 @@ const USES = {
 };
 
 function budgetIn(text) {
+  if (/预算\s*(?:先|暂时|保持|仍然|还)?\s*(?:不变|不改|保持原样)/.test(text)) {
+    const explicitChange = text.match(/预算\s*(?:改为|改成|调整到|提高到|降低到)\s*(\d{3,5})/);
+    return explicitChange ? Number(explicitChange[1]) : null;
+  }
   const range = text.match(/(\d{3,5})\s*[-–—~至到]\s*(\d{3,5})/);
   if (range) return Math.round((Number(range[1]) + Number(range[2])) / 2);
-  const direct = text.match(/(?:预算|价格|最多|不超过)[^\d]{0,6}(\d{3,5})|(\d{3,5})\s*(?:元|块|左右|以内|以上|\+)/);
+  const direct = text.match(/(?:预算|价格|最多|不超过)[^\d]{0,6}(\d{3,5})|(\d{3,5})\s*(?:元|块)?\s*(?:预算|左右|以内|以上|\+|元|块)/);
   if (direct) return Number(direct[1] || direct[2]);
   const thousands = text.match(/(\d(?:\.\d+)?)\s*[千kK]/);
   return thousands ? Math.round(Number(thousands[1]) * 1000) : null;
@@ -16,8 +20,10 @@ function budgetIn(text) {
 
 function mentions(text) {
   const pattern = new RegExp(Object.values(USES).flat().sort((a, b) => b.length - a.length).join("|"), "g");
+  let previousEnd = 0;
   return [...text.matchAll(pattern)].map((match) => {
-    const prefix = text.slice(0, match.index).split(/[，,。；;！!?？但而]/).at(-1);
+    const prefix = text.slice(previousEnd, match.index).split(/[，,。；;！!?？但而]/).at(-1).replace(/不仅|不只|不光/g, "");
+    previousEnd = match.index + match[0].length;
     const negative = /(?:不(?:再|需要|用|会|想|做|玩)?|无需|不用|取消|不打算)[^，,。；;！!?？但而]{0,5}$/.test(prefix);
     return { label: match[0], key: Object.keys(USES).find((kind) => USES[kind].includes(match[0])), negative };
   });
@@ -45,7 +51,7 @@ export function extractSlots(messages) {
     if (audience) segment = /学生|考研/.test(audience[0]) ? "学生" : /家长|孩子|爸妈|家庭/.test(audience[0]) ? "家庭" : /创作者/.test(audience[0]) ? "创作者" : "职场";
     for (const match of text.matchAll(/Windows/gi)) {
       const prefix = text.slice(0, match.index).split(/[，,。；;但]/).at(-1);
-      os = /不(?:再|需要|用|要求|想要)?[^，,。；;]{0,3}$|无需$/.test(prefix) ? null : "Windows";
+      os = /不一定|不强求|非必需|非必须|不必|不(?:再|需要|用|要求|想要)?[^，,。；;]{0,3}$|无需$/.test(prefix) ? null : "Windows";
     }
     const size = text.match(/(\d{1,2}(?:\.\d+)?)\s*(?:英寸|寸)\s*(以内|以下|左右|级别|以上)?/);
     if (size) {
