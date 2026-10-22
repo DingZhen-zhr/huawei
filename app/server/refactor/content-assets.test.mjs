@@ -1,0 +1,54 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { unzipSync, strFromU8 } from 'fflate';
+import { spawnSync } from 'node:child_process';
+import { getProduct } from './ledger.mjs';
+import { generatePlatformVariants } from './generator.mjs';
+
+test('persistent official media, stale copies, unavailable products and true selected ZIP', async () => {
+  const mod = await import('./content-assets.mjs').catch(() => ({}));
+  assert.equal(typeof mod.createAssetRepository, 'function', 'persistent media repository must exist');
+  const dir = await mkdtemp(path.join(tmpdir(), 'hc-media-'));
+  try {
+    const product = getProduct('matebook-pro-s');
+    const store = { id: 'store:test', name: '测试门店', profile: {} };
+    const task = { id: 'task:test', storeId: store.id, productId: product.id, expiresAt: new Date(Date.now() + 86400000).toISOString(), variants: ['xiaohongshu', 'moments', 'wechat-mp', 'poster', 'video'].flatMap(platform => generatePlatformVariants({ product, platform, realDetail: '到店试着放进自己的包里', audience: '通勤', scene: '通勤', target: '到店体验' }).map((v, i) => ({ ...v, id: `${platform}-${i}` }))) };
+    let repo = mod.createAssetRepository({ runtimeDir: dir });
+    const variant = task.variants[0];
+    const rows = await repo.generate(task, store, variant.id);
+    assert.equal(rows.length, 3);
+    assert.ok(rows.every(a => a.status === 'ready'));
+    repo = mod.createAssetRepository({ runtimeDir: dir });
+    assert.equal(repo.list(task, store).length, 3);
+    const restart = spawnSync(process.execPath, ['--input-type=module', '-e', `import { createAssetRepository } from './server/refactor/content-assets.mjs'; console.log(createAssetRepository({runtimeDir:process.env.HC_TEST_MEDIA_DIR}).list(JSON.parse(process.env.HC_TEST_TASK),JSON.parse(process.env.HC_TEST_STORE)).length)`], { encoding: 'utf8', env: { ...process.env, HC_TEST_MEDIA_DIR: dir, HC_TEST_TASK: JSON.stringify(task), HC_TEST_STORE: JSON.stringify(store) } });
+    assert.equal(restart.status, 0, restart.stderr);
+    assert.equal(restart.stdout.trim(), '3');
+    assert.equal((await repo.download(task, store, rows[0].id)).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    variant.body += '\n我会带上自己的包来试。';
+    assert.equal(repo.list(task, store)[0].status, 'stale');
+    await assert.rejects(repo.download(task, store, rows[0].id), e => e.status === 409);
+    await assert.rejects(repo.generate(task, { ...store, id: 'other' }, variant.id), e => e.status === 404);
+    await assert.rejects(repo.download(task, store, '../outside'), e => e.status === 404);
+    const exp = await import('./content-export.mjs');
+    const selection = { moments: task.variants.filter(v => v.platform === 'moments').at(-1).id };
+    const zipped = unzipSync(await exp.exportContent({ task, store, repository: repo, selections: selection }));
+    assert.ok(zipped['manifest.json']);
+    assert.ok(zipped['sources.json']);
+    assert.equal(Object.keys(zipped).filter(k => k.startsWith('copy/')).length, 5);
+    const manifest = JSON.parse(strFromU8(zipped['manifest.json']));
+    assert.equal(manifest.selections.moments, selection.moments);
+    assert.equal(strFromU8(zipped['copy/moments.txt']), task.variants.find(v => v.id === selection.moments).body);
+    assert.ok(manifest.missingImages.length > 0);
+    variant.body = '限时优惠直降999元，现货当天发货';
+    await assert.rejects(repo.generate(task, store, variant.id), e => e.status === 409);
+    await assert.rejects(repo.download(task, store, rows[0].id), e => e.status === 409);
+    await assert.rejects(exp.exportContent({ task, store, repository: repo }), e => e.status === 409);
+    task.expiresAt = '2000-01-01';
+    assert.throws(() => repo.list(task, store), e => e.status === 410);
+    const missing = { ...task, id: 'missing', productId: 'matebook-d-14', expiresAt: new Date(Date.now() + 86400000).toISOString(), variants: [{ ...variant, id: 'missing-v', title: '到店体验', body: '到店试一试', script: '', tags: [] }] };
+    assert.ok((await repo.generate(missing, store, 'missing-v')).every(a => a.status === 'unavailable'));
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});

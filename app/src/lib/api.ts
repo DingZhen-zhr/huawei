@@ -205,11 +205,24 @@ export interface TaskSnapshot {
   };
   variants: Variant[];
   channels: Record<Platform, ChannelSnapshot>;
-  assets: unknown[];
+  assets: ContentAsset[];
   evidence: Fact[];
   conflicts: Conflict[];
   progress: { stage: string; label: string; percent: number };
   errors: { platform?: string; label?: string; message: string; retryable?: boolean }[];
+}
+
+export interface ContentAsset {
+  id: string;
+  variantId: string;
+  platform: Platform;
+  index: number;
+  width: number;
+  height: number;
+  status: "ready" | "failed" | "stale" | "unavailable";
+  mode: "official-layout";
+  error?: string;
+  downloadUrl: string | null;
 }
 
 class ApiError extends Error {
@@ -259,6 +272,9 @@ export const api = {
     questionAnswers?: Record<string, string>;
   }) => request<{ taskId: string; status: string }>("/api/content/tasks", { method: "POST", body: JSON.stringify(body) }),
   getTask: (id: string) => request<TaskSnapshot>(`/api/content/tasks/${id}`),
+  generateImages: (taskId: string, variantId: string) => request<{ assets: ContentAsset[] }>(`/api/content/tasks/${encodeURIComponent(taskId)}/assets`, { method: "POST", body: JSON.stringify({ variantId }) }),
+  downloadImage: (taskId: string, assetId: string) => binaryRequest(`/api/content/tasks/${encodeURIComponent(taskId)}/assets/${encodeURIComponent(assetId)}/download`),
+  exportContent: (taskId: string, selections: Partial<Record<Platform, string>>) => binaryRequest(`/api/content/tasks/${encodeURIComponent(taskId)}/export`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ selections }) }),
   listTasks: () => request<{ tasks: RecentTask[] }>("/api/content/tasks"),
   retry: (taskId: string, platform: Platform) =>
     request<{ taskId: string; status: string }>(`/api/content/tasks/${taskId}/retry`, {
@@ -290,3 +306,12 @@ export const api = {
 };
 
 export { ApiError };
+
+async function binaryRequest(url: string, init?: RequestInit): Promise<Blob> {
+  const response = await fetch(url, { credentials: "include", ...init });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new ApiError(data.error || `交付失败（${response.status}）`, response.status, data.code);
+  }
+  return response.blob();
+}
