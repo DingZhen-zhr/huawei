@@ -173,3 +173,37 @@ test("only confirmed SKU is unfrozen and creates audit history", () => {
   assert.equal(verifyContent("¥5,899", productId, { sku: "ANOTHER-SKU" }).claims[0].status, "blocked");
   resetFactSearchRuntime();
 });
+
+test("short numeric tokens do not self-verify inside larger specs", () => {
+  assert.equal(verifyContent("2GB", productId).status, "blocked");
+  assert.equal(verifyContent("49kg", productId).status, "blocked");
+  assert.equal(verifyContent("512GB", productId).status, "ready");
+});
+
+test("common yuan price formats are treated as price claims", () => {
+  for (const text of ["4999元", "￥4999", "RMB4999", "CNY 4,999"]) {
+    const result = verifyContent(text, "matebook-gt-14");
+    assert.equal(result.status, "blocked", text);
+    assert.equal(result.claims[0]?.type, "price", text);
+  }
+  assert.equal(verifyContent("预算 6000 元", "matebook-gt-14").status, "ready");
+});
+
+test("unbacked gift items are blocked instead of passing on the keyword alone", () => {
+  const fake = verifyContent("赠品一台汽车", productId);
+  assert.equal(fake.status, "blocked");
+  assert.equal(fake.claims[0]?.type, "commercial");
+  const backed = verifyContent("赠品为FreeBuds SE 2陶瓷白和华为无线鼠标星闪版砚黑", productId);
+  assert.equal(backed.status, "ready");
+});
+
+test("production auth fails closed without explicit secrets", () => {
+  const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+  const child = spawnSync(process.execPath, ["--input-type=module", "-e", "import('./server/refactor/auth.mjs')"], {
+    cwd: appDir,
+    encoding: "utf8",
+    env: { ...process.env, NODE_ENV: "production", HC_SESSION_SECRET: "", ADMIN_PASSCODE: "", HC_DEMO_MODE: "false" },
+  });
+  assert.notEqual(child.status, 0);
+  assert.match(child.stderr, /HC_SESSION_SECRET/);
+});

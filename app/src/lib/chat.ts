@@ -24,6 +24,7 @@ export interface Message {
   facts?: Fact[];
   options?: string[];
   cards?: AskCard[];
+  slots?: Record<string, string | number | null>;
   platform?: string;
   issues?: { level: string; rule: string; message: string }[];
   warning?: string;

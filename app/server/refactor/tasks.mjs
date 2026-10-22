@@ -1,6 +1,7 @@
 // 内容任务：后台执行、SSE 进度、部分成功与单渠道重试。
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { getProduct, getConflict } from "./ledger.mjs";
 import { getTaskCard } from "./task-cards.mjs";
@@ -8,7 +9,9 @@ import { generatePlatformVariants, copyTextFor, PLATFORM_LABEL } from "./generat
 import { verifyContent } from "./verifier.mjs";
 import { analyzeCopy } from "./copy-quality.mjs";
 
-const DATA_DIR = path.resolve(process.cwd(), "server", "data", "runtime");
+const DATA_DIR = process.env.HC_RUNTIME_DIR
+  ? path.resolve(process.env.HC_RUNTIME_DIR)
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "runtime");
 const FILE = path.join(DATA_DIR, "tasks.json");
 const tasks = new Map();
 const events = new Map();
@@ -376,6 +379,29 @@ export function updateVariant(taskId, variantId, patch, storeId) {
   return variant;
 }
 
+function recoverInterruptedTasks() {
+  const interrupted = [...tasks.values()].filter((task) => ["queued", "running"].includes(task.status));
+  if (!interrupted.length) return;
+  for (const task of interrupted) {
+    const existingPlatforms = new Set((task.variants || []).map((variant) => variant.platform));
+    const missing = PLATFORMS.filter((platform) => !existingPlatforms.has(platform));
+    if (!missing.length) {
+      task.status = "done";
+      task.progress = { stage: "done", label: "内容包已生成", percent: 100, updatedAt: new Date().toISOString() };
+      task.updatedAt = new Date().toISOString();
+      addEvent(task.id, { type: "done", status: "done", recovered: true });
+      continue;
+    }
+    task.status = "queued";
+    task.progress = { stage: "queued", label: "服务重启，继续未完成渠道", percent: 5, updatedAt: new Date().toISOString() };
+    task.updatedAt = new Date().toISOString();
+    addEvent(task.id, { type: "stage", stage: "queued", label: "服务重启，继续未完成渠道", percent: 5, recovered: true });
+    queueRun(task.id, missing);
+  }
+  persist();
+}
+
 load();
+recoverInterruptedTasks();
 
 export { PLATFORMS, PLATFORM_LABEL };

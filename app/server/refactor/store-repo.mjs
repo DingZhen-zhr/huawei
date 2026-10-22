@@ -1,13 +1,15 @@
 // 本地门店仓库：开发环境持久化到 server/data/runtime；接上 Supabase 后可替换为 DB 仓储。
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
-const DATA_DIR = path.resolve(process.cwd(), "server", "data", "runtime");
+const DATA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "runtime");
 const FILE = path.join(DATA_DIR, "stores.json");
 const DEMO_CODE = process.env.DEMO_STORE_CODE || "HUAWEI-001";
 const DEMO_PIN = process.env.DEMO_STORE_PIN || "246810";
-const demoMode = process.env.HC_DEMO_MODE !== "false";
+const isProduction = process.env.NODE_ENV === "production";
+const demoMode = process.env.HC_DEMO_MODE === "true" || (!isProduction && process.env.HC_DEMO_MODE !== "false");
 
 function ensureDir() {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });

@@ -6,6 +6,15 @@ import { useStore } from "@/lib/store-context";
 import { sendChat, type Fact, type Message } from "@/lib/chat";
 import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 
+function followupHref(card: { id: string }, slots?: Record<string, string | number | null>) {
+  const params = new URLSearchParams({ productId: card.id, target: "到店看实物" });
+  const audienceMap: Record<string, string> = { 学生: "大学生", 职场: "通勤上班族", 创作者: "短视频创作者", 家庭: "家长给孩子买" };
+  if (typeof slots?.segment === "string" && slots.segment) params.set("audience", audienceMap[slots.segment] || slots.segment);
+  if (typeof slots?.scenario === "string" && slots.scenario) params.set("scene", slots.scenario);
+  if (slots?.budget !== null && slots?.budget !== undefined && slots?.budget !== "") params.set("budget", String(slots.budget));
+  return `/create?${params.toString()}`;
+}
+
 const STARTERS = [
   "预算 6000，主要剪视频，怎么选？",
   "顾客说旧电脑太重，每天要背去教室",
@@ -72,6 +81,7 @@ export default function Ask() {
           facts: result.facts,
           options: result.options,
           cards: result.cards,
+          slots: result.slots,
           warning: result.warning,
         },
       ]);
@@ -219,7 +229,7 @@ export default function Ask() {
                               {card.overBy ? <p className="mt-1 text-[10px] text-[var(--warning)]">比预算高约 ¥{card.overBy.toLocaleString("zh-CN")}，先确认是否值得加。</p> : null}
                               <p className="mt-1 text-[10.5px] leading-5 text-[var(--muted)]">{card.reason}</p>
                               <p className="mt-1 border-t border-[var(--line)] pt-1.5 text-[10px] leading-5 text-[var(--muted-2)]">先确认：{card.limitation}</p>
-                              <Link to={`/create?productId=${encodeURIComponent(card.id)}`} className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-[var(--red)] underline underline-offset-4">
+                              <Link to={followupHref(card, message.slots)} className="mt-2 inline-flex min-h-[44px] items-center gap-1 text-[10.5px] text-[var(--red)] underline underline-offset-4">
                                 做成跟进内容 <ArrowUp className="h-3 w-3 rotate-45" />
                               </Link>
                             </div>

@@ -94,13 +94,19 @@ export default function Create() {
   const [searchParams] = useSearchParams();
   const requestedCard = searchParams.get("taskCardId") || "";
   const requestedProduct = searchParams.get("productId") || "";
+  const prefillAudience = searchParams.get("audience") || "";
+  const prefillScene = searchParams.get("scene") || "";
+  const prefillTarget = searchParams.get("target") || "";
+  const prefillBudget = searchParams.get("budget") || "";
   const [cards, setCards] = useState<TaskCard[]>([]);
   const [card, setCard] = useState<TaskCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [step, setStep] = useState<Step>(0);
   const [audience, setAudience] = useState("");
+  const [scene, setScene] = useState("");
   const [target, setTarget] = useState("");
+  const [budget, setBudget] = useState("");
   const [detail, setDetail] = useState("");
   const [customAudience, setCustomAudience] = useState("");
   const [customAudienceOpen, setCustomAudienceOpen] = useState(false);
@@ -119,19 +125,30 @@ export default function Create() {
         const picked = result.tasks.find((t) => t.id === requestedCard) || result.tasks.find((t) => t.productId === requestedProduct) || result.tasks[0] || null;
         setCard(picked);
         if (picked) {
-          setAudience(picked.audienceOptions.includes(picked.audience) ? picked.audience : picked.audienceOptions[0] || picked.audience);
-          setTarget(picked.targetOptions.includes(picked.target) ? picked.target : picked.targetOptions[0] || picked.target);
+          const nextAudience = prefillAudience || picked.audience;
+          const audienceIsOption = picked.audienceOptions.includes(nextAudience);
+          setAudience(audienceIsOption ? nextAudience : picked.audienceOptions[0] || nextAudience);
+          setCustomAudience(audienceIsOption ? "" : nextAudience);
+          setCustomAudienceOpen(!audienceIsOption && Boolean(nextAudience));
+          const nextTarget = prefillTarget || picked.target;
+          const targetIsOption = picked.targetOptions.includes(nextTarget);
+          setTarget(targetIsOption ? nextTarget : picked.targetOptions[0] || nextTarget);
+          setCustomTarget(targetIsOption ? "" : nextTarget);
+          setCustomTargetOpen(!targetIsOption && Boolean(nextTarget));
+          setScene(prefillScene || picked.scene);
+          setBudget(prefillBudget);
         }
         if (!picked) setLoadError("今天没有可用的真实任务卡。");
       })
       .catch((e) => { if (alive) setLoadError(e instanceof Error ? e.message : "任务卡加载失败"); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [requestedCard, requestedProduct]);
+  }, [requestedCard, requestedProduct, prefillAudience, prefillScene, prefillTarget, prefillBudget]);
 
   const currentAudience = customAudienceOpen ? customAudience.trim() : audience;
   const currentDetail = detail.trim();
   const currentTarget = customTargetOpen ? customTarget.trim() : target;
+  const currentScene = scene || card?.scene || "";
 
   const canNext = useMemo(() => {
     if (step === 1) return Boolean(currentDetail);
@@ -143,6 +160,8 @@ export default function Create() {
     setCard(next);
     setAudience(next.audienceOptions.includes(next.audience) ? next.audience : next.audienceOptions[0] || next.audience);
     setTarget(next.targetOptions.includes(next.target) ? next.target : next.targetOptions[0] || next.target);
+    setScene(next.scene);
+    setBudget("");
     setStep(0);
     setDetail("");
     setCustomDetail(false);
@@ -170,13 +189,15 @@ export default function Create() {
         taskCardId: card.id,
         productId: card.productId,
         audience: currentAudience,
-        scene: card.scene,
+        scene: currentScene,
         target: currentTarget,
         realDetail: { text: currentDetail, source: "sales_provided", confirmed: true },
         questionAnswers: {
           audience: currentAudience,
           detail: currentDetail,
+          scene: currentScene,
           target: currentTarget,
+          budget: budget || "",
         },
       });
       navigate(`/create/${result.taskId}`, { replace: true });
@@ -247,6 +268,7 @@ export default function Create() {
                     <span className="mono text-[10px] text-[var(--muted-2)]">{card.priceLabel}</span>
                   </div>
                   <p className="mt-3 border-t border-[var(--line)] pt-3 text-[11px] leading-5 text-[var(--muted)]">{card.reason}</p>
+                  <p className="mt-2 text-[10.5px] leading-5 text-[var(--muted-2)]">这次场景：{currentScene}{budget ? ` · 预算 ${budget}` : ""}</p>
                 </div>
               </div>
 
@@ -284,6 +306,7 @@ export default function Create() {
                 <div className="min-w-0">
                   <p className="truncate text-[11.5px] font-medium">{card.productName}</p>
                   <p className="mt-0.5 text-[10px] text-[var(--muted)]">{card.productFamily} · {card.factStatus === "conflict" ? "价格冻结" : "事实可用"}</p>
+                  <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">场景：{currentScene}{budget ? ` · 预算 ${budget}` : ""}</p>
                 </div>
               </div>
 

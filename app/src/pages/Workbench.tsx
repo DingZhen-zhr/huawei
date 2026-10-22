@@ -650,6 +650,25 @@ export default function Workbench() {
 
               {activeVariant && (
                 <>
+                  <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto pb-1 md:hidden" aria-label="切换渠道">
+                    {PLATFORM_ORDER.map((key) => {
+                      const channel = snapshot.channels[key];
+                      const active = key === platform;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => pickPlatform(key)}
+                          className={`chip shrink-0 ${active ? "chip-active" : ""}`}
+                          aria-pressed={active}
+                        >
+                          {PLATFORM_NAMES[key]}
+                          <span className="mono text-[9.5px] opacity-55">{channel.variants.length}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
                     {currentChannel?.variants.map((variant) => (
                       <button

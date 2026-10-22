@@ -1,8 +1,16 @@
 // 门店与管理员会话：HttpOnly + SameSite=Lax + 签名 Cookie。
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { getStoreById, demoMode } from "./store-repo.mjs";
 
-const SECRET = process.env.HC_SESSION_SECRET || "dev-only-huacai-session-secret-change-me";
+const isProduction = process.env.NODE_ENV === "production";
+if (isProduction && (!process.env.HC_SESSION_SECRET || process.env.HC_SESSION_SECRET.length < 32)) {
+  throw new Error("生产环境必须配置至少 32 字符的 HC_SESSION_SECRET");
+}
+if (isProduction && !process.env.ADMIN_PASSCODE) {
+  throw new Error("生产环境必须配置 ADMIN_PASSCODE");
+}
+// 开发环境使用进程级随机密钥，不再使用公开默认值；服务重启后重新登录。
+const SECRET = process.env.HC_SESSION_SECRET || randomBytes(32).toString("hex");
 const STORE_COOKIE = "hc_store_session";
 const ADMIN_COOKIE = "hc_admin_session";
 const MAX_AGE = 7 * 24 * 60 * 60;

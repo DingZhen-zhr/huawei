@@ -18,6 +18,10 @@ function allUserText(messages) {
 }
 
 function findBudget(text) {
+  const range = text.match(/(\d{3,5})\s*[-–—~至到]\s*(\d{3,5})/);
+  if (range) return Math.round((Number(range[1]) + Number(range[2])) / 2);
+  const above = text.match(/(\d{3,5})\s*(?:以上|\+)/);
+  if (above) return Number(above[1]);
   const direct = text.match(/(?:预算|价格|大概|最多|不超过)?\s*(\d{3,5})\s*(?:元|块|左右|以内)/);
   if (direct) return Number(direct[1]);
   const afterKeyword = text.match(/(?:预算|价格)\D{0,4}(\d{3,5})/);
@@ -98,7 +102,7 @@ export function localAsk({ messages = [] } = {}) {
     options = ["剪视频/做设计", "上网课/学习", "办公/通勤", "预算 6000 左右"];
   } else if (!budget) {
     reply = `用途清楚了：${scenario.label}。预算大概在哪一档？我再把机型收敛到两三台。`;
-    options = ["4000–5000", "5000–6000", "6000–8000", "8000 以上"];
+    options = ["预算 4000–5000", "预算 5000–6000", "预算 6000–8000", "预算 8000 以上"];
   } else if (!scenario) {
     reply = `预算 ${budget.toLocaleString("zh-CN")} 元，先看主要用途。买来最常做的是哪件事？`;
     options = ["剪视频/做设计", "上网课/学习", "办公/通勤", "游戏/高性能"];
