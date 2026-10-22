@@ -34,6 +34,24 @@ test('negative tasks do not select media or commute; study and projects remain e
   assert.match(denied.explanation, /待确认/);
 });
 
+for (const [label, realDetail] of [
+  ['camera entity', '每天通勤两小时肩膀酸，相机素材已经在云端，只改课程脚本。'],
+  ['postposed negation', '移动硬盘不用接，也不导卡，只在咖啡店改课程脚本。'],
+]) {
+  test(`commuting script work outranks ${label}`, () => {
+    const result = strategy.resolveScene({ ...a, realDetail });
+    assert.equal(result.key, 'commute');
+    assert.match(result.evidence[0].value, /1.49 kg/);
+    assert.doesNotMatch(result.actions.join(' '), /导卡|SD卡|移动硬盘/);
+  });
+}
+
+test('a camera or hard drive entity alone does not establish an import action', () => {
+  assert.equal(strategy.resolveScene({ ...base, scene: '日常', realDetail: '桌上放着相机和移动硬盘。' }).key, 'general');
+  assert.equal(strategy.resolveScene({ ...base, scene: '日常', realDetail: '每天整理素材，文件已经在云端。' }).key, 'general');
+  assert.equal(strategy.resolveScene({ ...base, scene: '日常', realDetail: '把移动硬盘接到电脑，导入相机文件。' }).key, 'media-import');
+});
+
 test('every scene only organizes active facts from its own real product', () => {
   assert.equal(typeof strategy.resolveScene, 'function');
   for (const item of listProducts()) {

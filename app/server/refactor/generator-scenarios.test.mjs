@@ -61,6 +61,37 @@ test('three angles reorganize main evidence and actions beyond the opening', () 
   }
 });
 
+test('moments angles display different evidence in the actual short copy', () => {
+  const variants = generatePlatformVariants({ ...a, platform: 'moments' });
+  const visibleFacts = variants.map((draft) => draft.evidence.filter((fact) => draft.body.includes(String(fact.value))).map((fact) => fact.id));
+  assert.ok(visibleFacts.every((facts) => facts.length > 0), 'each short draft displays complete supporting evidence');
+  assert.equal(new Set(visibleFacts.map((facts) => facts.join(','))).size, 3, 'evidence differences must be visible in body, not only evidenceIds');
+  assert.equal(new Set(variants.map((draft) => draft.body.split('\n')[0])).size, 3, 'each angle has a distinct visible heading');
+});
+
+test('limited evidence is disclosed rather than inventing three visible claims', () => {
+  const product = { ...base.product, facts: base.product.facts.filter((fact) => fact.id.endsWith(':portable:1')) };
+  const variants = generatePlatformVariants({ ...c, product, platform: 'moments' });
+  for (const draft of variants) {
+    assert.match(draft.body, /可引用事实不足/);
+    assert.ok(draft.body.includes(String(product.facts[0].value)));
+    assert.equal(draft.evidence.length, 1);
+    assert.equal(verifyContent(copyTextFor(draft), product.id, { platform: 'moments' }).status, 'ready');
+  }
+});
+
+test('camera entities and postposed denials produce commuting shots rather than import actions', () => {
+  for (const realDetail of ['每天通勤两小时肩膀酸，相机素材已经在云端，只改课程脚本。', '移动硬盘不用接，也不导卡，只在咖啡店改课程脚本。']) {
+    for (const draft of generatePlatformVariants({ ...a, realDetail, platform: 'video' })) {
+      assert.equal(draft.sceneStrategy.key, 'commute');
+      const shotActions = draft.shotList.map((shot) => shot.split('；字幕引用：')[0]).join(' ');
+      assert.doesNotMatch(shotActions, /导卡|SD卡|移动硬盘/);
+      assert.match(draft.shotList.join(' '), /装包|背包|拿取/);
+      assert.equal(verifyContent(copyTextFor(draft), base.product.id, { platform: 'video' }).status, 'ready');
+    }
+  }
+});
+
 test('all ten real products keep their own facts and fallback, with counterfeit claims blocked', () => {
   for (const publicProduct of listProducts()) {
     const product = getProduct(publicProduct.id);

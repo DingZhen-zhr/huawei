@@ -3,7 +3,7 @@ const SCENES = {
   'media-import': {
     title: '导卡外接，先核对', focus: '导卡与硬盘同时连接',
     order: ['ports', 'memory', 'screen'],
-    pattern: /导卡|导入素材|相机|SD\s*卡|移动硬盘|整理素材/i,
+    pattern: /导卡|导入素材|(?:SD\s*卡|移动硬盘|硬盘|相机).{0,24}(?:导入|连接|插入|一起插|插上|接入|接到|接上|同时接)|(?:连接|接入|插上|接|导入).{0,12}(?:SD\s*卡|移动硬盘|硬盘|相机)/i,
     actions: ['出示实际使用的SD卡和移动硬盘，核对接口与转接需求', '连接读卡设备与移动硬盘，检查设备识别状态', '打开素材目录，核对文件和所选存储配置'],
     request: '卡的类型、硬盘接口和素材容量',
   },
@@ -41,9 +41,9 @@ function affirmative(text) {
     .join('，');
 }
 
-function detect(text) {
+function detect(text, topic = false) {
   const positive = affirmative(text);
-  return Object.entries(SCENES).filter(([, config]) => config.pattern?.test(positive)).map(([key]) => key);
+  return Object.entries(SCENES).filter(([key, config]) => config.pattern?.test(positive) || (topic && key === 'media-import' && /整理素材/.test(positive))).map(([key]) => key);
 }
 
 function groupFacts(product, category) {
@@ -65,9 +65,11 @@ export function resolveScene({ product, audience = '', scene = '', realDetail = 
   const detail = typeof realDetail === 'object' ? realDetail?.text || '' : String(realDetail || '');
   const detailMatches = detect(detail);
   const deniedKeys = Object.entries(SCENES).filter(([key, config]) => config.pattern?.test(detail) && !detailMatches.includes(key)).map(([key]) => key);
-  const topicMatches = detect(scene).filter((key) => !deniedKeys.includes(key));
+  const topicMatches = detect(scene, true).filter((key) => !deniedKeys.includes(key));
   // A concrete burden or operation outranks a broad topic or audience label.
-  const key = detailMatches[0] || topicMatches[0] || 'general';
+  const scriptOnly = /(?:^|[，,。；;])只[^，,。；;]{0,20}(?:改|写|编辑)[^，,。；;]{0,8}脚本/.test(detail);
+  const detailPriority = detailMatches.includes('commute') && scriptOnly ? 'commute' : detailMatches[0];
+  const key = detailPriority || topicMatches[0] || 'general';
   const config = SCENES[key];
   const evidence = [];
   for (const category of config.order) {
@@ -76,7 +78,7 @@ export function resolveScene({ product, audience = '', scene = '', realDetail = 
     for (const fact of found.slice(0, limit)) if (!evidence.some((f) => f.id === fact.id)) evidence.push(fact);
   }
   if (!evidence.length) evidence.push(...(product.facts || []).filter((f) => f.productId === product.id && f.status === 'active' && f.field !== 'price').slice(0, 3));
-  const conflict = detailMatches.length && topicMatches.length && detailMatches[0] !== topicMatches[0];
+  const conflict = detailPriority && topicMatches.length && detailPriority !== topicMatches[0];
   return {
     key, ...config, evidence, evidenceIds: evidence.map((f) => f.id),
     matchedSignals: [...new Set([...detailMatches, ...topicMatches])],
@@ -134,7 +136,10 @@ export function applySceneStrategy(draft, { product, platform, angle, strategy }
   let body = [context, strategy.explanation, reasoning, ...facts, ...actions, limits, price, cta].join('\n\n');
   if (platform === 'moments') {
     // The compact channel quotes one complete fact, never truncating a condition or number.
-    body = [strategy.title, evidence[0]?.value, actions[0], strategy.explanation.includes('优先于原选题') ? strategy.explanation : '操作与软件兼容需实测确认。', cta].filter(Boolean).join('\n');
+    const visibleIndex = { pain: 0, avoidance: 1, story: 2 }[angle];
+    const visibleFact = strategy.evidence[Math.min(visibleIndex, strategy.evidence.length - 1)];
+    const factNote = strategy.evidence.length < 3 ? '现有可引用事实不足以分开三个证据角度，其余条件待确认。' : '';
+    body = [title, visibleFact?.value, actions[0], strategy.explanation.includes('优先于原选题') ? strategy.explanation : '操作与软件兼容需实测确认。', factNote, cta].filter(Boolean).join('\n');
   }
   if (platform === 'wechat-mp') {
     body = [
