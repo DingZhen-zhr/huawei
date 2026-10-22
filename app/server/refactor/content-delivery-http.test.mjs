@@ -61,6 +61,9 @@ test('authenticated HTTP delivery returns PNG and selected ZIP, refusing blocked
     const files = unzipSync(new Uint8Array(await zip.arrayBuffer()));
     assert.ok(Object.keys(files).some(f => f.startsWith('images/moments/')));
     assert.equal(JSON.parse(strFromU8(files['manifest.json'])).selections.moments, variant.id);
+    const imageSources = JSON.parse(strFromU8(files['sources.json'])).images;
+    assert.equal(imageSources[0].renderedText.purpose, 'scene');
+    assert.ok(imageSources[0].renderedText.overlayText.includes(variant.cta));
     assert.equal((await req('/content/tasks/unknown/assets')).status, 404);
     assert.equal((await req(`/content/tasks/${taskId}/assets/not-a-file/download`)).status, 404);
     for (const platform of ['moments', 'video']) await t.test(`${platform} unsafe image title is blocked at generation/download/export`, async () => {

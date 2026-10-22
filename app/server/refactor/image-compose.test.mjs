@@ -17,7 +17,25 @@ test('official layout makes real PNG and contains all four fixture edges', async
     const offset = (y * info.width + x) * info.channels;
     assert.deepEqual([...data.subarray(offset, offset + 3)], rgb, `corner ${x},${y}`);
   }
+  const planned = await module.composeImage({ source: fixture, width: 900, height: 383, title: '核对设备', subtitle: '官方产品图', purpose: 'detail', overlayText: ['SD <卡> & 线材'], limitations: ['实际接口需确认。'] });
+  const rawPlan = await sharp(planned).raw().toBuffer({ resolveWithObject: true });
+  for (const [x, y, rgb] of [[60, 195, [255, 255, 0]], [400, 195, [0, 255, 0]], [60, 266, [0, 0, 255]], [400, 266, [255, 0, 0]]]) {
+    const offset = (y * rawPlan.info.width + x) * rawPlan.info.channels;
+    assert.deepEqual([...rawPlan.data.subarray(offset, offset + 3)], rgb, `planned-layout corner ${x},${y}`);
+  }
   await assert.rejects(module.composeImage({ source: fixture, width: 900, height: 383, title: '长'.repeat(300), subtitle: '' }), /溢出/);
+});
+
+test('planned body text changes real pixels while product area stays intact, and oversized body fails', async () => {
+  const { composeImage } = await import('./image-compose.mjs');
+  const source = await sharp({ create: { width: 400, height: 100, channels: 4, background: '#f08020' } }).png().toBuffer();
+  const input = { source, width: 1080, height: 1440, title: '同一份核验标题', subtitle: 'MateBook GT 14 · 官方产品图', purpose: 'detail', limitations: ['实际兼容性需到店确认。'] };
+  const first = await composeImage({ ...input, overlayText: ['右侧SD卡槽，内存32 GB。'] });
+  const second = await composeImage({ ...input, overlayText: ['带上实际使用的存储卡核对接口。'] });
+  const pixels = async (png, top, height) => sharp(png).extract({ left: 0, top, width: 1080, height }).raw().toBuffer();
+  assert.notDeepEqual(await pixels(first, 800, 500), await pixels(second, 800, 500), 'planned text must affect body pixels, not only PNG metadata');
+  assert.deepEqual(await pixels(first, 300, 400), await pixels(second, 300, 400), 'text does not overwrite or crop the contained product region');
+  await assert.rejects(composeImage({ ...input, overlayText: ['长'.repeat(6000)] }), error => error.code === 'LAYOUT_OVERFLOW');
 });
 
 test('existing nonfont, wrong family, and non-CJK font cannot silently fall back', async (t) => {

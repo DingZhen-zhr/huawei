@@ -9,7 +9,7 @@ import { composeImage } from './image-compose.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const mediaDir = path.resolve(here, '../../public/media');
-export const MEDIA_RULE_VERSION = 'official-layout-v3';
+export const MEDIA_RULE_VERSION = 'official-layout-v4';
 // The application has one runtime writer. Share locks across repository instances
 // in this process as well, so reopening the same runtime cannot duplicate work.
 const runtimeWork = new Map();
@@ -42,9 +42,33 @@ function mediaPayload(task, variant) {
   return { title, subtitle, text };
 }
 
+function imagePayload(task, variant, plan) {
+  const product = getProduct(task.productId);
+  const { title, subtitle } = mediaPayload(task, variant);
+  let planned = (plan.overlayText || []).filter(Boolean);
+  if (plan.purpose === 'poster') {
+    // Saved edits are current copy; an earlier generated imagePlan may still hold
+    // the prior title/body/CTA. Never publish those superseded poster lines.
+    planned = [variant.title, ...String(variant.body || '').split('\n'), variant.cta];
+  } else if (plan.purpose === 'scene' || plan.purpose === 'video-cover') {
+    planned = variant.platform === 'xiaohongshu' ? [variant.cta] : planned.map((value, index) => index === 1 ? variant.platform === 'moments' ? String(variant.body || '').split('\n')[0] : variant.title : index === planned.length - 1 ? variant.cta : value);
+  } else if (plan.purpose === 'cover') {
+    // A cover uses the saved title; wider channel covers additionally carry CTA.
+    planned = planned.map((value, index) => index === 1 ? title : index === planned.length - 1 && planned.length > 2 ? variant.cta : value);
+  }
+  const overlayText = [...new Set(planned.map(value => String(value || '').trim()).filter(value => value && value !== title && value !== product.shortName))];
+  const conditions = (variant.evidence || []).filter(fact => overlayText.includes(String(fact.value))).map(fact => fact.conditions).filter(Boolean);
+  const limitations = [...new Set([...(variant.limitations || []), ...conditions])];
+  return { title, subtitle, purpose: plan.purpose, overlayText, limitations };
+}
+
 export function verifyVariant(task, variant) {
   if (!variant) throw error(404, '版本不存在');
-  const verification = verifyContent(mediaPayload(task, variant).text, task.productId, { platform: variant.platform });
+  const rendered = (variant.imagePlan || []).flatMap(plan => {
+    const payload = imagePayload(task, variant, plan);
+    return [payload.title, payload.subtitle, ...payload.overlayText, ...payload.limitations];
+  });
+  const verification = verifyContent([mediaPayload(task, variant).text, ...rendered].join('\n\n'), task.productId, { platform: variant.platform });
   if (verification.blocked) throw error(409, '当前文案核验未通过，请修正后重试', 'CONTENT_BLOCKED');
   return verification;
 }
@@ -64,7 +88,7 @@ function plansFor(variant) {
 }
 
 function fingerprint(task, store, variant, product, source) {
-  return hash(JSON.stringify({ version: MEDIA_RULE_VERSION, taskId: task.id, productId: product.id, payload: mediaPayload(task, variant), plans: variant.imagePlan, asset: product.asset, source: source ? hash(source) : null, facts: product.facts, date: product.snapshotDate, font: { path: process.env.HC_CJK_FONT_PATH || 'auto', family: process.env.HC_CJK_FONT_FAMILY || 'auto' }, store: { id: store.id, name: store.name, profile: store.profile } }));
+  return hash(JSON.stringify({ version: MEDIA_RULE_VERSION, taskId: task.id, productId: product.id, payload: mediaPayload(task, variant), images: (variant.imagePlan || []).map(plan => imagePayload(task, variant, plan)), plans: variant.imagePlan, asset: product.asset, source: source ? hash(source) : null, facts: product.facts, date: product.snapshotDate, font: { path: process.env.HC_CJK_FONT_PATH || 'auto', family: process.env.HC_CJK_FONT_FAMILY || 'auto' }, store: { id: store.id, name: store.name, profile: store.profile } }));
 }
 
 export function createAssetRepository({ runtimeDir = process.env.HC_RUNTIME_DIR || path.resolve(here, '../data/runtime') } = {}) {
@@ -159,15 +183,15 @@ export function createAssetRepository({ runtimeDir = process.env.HC_RUNTIME_DIR 
         for (const name of [`${row.id}.png`, `${row.id}.png.tmp`]) { createdNames.push(name); work.files.add(name); }
         if (state.source) {
           try {
-            const payload = mediaPayload(task, variant);
-            const png = await composeImage({ source: state.source, width: plan.width, height: plan.height, title: payload.title, subtitle: payload.subtitle });
+          const payload = imagePayload(task, variant, plan);
+          const png = await composeImage({ source: state.source, width: plan.width, height: plan.height, ...payload });
             // Recheck after async rendering: an edit during generation never publishes an obsolete PNG as ready.
             verifyVariant(task, variant);
             authorizeMedia(task, store);
             if (state.fingerprint !== current(task, store, variant).fingerprint) throw error(409, '文案已变化，请重新生成');
             const target = path.join(dir, `${row.id}.png`), temp = `${target}.tmp`;
             writeFileSync(temp, png); renameSync(temp, target);
-            row.status = 'ready'; row.byteLength = png.length;
+          row.status = 'ready'; row.byteLength = png.length; row.renderedText = payload;
           } catch (e) {
             row.status = 'failed'; row.error = e.message;
             if (e.status === 409 || e.status === 410) throw e;

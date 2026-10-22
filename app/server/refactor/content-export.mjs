@@ -29,7 +29,7 @@ export async function exportContent({ task, store, repository, selections = {} }
   // Recheck current drafts after asynchronous reads before serializing the final package.
   chosen.forEach(v => verifyVariant(task, v));
   files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2));
-  files['sources.json'] = strToU8(JSON.stringify({ taskId: task.id, model: product.name, factDate: product.snapshotDate, mode: manifest.mode, ruleVersion: MEDIA_RULE_VERSION, copy: chosen.map(v => ({ platform: v.platform, variantId: v.id, text: copyTextFor(v), evidenceIds: v.evidenceIds || [] })), facts: product.facts, images: assets.filter(a => manifest.images.some(i => i.assetId === a.id)).map(a => ({ assetId: a.id, localOfficialAsset: a.source, fingerprint: a.fingerprint, productId: a.productId, factDate: a.factDate })), note: '图片来自本地收录的同型号官方素材；事实中的URL为正文事实来源，不冒充图片原始下载URL。' }, null, 2));
+  files['sources.json'] = strToU8(JSON.stringify({ taskId: task.id, model: product.name, factDate: product.snapshotDate, mode: manifest.mode, ruleVersion: MEDIA_RULE_VERSION, copy: chosen.map(v => ({ platform: v.platform, variantId: v.id, text: copyTextFor(v), evidenceIds: v.evidenceIds || [] })), facts: product.facts, images: assets.filter(a => manifest.images.some(i => i.assetId === a.id)).map(a => ({ assetId: a.id, localOfficialAsset: a.source, fingerprint: a.fingerprint, productId: a.productId, factDate: a.factDate, renderedText: a.renderedText })), note: '图片来自本地收录的同型号官方素材；事实中的URL为正文事实来源，不冒充图片原始下载URL。' }, null, 2));
   files['README.txt'] = strToU8('门店五渠道内容交付\n图片模式：official-layout（官方产品图排版，未调用AI图片服务）。\n发布前请核对门店信息。素材缺失或已失效时仅交付文字，明细见manifest.json的missingImages。\n核验基于收录的事实快照，不代表实时价格或库存。');
   return Buffer.from(zipSync(files));
 }
