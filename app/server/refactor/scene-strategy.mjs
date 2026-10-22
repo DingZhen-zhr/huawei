@@ -96,7 +96,7 @@ function angleEvidence(strategy, angle) {
 
 function angleActions(strategy, angle) {
   const [first, second, third] = strategy.actions;
-  if (angle === 'avoidance') return [`先列核对清单：${third}`, `逐项检查：${first}`, `实际验证后记录结果：${second}`];
+  if (angle === 'avoidance') return [`先列核对清单：列出实际设备、接口与文件容量；${first}`, `逐项连接验证：${second}`, `实际验证后记录结果：${third}`];
   if (angle === 'story') return [`顾客先说明任务并准备：${first}`, `销售陪同完成：${second}`, `一起复核并记录：${third}`];
   return [`先展示实际阻碍：${first}`, `按任务演示：${second}`, `记录是否符合需要：${third}`];
 }
@@ -139,7 +139,7 @@ export function applySceneStrategy(draft, { product, platform, angle, strategy }
     const visibleIndex = { pain: 0, avoidance: 1, story: 2 }[angle];
     const visibleFact = strategy.evidence[Math.min(visibleIndex, strategy.evidence.length - 1)];
     const factNote = strategy.evidence.length < 3 ? '现有可引用事实不足以分开三个证据角度，其余条件待确认。' : '';
-    const visibleAction = angle === 'story' ? `顾客接着核对：${strategy.actions[1]}` : actions[0];
+    const visibleAction = angle === 'story' ? `顾客接着核对：${strategy.actions[1]}` : angle === 'avoidance' ? `完成前两步后：${strategy.actions[2]}` : actions[0];
     body = [title, visibleFact?.value, visibleAction, strategy.explanation.includes('优先于原选题') ? strategy.explanation : '操作与软件兼容需实测确认。', factNote, cta].filter(Boolean).join('\n');
   }
   if (platform === 'wechat-mp') {

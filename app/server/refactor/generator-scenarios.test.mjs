@@ -72,20 +72,25 @@ test('moments angles display different evidence in the actual short copy', () =>
 test('moments angles show three distinct operations after narrative prefixes are removed', () => {
   for (const scenario of [a, c]) {
     const variants = generatePlatformVariants({ ...scenario, platform: 'moments' });
-    const visibleActions = variants.map((draft) => draft.body.split('\n')[2].replace(/^(?:先展示实际阻碍|先列核对清单|顾客先说明任务并准备|顾客接着核对)：/, ''));
+    const visibleActions = variants.map((draft) => draft.body.split('\n')[2].replace(/^(?:先展示实际阻碍|先列核对清单|顾客先说明任务并准备|顾客接着核对|完成前两步后)：/, ''));
     assert.equal(new Set(visibleActions).size, 3, 'all three visible operations differ beyond their narrative prefix');
   }
 });
 
-test('import story connects and checks recognition before opening the material directory', () => {
+test('every import angle connects and checks recognition before opening the material directory', () => {
   for (const platform of ['video', 'xiaohongshu']) {
-    const story = generatePlatformVariants({ ...a, platform }).find((draft) => draft.angle === 'story');
-    const texts = platform === 'video' ? [story.script, story.shotList.join('\n')] : [story.body];
-    for (const text of texts) {
-      const connection = text.indexOf('连接读卡设备与移动硬盘，检查设备识别状态');
-      const directory = text.indexOf('打开素材目录');
-      assert.ok(connection >= 0 && directory >= 0, 'both dependent actions must be visible');
-      assert.ok(connection < directory, `${platform} story must recognize devices before opening their files`);
+    for (const draft of generatePlatformVariants({ ...a, platform })) {
+      const texts = platform === 'video' ? [draft.script, draft.shotList.join('\n')] : [draft.body];
+      for (const text of texts) {
+        const connection = text.indexOf('连接读卡设备与移动硬盘，检查设备识别状态');
+        const directory = text.indexOf('打开素材目录');
+        assert.ok(connection >= 0 && directory >= 0, 'both dependent actions must be visible');
+        assert.ok(connection < directory, `${platform}/${draft.angle} must recognize devices before opening their files`);
+        if (draft.angle === 'avoidance') {
+          const checklist = text.indexOf('列出实际设备、接口与文件容量');
+          assert.ok(checklist >= 0 && checklist < connection, 'avoidance starts with an actual equipment/interface/capacity checklist');
+        }
+      }
     }
   }
 });
