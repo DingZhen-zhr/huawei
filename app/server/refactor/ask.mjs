@@ -1,6 +1,6 @@
 // 顾客问答的确定性兜底：不依赖模型也能给出有依据的候选与下一步。
 // 槽位规则：后说的覆盖先说的；否定表达不算命中；系统（Windows/鸿蒙）参与筛选。
-import { getFacts, listProducts } from "./ledger.mjs";
+import { getFacts, getProduct, listProducts } from "./ledger.mjs";
 
 const SCENARIOS = {
   edit: ["剪视频", "视频", "剪辑", "设计", "修图", "创作"],
@@ -73,13 +73,30 @@ function findSegment(text) {
     ["家庭", ["家长", "孩子", "爸妈", "家庭"]],
   ];
   for (const [label, words] of pairs) {
-    if (words.some((word) => text.includes(word))) return label;
+    for (const word of words) {
+      let index = text.indexOf(word);
+      while (index >= 0) {
+        const before = text.slice(Math.max(0, index - 4), index);
+        if (!NEGATION.test(before)) return label;
+        index = text.indexOf(word, index + 1);
+      }
+    }
   }
   return null;
 }
 
+function findScreenMax(text) {
+  const range = text.match(/(\d{2}(?:\.\d)?)\s*[-–—~至到]\s*(\d{2}(?:\.\d)?)\s*(?:英寸|寸|吋)/);
+  if (range && /(以内|以下|不超过|最多|封顶)/.test(text)) return Number(range[2]);
+  const match = text.match(/(\d{2}(?:\.\d)?)\s*(?:英寸|寸|吋)/);
+  if (!match) return null;
+  if (/(以内|以下|不超过|最多|封顶)/.test(text)) return Number(match[1]);
+  if (/(想要|要|看|选|用)[^，。；]{0,8}\d{2}(?:\.\d)?\s*(?:英寸|寸|吋)/.test(text)) return Number(match[1]);
+  return null;
+}
+
 function extractSlots(messages) {
-  const slots = { budget: null, scenario: null, segment: null, os: null };
+  const slots = { budget: null, scenario: null, segment: null, os: null, screenMax: null };
   for (const message of messages.filter((item) => item?.role === "user")) {
     const text = String(message.content || "");
     if (!text.trim()) continue;
@@ -93,6 +110,8 @@ function extractSlots(messages) {
     if (os) slots.os = os;
     const segment = findSegment(text);
     if (segment) slots.segment = segment;
+    const screenMax = findScreenMax(text);
+    if (screenMax !== null) slots.screenMax = screenMax;
   }
   return slots;
 }
@@ -123,7 +142,55 @@ function matchesOS(product, os) {
   return os === "windows" ? family.includes("Windows") : family.includes("鸿蒙");
 }
 
-function productCard(product, budget) {
+function productScreenSize(product) {
+  const sizes = getFacts(product.id)
+    .filter((fact) => fact.field === "screen")
+    .flatMap((fact) => [...String(fact.value || "").matchAll(/(\d+(?:\.\d+)?)\s*(?:英寸|寸|吋)/g)].map((m) => Number(m[1])));
+  return sizes.length ? Math.max(...sizes) : null;
+}
+
+function freshActivePrice(product, now) {
+  const full = getProduct(product.id);
+  const records = (full?.price?.records || []).filter((record) => {
+    const sku = String(record.sku || "");
+    const type = String(record.priceType || "");
+    const price = Number(record.price);
+    if (!sku || /专区|默认|官网产品页/.test(sku)) return false;
+    if (!(type.includes("商城") || type.includes("页面价"))) return false;
+    if (!Number.isFinite(price) || price <= 0) return false;
+    const captured = new Date(record.capturedAt || 0).getTime();
+    return Number.isFinite(captured) && now.getTime() - captured <= 7 * 86400000;
+  });
+  if (!records.length) return null;
+  return records.reduce((best, item) => (Number(item.price) <= Number(best.price) ? item : best));
+}
+
+function priceAssessment(product, budget, now) {
+  if (product.price.status === "conflict") {
+    return { kind: "conflict", reference: product.price.min, label: "价格待确认" };
+  }
+  if (product.price.status !== "active") {
+    return {
+      kind: "unknown",
+      reference: product.price.min,
+      label: product.price.min ? `参考价 ¥${product.price.min.toLocaleString("zh-CN")}，需确认` : "价格待确认",
+    };
+  }
+  const fresh = freshActivePrice(product, now);
+  if (!fresh) return { kind: "stale", reference: product.price.min, label: "价格需要重新确认" };
+  const price = Number(fresh.price);
+  const over = price > budget;
+  return {
+    kind: over ? "over" : "within",
+    price,
+    sku: fresh.sku,
+    overBy: over ? price - budget : 0,
+    label: `官方商城价 ¥${price.toLocaleString("zh-CN")} 起`,
+    reference: price,
+  };
+}
+
+function productCard(product, budget, now) {
   const productFacts = getFacts(product.id);
   const fact =
     productFacts.find((f) => f.field === "audience") ||
@@ -131,20 +198,23 @@ function productCard(product, budget) {
     productFacts.find((f) => f.field === "portable") ||
     productFacts[0];
   const limit = getFacts(product.id).find((f) => /确认|限制|仅|没有|兼容/.test(String(f.value)))?.value || "具体配置需按 SKU 确认";
+  const assessment = priceAssessment(product, budget, now);
   return {
     id: product.id,
     model: product.name,
     shortName: product.shortName,
     family: product.family,
-    priceLabel: product.price.label,
-    overBy: product.price.status === "active" && product.price.min > budget ? product.price.min - budget : 0,
+    priceLabel: assessment.label,
+    overBy: assessment.kind === "over" ? assessment.overBy : 0,
     reason: String(fact?.value || "已收录同型号官方事实").slice(0, 82),
     limitation: String(limit).slice(0, 76),
     priceStatus: product.price.status,
+    priceKind: assessment.kind,
+    screenSize: productScreenSize(product),
   };
 }
 
-export function localAsk({ messages = [] } = {}) {
+export function localAsk({ messages = [], now = new Date() } = {}) {
   if (!Array.isArray(messages) || !messages.length) throw new Error("messages 不能为空");
   const slots = extractSlots(messages);
   const scenarioKey = scenarioKeyFromLabel(slots.scenario);
@@ -165,45 +235,69 @@ export function localAsk({ messages = [] } = {}) {
     options = ["剪视频/做设计", "上网课/学习", "办公/通勤", "游戏/高性能"];
   } else {
     const all = listProducts()
-      .map((product) => ({ product, score: scoreProduct(product, scenarioKey) }))
+      .map((product) => ({
+        product,
+        score: scoreProduct(product, scenarioKey),
+        assessment: priceAssessment(product, budget, now),
+        screenSize: productScreenSize(product),
+      }))
       .filter((item) => item.score > 0 && item.product.price.status !== "missing")
-      .filter((item) => matchesOS(item.product, slots.os));
+      .filter((item) => matchesOS(item.product, slots.os))
+      .filter((item) => (slots.screenMax ? item.screenSize !== null && item.screenSize <= slots.screenMax + 0.05 : true));
 
-    if (!all.length) {
-      const osLabel = slots.os === "windows" ? "Windows" : slots.os === "harmony" ? "鸿蒙" : "";
-      reply = `库里没有同时满足${osLabel ? `${osLabel}、` : ""}这个用途和预算的型号。放宽系统或预算，我再筛一轮？`;
+    const nonConflict = all.filter((item) => item.assessment.kind !== "conflict");
+    const pool = nonConflict.length ? nonConflict : all;
+
+    if (!pool.length) {
+      const filters = [
+        slots.os === "windows" ? "Windows" : slots.os === "harmony" ? "鸿蒙" : "",
+        slots.screenMax ? `${slots.screenMax} 英寸以内` : "",
+      ].filter(Boolean);
+      reply = `库里没有同时满足${filters.length ? `${filters.join("、")}、` : ""}这个用途和预算的型号。放宽一个条件，我再筛一轮？`;
       options = slots.os ? ["可以看鸿蒙", "可以看 Windows", "预算再放宽一点"] : ["预算再放宽一点", "换个用途看看"];
     } else {
-      const withinBudget = (product) => !product.price.min || product.price.min <= budget * 1.15;
-      const candidates = all
-        .sort(
-          (a, b) =>
-            Number(withinBudget(b.product)) - Number(withinBudget(a.product)) ||
-            b.score - a.score ||
-            (a.product.price.min || 0) - (b.product.price.min || 0),
-        )
-        .slice(0, 2)
-        .map((item) => item.product);
+      const refDiff = (item) => {
+        const reference = item.assessment.reference ?? item.product.price.min ?? Number.POSITIVE_INFINITY;
+        return Math.abs(Number(reference) - budget);
+      };
+      const tierOf = (item) => {
+        const kind = item.assessment.kind;
+        if (kind === "within") return 0;
+        const reference = item.assessment.reference;
+        if ((kind === "unknown" || kind === "stale") && reference && reference <= budget * 1.15) return 1;
+        if (kind === "over") return 2;
+        if (kind === "conflict") return 4;
+        return 3;
+      };
+      const sorted = pool.sort((a, b) => {
+        const byTier = tierOf(a) - tierOf(b);
+        if (byTier) return byTier;
+        if (a.assessment.kind === "within") return b.score - a.score;
+        if (a.assessment.kind === "over") return a.assessment.overBy - b.assessment.overBy || b.score - a.score;
+        return refDiff(a) - refDiff(b) || b.score - a.score;
+      });
 
-      const within = candidates.filter(
-        (product) => !product.price.min || product.price.min <= budget * 1.15,
-      );
-      const picked = (within.length ? within : candidates).slice(0, 2);
-      cards = picked.map((product) => productCard(product, budget));
+      const hasWithin = sorted.some((item) => item.assessment.kind === "within");
+      const picked = sorted.slice(0, 2);
+      cards = picked.map((item) => productCard(item.product, budget, now));
       const budgetLine = picked
-        .map((product) => {
-          if (!product.price.min) return `${product.shortName}（${product.price.label}）`;
-          if (product.price.min <= budget) return `${product.shortName}（${product.price.label}）`;
-          const over = `比预算高约 ¥${(product.price.min - budget).toLocaleString("zh-CN")}`;
-          return product.price.status === "active"
-            ? `${product.shortName}（${product.price.label}，${over}）`
-            : `${product.shortName}（${product.price.label}，${over}，只能参考）`;
+        .map(({ product, assessment }) => {
+          if (assessment.kind === "within") return `${product.shortName}（${assessment.label}）`;
+          if (assessment.kind === "over") {
+            const over = `比预算高约 ¥${assessment.overBy.toLocaleString("zh-CN")}`;
+            return `${product.shortName}（${assessment.label}，${over}）`;
+          }
+          if (assessment.kind === "unknown" && assessment.reference) {
+            return `${product.shortName}（参考价 ¥${assessment.reference.toLocaleString("zh-CN")}，需确认）`;
+          }
+          return `${product.shortName}（价格待确认）`;
         })
         .join("；");
       const osNote = slots.os === "windows" ? "只看 Windows 机型。" : slots.os === "harmony" ? "只看鸿蒙机型。" : "";
-      const intro = within.length
-        ? `${budget.toLocaleString("zh-CN")} 元，${slots.scenario}，${osNote}先看${budgetLine}。`
-        : `这个价位没有正合适的现售机型，${osNote}先看${budgetLine}。`;
+      const screenNote = slots.screenMax ? `${slots.screenMax} 英寸以内，` : "";
+      const intro = hasWithin
+        ? `${budget.toLocaleString("zh-CN")} 元，${screenNote}${slots.scenario}，${osNote}先看${budgetLine}。`
+        : `这个预算内没有能确认价格的合适机型，${screenNote}${osNote}先看${budgetLine}；带参考价的要到店确认。`;
       reply = `${intro}\n\n你更在意屏幕，还是背着轻？`;
       options = ["屏幕和性能优先", "轻一点、好带出门", "接口够用就行", "价格再压一点"];
     }

@@ -50,3 +50,35 @@ test("a later number in the same sentence overrides the earlier budget", () => {
   const result = localAsk({ messages: [{ role: "user", content: "预算 4500 改 9000，剪视频" }] });
   assert.equal(result.slots.budget, 9000);
 });
+
+const NOW = new Date("2026-10-22T12:00:00.000Z");
+
+test("negated purposes do not become a segment", () => {
+  const result = localAsk({ messages: [{ role: "user", content: "不剪视频不玩游戏" }], now: NOW });
+  assert.equal(result.slots.segment, null);
+  assert.equal(result.slots.scenario, null);
+});
+
+test("budget recommendations skip conflict prices and do not treat reference prices as current", () => {
+  const result = localAsk({ messages: [{ role: "user", content: "预算 6000，通勤" }], now: NOW });
+  assert.ok(result.cards.length > 0);
+  assert.ok(!result.cards.some((card) => card.id === "matebook-14-harmony"));
+  assert.ok(!/5,899|6,599/.test(result.reply));
+  for (const card of result.cards) {
+    assert.notEqual(card.priceKind, "conflict");
+    assert.equal(card.overBy, 0);
+  }
+  assert.ok(result.cards.some((card) => card.id === "matebook-d-14" || card.id === "matebook-d-16"));
+});
+
+test("screen size cap filters larger models", () => {
+  const result = localAsk({ messages: [{ role: "user", content: "14 英寸以内，预算 6000，办公" }], now: NOW });
+  assert.equal(result.slots.screenMax, 14);
+  assert.ok(result.cards.length > 0);
+  for (const card of result.cards) assert.ok(card.screenSize !== null && card.screenSize <= 14);
+});
+
+test("prices older than seven days are not treated as current for budget matching", () => {
+  const result = localAsk({ messages: [{ role: "user", content: "预算 9000，办公" }], now: new Date("2026-11-01T12:00:00.000Z") });
+  assert.ok(!result.cards.some((card) => card.priceKind === "within"));
+});

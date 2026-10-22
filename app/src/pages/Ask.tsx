@@ -233,7 +233,12 @@ export default function Ask() {
                           {message.cards.map((card) => (
                             <div key={card.id} className="border border-[var(--line)] bg-[var(--surface)] p-3">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-[12px] font-medium">{card.model}</p>
+                                <div>
+                                  <p className="text-[12px] font-medium">{card.model}</p>
+                                  <p className="mt-0.5 text-[10px] text-[var(--muted-2)]">
+                                    {card.family}{card.screenSize ? ` · ${card.screenSize} 英寸` : ""}
+                                  </p>
+                                </div>
                                 <span className={`status-pill ${card.priceStatus === "active" ? "bg-[var(--success-soft)] text-[var(--success)]" : "bg-[var(--warning-soft)] text-[var(--warning)]"}`}>
                                   {card.priceLabel}
                                 </span>

@@ -10,11 +10,14 @@ export interface AskCard {
   id: string;
   model: string;
   shortName: string;
+  family?: string;
   priceLabel: string;
   overBy?: number;
   reason: string;
   limitation: string;
   priceStatus: "active" | "conflict" | "reference" | "missing";
+  priceKind?: "within" | "over" | "unknown" | "stale" | "conflict";
+  screenSize?: number | null;
 }
 
 export interface Message {
