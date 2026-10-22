@@ -97,7 +97,7 @@ function angleEvidence(strategy, angle) {
 function angleActions(strategy, angle) {
   const [first, second, third] = strategy.actions;
   if (angle === 'avoidance') return [`先列核对清单：${third}`, `逐项检查：${first}`, `实际验证后记录结果：${second}`];
-  if (angle === 'story') return [`顾客先说明任务并准备：${first}`, `销售陪同完成：${third}`, `一起复核并记录：${second}`];
+  if (angle === 'story') return [`顾客先说明任务并准备：${first}`, `销售陪同完成：${second}`, `一起复核并记录：${third}`];
   return [`先展示实际阻碍：${first}`, `按任务演示：${second}`, `记录是否符合需要：${third}`];
 }
 

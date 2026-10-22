@@ -77,6 +77,19 @@ test('moments angles show three distinct operations after narrative prefixes are
   }
 });
 
+test('import story connects and checks recognition before opening the material directory', () => {
+  for (const platform of ['video', 'xiaohongshu']) {
+    const story = generatePlatformVariants({ ...a, platform }).find((draft) => draft.angle === 'story');
+    const texts = platform === 'video' ? [story.script, story.shotList.join('\n')] : [story.body];
+    for (const text of texts) {
+      const connection = text.indexOf('连接读卡设备与移动硬盘，检查设备识别状态');
+      const directory = text.indexOf('打开素材目录');
+      assert.ok(connection >= 0 && directory >= 0, 'both dependent actions must be visible');
+      assert.ok(connection < directory, `${platform} story must recognize devices before opening their files`);
+    }
+  }
+});
+
 test('limited evidence is disclosed rather than inventing three visible claims', () => {
   const product = { ...base.product, facts: base.product.facts.filter((fact) => fact.id.endsWith(':portable:1')) };
   const variants = generatePlatformVariants({ ...c, product, platform: 'moments' });
