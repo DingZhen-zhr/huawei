@@ -247,7 +247,19 @@ export function generatePlatformVariants({ product, platform, realDetail, audien
     : ["pain"];
   return angles.map((angle) => {
     let v;
-    if (platform === "xiaohongshu") v = xhsVariant(product, realDetail, angle, audience, scene, target);
+    if (!HIGHLIGHTS[product.id]) {
+      // A model without a curated template only quotes its own ledger facts.
+      const evidence = product.facts.filter((fact) => fact.field !== "price" && fact.status === "active").slice(0, 4);
+      const facts = evidence.map((fact) => String(fact.value));
+      const cta = ctaFor(target);
+      const context = `${audience || "顾客"}，${scene || "实际使用场景"}：${normalizeDetail(realDetail)}。`;
+      const body = platform === "poster"
+        ? [product.shortName, ...facts.slice(0, 2), cta].join("\n")
+        : [context, "同型号资料依据：", ...facts, "具体 SKU、软件兼容和价格需到店确认。", cta].join("\n\n");
+      v = { title: `${product.shortName}，按用途确认`, body, cta, tags: [], evidence, limitations: ["仅引用同型号账本事实，具体配置需确认"] };
+      if (platform === "video") v.script = body;
+    }
+    else if (platform === "xiaohongshu") v = xhsVariant(product, realDetail, angle, audience, scene, target);
     else if (platform === "moments") v = momentsVariant(product, realDetail, angle, audience, scene, target);
     else if (platform === "wechat-mp") v = wechatVariant(product, realDetail, audience, scene, target);
     else if (platform === "poster") v = posterVariant(product, realDetail, target);

@@ -11,10 +11,11 @@ export interface AskCard {
   model: string;
   shortName: string;
   priceLabel: string;
-  overBy?: number;
+  overBy?: number | null;
+  budgetFit?: "within" | "over" | "unknown";
   reason: string;
   limitation: string;
-  priceStatus: "active" | "conflict" | "missing";
+  priceStatus: "active" | "conflict" | "missing" | "stale";
 }
 
 export interface Message {

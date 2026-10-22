@@ -1,6 +1,83 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { localAsk } from "./ask.mjs";
+import { getFacts, getProduct, listProducts } from "./ledger.mjs";
+import { generatePlatformVariants } from "./generator.mjs";
+
+const ask = (...turns) => localAsk({ messages: turns.map((content) => ({ role: "user", content })), now: new Date("2026-10-22T00:00:00Z") });
+
+test("later explicit budget overrides the earlier budget and preserves the use", () => {
+  const result = ask("预算4000元，主要办公", "预算改为6000元");
+  assert.equal(result.slots.budget, 6000);
+  assert.equal(result.slots.scenario, "办公");
+});
+
+test("negated uses and operating system do not become positive requirements", () => {
+  assert.equal(ask("预算6000，不剪视频不玩游戏，只办公").slots.scenario, "办公");
+  assert.equal(ask("预算8000，不做设计但剪视频").slots.scenario, "剪视频");
+  assert.equal(ask("预算8000，办公，不需要Windows").slots.os, null);
+  assert.equal(ask("预算8000，剪视频", "现在不剪视频了").slots.scenario, null);
+  assert.equal(ask("预算8000，剪视频和设计", "不做设计了").slots.scenario, "剪视频");
+});
+
+test("a new explicit use takes precedence while budget and audience persist", () => {
+  const result = ask("大学生，预算8000，办公", "主要剪视频");
+  assert.equal(result.slots.scenario, "剪视频");
+  assert.equal(result.slots.budget, 8000);
+  assert.equal(result.slots.segment, "学生");
+});
+
+test("14 inch class includes factual 14.2 inch models but excludes 16 inch models", () => {
+  const result = ask("预算8000，办公，必须Windows，14寸左右");
+  assert.ok(result.cards.length);
+  assert.ok(result.cards.every((card) => !card.id.includes("16")));
+  assert.ok(result.cards.some((card) => card.id === "matebook-14-ultra"));
+});
+
+test("Windows and exact screen cap filter by same-model system and screen facts", () => {
+  const result = ask("预算6000，办公，必须Windows，14英寸以内");
+  assert.deepEqual(result.cards.map((card) => card.id), ["matebook-d-14"]);
+  assert.match(result.cards[0].limitation, /Windows配置/);
+});
+
+test("known within-budget products precede overruns and products without images remain eligible", () => {
+  const result = ask("预算6000，办公");
+  assert.ok(result.cards.some((card) => card.id === "matebook-d-14"));
+  assert.ok(result.cards.every((card) => card.budgetFit === "within"));
+  const low = ask("预算3000，办公，必须Windows");
+  assert.ok(low.cards.every((card) => card.budgetFit === "over" && card.overBy > 0));
+  assert.match(low.reply, /备选/);
+});
+
+test("conflict, missing and stale prices have unknown budget fit", async () => {
+  const { budgetAssessment } = await import("./ask.mjs");
+  const now = new Date("2026-10-22T00:00:00Z");
+  const p = getProduct("matebook-d-14");
+  assert.equal(budgetAssessment(p, 6000, now).budgetFit, "within");
+  assert.equal(budgetAssessment(p, 6000, new Date("2026-10-25T00:00:00Z")).overBy, null);
+  for (const status of ["conflict", "missing", "stale"]) {
+    const assessment = budgetAssessment({ ...p, price: { ...p.price, status } }, 6000, now);
+    assert.equal(assessment.budgetFit, "unknown");
+    assert.equal(assessment.overBy, null);
+  }
+  assert.equal(budgetAssessment({ ...p, facts: [] }, 6000, now).budgetFit, "unknown");
+});
+
+test("every real ledger model can generate all channels without borrowing another model facts", () => {
+  for (const { id } of listProducts()) {
+    const product = getProduct(id);
+    for (const platform of ["xiaohongshu", "moments", "wechat-mp", "poster", "video"]) {
+      const variants = generatePlatformVariants({ product, platform, realDetail: "每天带到办公室", audience: "上班族", scene: "办公", target: "到店看实物" });
+      assert.ok(variants.length);
+      for (const variant of variants) {
+        assert.equal(variant.model, product.name);
+        assert.ok(variant.evidenceIds.every((evidenceId) => getFacts(id).some((fact) => fact.id === evidenceId)));
+        assert.ok(!variant.body.includes("undefined"));
+        if (id === "matebook-d-14") assert.ok(!variant.body.includes("OLED"));
+      }
+    }
+  }
+});
 
 test("quick budget ranges are parsed as a midpoint", () => {
   const cases = [
