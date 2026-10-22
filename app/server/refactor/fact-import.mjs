@@ -1,9 +1,22 @@
 import { createHash } from "node:crypto";
-import { getFacts, getProduct } from "./ledger.mjs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { commitFacts, getFacts, getProduct } from "./ledger.mjs";
 
 const SUPPORTED_FIELDS = new Set(["price", "screen", "processor", "memory", "storage", "weight", "thickness", "battery", "ports"]);
 const proposed = [];
 const digest = (value) => createHash("sha256").update(String(value)).digest("hex").slice(0, 16);
+const runtimeFile = join(dirname(fileURLToPath(import.meta.url)), "..", "data", "runtime", "fact-proposals.json");
+
+function persist() {
+  try { mkdirSync(dirname(runtimeFile), { recursive: true }); writeFileSync(runtimeFile, JSON.stringify(proposed, null, 2)); } catch { /* read-only runtimes retain in-memory state */ }
+}
+
+try {
+  const saved = JSON.parse(readFileSync(runtimeFile, "utf8"));
+  if (Array.isArray(saved)) proposed.push(...saved);
+} catch { /* first boot */ }
 
 export function createProposedFacts({ productId, model, sku, field, value, unit, source }) {
   const product = getProduct(productId);
@@ -14,6 +27,7 @@ export function createProposedFacts({ productId, model, sku, field, value, unit,
   const conflict = current.some((fact) => fact.field === field && String(fact.unit || "") === String(unit || "") && String(fact.value) !== String(value));
   const item = { id: `proposed:${digest(`${source.id}:${productId}:${field}:${value}:${sku || ""}`)}`, productId, model, sku: sku || undefined, field, value, unit: unit || "", sourceId: source.id, sourceUrl: source.url, sourceTitle: source.title || "华为官方页面", sourceContentHash: source.contentHash || digest(source.excerpt), capturedAt: source.capturedAt, excerpt: source.excerpt, trustTier: source.trustTier, status: "proposed", conflict, committed: false };
   proposed.push(item);
+  persist();
   return [item];
 }
 
@@ -28,5 +42,10 @@ export function listSources() {
 export function commitProposedFacts(ids = []) {
   const selected = proposed.filter((item) => ids.includes(item.id));
   if (selected.some((item) => item.conflict)) throw new Error("存在冲突的候选事实不能自动入账");
-  return selected.map((item) => ({ ...item, committed: true }));
+  const committed = commitFacts(selected);
+  for (const item of proposed) {
+    if (ids.includes(item.id)) Object.assign(item, { committed: true, committedAt: committed.find((fact) => fact.id === item.id)?.committedAt });
+  }
+  persist();
+  return committed;
 }

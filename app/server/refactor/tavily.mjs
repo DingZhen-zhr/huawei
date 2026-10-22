@@ -35,8 +35,12 @@ export async function searchOfficialSources(query, { apiKey = process.env.TAVILY
       if (!response.ok || !String(response.headers.get("content-type") || "").includes("application/json")) continue;
       const payload = await response.json();
       for (const item of payload.results || []) {
-        const body = String(item.raw_content || item.content || "").trim();
-        if (!isOfficialHuaweiUrl(item.url) || body.length < 20 || sources.some((source) => source.url === item.url)) continue;
+        if (!isOfficialHuaweiUrl(item.url) || sources.some((source) => source.url === item.url)) continue;
+        const page = await fetchImpl(item.url, { signal: controller.signal, headers: { accept: "text/html,text/plain" } });
+        const contentType = String(page.headers.get("content-type") || "").toLowerCase();
+        if (!page.ok || (!contentType.includes("text/html") && !contentType.includes("text/plain"))) continue;
+        const body = (await page.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/gi, " ").replace(/\s+/g, " ").trim();
+        if (body.length < 20) continue;
         sources.push({ id: `src:${digest(item.url).slice(0, 16)}`, url: item.url, title: String(item.title || "华为官方页面"), capturedAt: now().toISOString(), excerpt: body.slice(0, 1200), contentHash: digest(body), trustTier: 1, status: "proposed" });
       }
     }

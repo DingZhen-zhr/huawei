@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { existsSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { createServer } from "node:http";
+import { once } from "node:events";
+import express from "express";
 
-import { createProposedFacts } from "./fact-import.mjs";
-import { getConflict, resetFactSearchRuntime, resolveConflict } from "./ledger.mjs";
+import { commitProposedFacts, createProposedFacts } from "./fact-import.mjs";
+import { getConflict, getFacts, resetFactSearchRuntime, resolveConflict } from "./ledger.mjs";
 import { searchOfficialSources } from "./tavily.mjs";
 import { verifyContent } from "./verifier.mjs";
+import { router } from "./routes.mjs";
 
 const productId = "matebook-14-harmony";
 
@@ -42,6 +49,102 @@ test("Tavily candidates accept only official sources and never become facts", as
   assert.equal(proposed[0].status, "proposed");
   assert.equal(proposed[0].conflict, true);
   assert.equal(proposed[0].committed, false);
+});
+
+test("Tavily fetches the official result page instead of trusting search snippets", async () => {
+  let pageWasFetched = false;
+  const result = await searchOfficialSources("MateBook 14", {
+    apiKey: "test-key",
+    fetchImpl: async (url) => {
+      if (url === "https://api.tavily.com/search") {
+        return new Response(JSON.stringify({ results: [{ url: "https://consumer.huawei.com/cn/laptops/matebook-14/", title: "官方页", raw_content: "Tavily 摘要不可作为正文" }] }), { headers: { "content-type": "application/json" } });
+      }
+      pageWasFetched = true;
+      return new Response("<html><body>这是实际抓取的华为官方正文，长度足够作为候选来源。</body></html>", { headers: { "content-type": "text/html" } });
+    },
+  });
+  assert.equal(pageWasFetched, true);
+  assert.equal(result.status, "proposed");
+  assert.match(result.sources[0].excerpt, /实际抓取/);
+  assert.doesNotMatch(result.sources[0].excerpt, /Tavily 摘要/);
+});
+
+test("empty official page returns needs_evidence instead of a candidate", async () => {
+  const result = await searchOfficialSources("MateBook 14", {
+    apiKey: "test-key",
+    fetchImpl: async (url) => url === "https://api.tavily.com/search"
+      ? new Response(JSON.stringify({ results: [{ url: "https://consumer.huawei.com/cn/laptops/matebook-14/", title: "官方页", content: "不应使用" }] }), { headers: { "content-type": "application/json" } })
+      : new Response("", { headers: { "content-type": "text/html" } }),
+  });
+  assert.equal(result.status, "needs_evidence");
+  assert.equal(result.sources.length, 0);
+});
+
+test("search timeout is explicit and never exposes the API key", async () => {
+  const result = await searchOfficialSources("MateBook 14", {
+    apiKey: "super-secret-key",
+    fetchImpl: async () => { const error = new Error("aborted"); error.name = "AbortError"; throw error; },
+  });
+  assert.equal(result.status, "needs_evidence");
+  assert.match(result.reason, /超时/);
+  assert.doesNotMatch(JSON.stringify(result), /super-secret-key/);
+});
+
+test("prices older than seven days are stale", () => {
+  const result = verifyContent("¥7,999", "matebook-gt-14", { sku: "官网产品页对应版本", now: new Date("2026-10-25T00:00:00.000Z") });
+  assert.equal(result.claims[0].status, "stale");
+});
+
+test("runtime location is stable when tests start at the repository root", () => {
+  const repo = resolve(process.cwd(), "..");
+  const wrongRuntime = resolve(repo, "server/data/runtime/fact-search.json");
+  const correctRuntime = resolve(repo, "app/server/data/runtime/fact-search.json");
+  rmSync(resolve(repo, "server"), { recursive: true, force: true });
+  try {
+    const child = spawnSync(process.execPath, ["--input-type=module", "-e", "import { resetFactSearchRuntime } from './app/server/refactor/ledger.mjs'; resetFactSearchRuntime();"], { cwd: repo, encoding: "utf8" });
+    assert.equal(child.status, 0, child.stderr);
+    assert.equal(existsSync(wrongRuntime), false, "must never create repository-root server/data runtime files");
+    assert.equal(existsSync(correctRuntime), true);
+  } finally {
+    rmSync(resolve(repo, "server"), { recursive: true, force: true });
+  }
+});
+
+test("committing a clean proposal persists an active ledger fact", () => {
+  const source = { id: "src:commit", url: "https://consumer.huawei.com/cn/laptops/", capturedAt: "2026-10-22T00:00:00.000Z", excerpt: "16GB", trustTier: 1 };
+  const [proposal] = createProposedFacts({ productId: "matebook-gt-14", model: "HUAWEI MateBook GT 14", sku: "GT14-16G", field: "memory", value: "16GB", unit: "GB", source });
+  const [committed] = commitProposedFacts([proposal.id]);
+  assert.equal(committed.committed, true);
+  assert.ok(getFacts("matebook-gt-14", { includePrice: true }).some((fact) => fact.id === proposal.id && fact.status === "active"));
+});
+
+test("administrator import APIs reject anonymous use and persist a committed proposal", async () => {
+  const app = express();
+  app.use(express.json());
+  app.use(router);
+  const server = createServer(app);
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  try {
+    assert.equal((await fetch(`${origin}/admin/sources`)).status, 401);
+    const login = await fetch(`${origin}/admin/demo`, { method: "POST" });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.getSetCookie()[0].split(";")[0];
+    const preview = await fetch(`${origin}/admin/import/preview`, {
+      method: "POST", headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ productId: "matebook-gt-14", model: "HUAWEI MateBook GT 14", sku: "API-16G", field: "ports", value: "USB-C", unit: "", source: { id: "src:api-test", url: "https://consumer.huawei.com/cn/laptops/", capturedAt: "2026-10-22T00:00:00.000Z", excerpt: "USB-C 接口", trustTier: 1 } }),
+    });
+    assert.equal(preview.status, 201);
+    const proposed = (await preview.json()).facts[0];
+    const committed = await fetch(`${origin}/admin/import/commit`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ ids: [proposed.id] }) });
+    assert.equal(committed.status, 200);
+    assert.equal((await committed.json()).facts[0].status, "active");
+    const invalidResolve = await fetch(`${origin}/admin/conflicts/conflict:matebook-14-harmony:price/resolve`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({}) });
+    assert.equal(invalidResolve.status, 400);
+  } finally {
+    server.close();
+  }
 });
 
 test("only confirmed SKU is unfrozen and creates audit history", () => {

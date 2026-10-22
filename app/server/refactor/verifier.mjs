@@ -4,10 +4,10 @@ import { getSpec } from "../mcp/core.mjs";
 
 const DAY = 24 * 60 * 60 * 1000;
 
-function daysSince(dateLike) {
+function daysSince(dateLike, now = Date.now()) {
   const t = new Date(dateLike || 0).getTime();
   if (!Number.isFinite(t) || !t) return Infinity;
-  return (Date.now() - t) / DAY;
+  return (new Date(now).getTime() - t) / DAY;
 }
 
 function normalizePrice(raw) {
@@ -61,7 +61,7 @@ function platformBanned(text, platform) {
  * @param {string} productId
  * @param {{ platform?: string }} options
  */
-export function verifyContent(text, productId, { platform, sku } = {}) {
+export function verifyContent(text, productId, { platform, sku, now } = {}) {
   const t = String(text || "");
   const facts = specClaims(getFacts(productId, { includePrice: true }));
   const priceFacts = getPriceFacts(productId);
@@ -74,7 +74,7 @@ export function verifyContent(text, productId, { platform, sku } = {}) {
     const resolution = getPriceResolution(productId, sku, value);
     const blockedByConflict = Boolean(conflict && isPriceFrozen(productId, sku, value));
     const exact = priceFacts.find((f) => Number(f.value) === value);
-    const stale = exact ? daysSince(exact.capturedAt) > 7 : false;
+    const stale = exact ? daysSince(exact.capturedAt, now) > 7 : false;
     const status = blockedByConflict ? "blocked" : resolution ? "supported" : exact ? (stale ? "stale" : "supported") : "blocked";
     claims.push({
       type: "price",

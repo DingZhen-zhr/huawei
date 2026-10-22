@@ -148,7 +148,7 @@ router.post("/admin/conflicts/:id/resolve", requireAdmin, (req, res) => {
     const conflict = resolveConflict(req.params.id, req.body || {});
     res.json({ conflict, audit: conflict.audit });
   } catch (error) {
-    fail(res, error);
+    res.status(400).json({ error: error?.message || "价格确认请求不合法", code: "CONFLICT_RESOLUTION_INVALID" });
   }
 });
 

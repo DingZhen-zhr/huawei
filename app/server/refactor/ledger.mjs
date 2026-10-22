@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadKB } from "../agent/kb-index.mjs";
 
 const hash = (s) => createHash("sha1").update(String(s)).digest("hex").slice(0, 12);
@@ -219,12 +220,13 @@ const products = PRODUCT_DEFS.map((def) => {
 const byId = new Map(products.map((p) => [p.id, p]));
 const byName = new Map(products.map((p) => [p.name, p]));
 const resolutions = new Map();
-const runtimeFile = join(process.cwd(), "server", "data", "runtime", "fact-search.json");
+const importedFacts = new Map();
+const runtimeFile = join(dirname(fileURLToPath(import.meta.url)), "..", "data", "runtime", "fact-search.json");
 
 function saveRuntime() {
   try {
     mkdirSync(dirname(runtimeFile), { recursive: true });
-    writeFileSync(runtimeFile, JSON.stringify({ resolutions: [...resolutions.entries()] }, null, 2));
+    writeFileSync(runtimeFile, JSON.stringify({ resolutions: [...resolutions.entries()], importedFacts: [...importedFacts.entries()] }, null, 2));
   } catch {
     // Read-only/serverless runtimes retain the in-memory safety state for this request.
   }
@@ -234,6 +236,7 @@ function loadRuntime() {
   try {
     const saved = JSON.parse(readFileSync(runtimeFile, "utf8"));
     for (const [id, records] of saved.resolutions || []) resolutions.set(id, records);
+    for (const [id, records] of saved.importedFacts || []) importedFacts.set(id, records);
   } catch {
     // No local runtime state is normal on first boot.
   }
@@ -272,7 +275,22 @@ export function resolveConflict(conflictId, input) {
 
 export function resetFactSearchRuntime() {
   resolutions.clear();
+  importedFacts.clear();
   saveRuntime();
+}
+
+export function commitFacts(candidates) {
+  const committed = [];
+  for (const candidate of candidates) {
+    const product = getProduct(candidate.productId);
+    if (!product) throw new Error("候选事实对应的产品不存在");
+    const facts = importedFacts.get(product.id) || [];
+    const fact = { ...candidate, status: "active", committed: true, committedAt: new Date().toISOString() };
+    importedFacts.set(product.id, [...facts.filter((item) => item.id !== fact.id), fact]);
+    committed.push(fact);
+  }
+  saveRuntime();
+  return committed;
 }
 
 export function getPriceResolution(productId, sku, value) {
@@ -319,11 +337,11 @@ export function publicProduct(p) {
 export function getFacts(productId, { includePrice = false } = {}) {
   const product = getProduct(productId);
   if (!product) return [];
-  return product.facts.filter((f) => includePrice || f.field !== "price");
+  return [...product.facts, ...(importedFacts.get(product.id) || [])].filter((f) => includePrice || f.field !== "price");
 }
 
 export function getPriceFacts(productId) {
-  return getProduct(productId)?.facts.filter((f) => f.field === "price") || [];
+  return getFacts(productId, { includePrice: true }).filter((f) => f.field === "price");
 }
 
 export function getConflict(productId) {
@@ -342,14 +360,14 @@ export function getEvidence(productId, ids = []) {
   const product = getProduct(productId);
   if (!product) return [];
   const wanted = new Set(ids);
-  return product.facts.filter((f) => !ids.length || wanted.has(f.id));
+  return getFacts(product.id, { includePrice: true }).filter((f) => !ids.length || wanted.has(f.id));
 }
 
 export function evidenceForVariant(productId, { fields = [], limit = 8, includePrice = false } = {}) {
   const product = getProduct(productId);
   if (!product) return [];
   const wantedFields = new Set(fields);
-  const selected = product.facts.filter((f) => {
+  const selected = getFacts(product.id, { includePrice: true }).filter((f) => {
     if (!includePrice && f.field === "price") return false;
     return !wantedFields.size || wantedFields.has(f.field);
   });
@@ -362,7 +380,7 @@ export function evidenceForVariant(productId, { fields = [], limit = 8, includeP
 export function productContext(productId) {
   const p = getProduct(productId);
   if (!p) return null;
-  const facts = p.facts.filter((f) => f.field !== "price");
+  const facts = getFacts(p.id).filter((f) => f.field !== "price");
   return {
     product: publicProduct(p),
     facts: facts.slice(0, 12),
