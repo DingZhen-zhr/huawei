@@ -7,7 +7,7 @@ import path from 'node:path';
 import { once } from 'node:events';
 import { unzipSync, strFromU8 } from 'fflate';
 
-test('authenticated HTTP delivery returns PNG and selected ZIP, refusing blocked/stale/unknown', async () => {
+test('authenticated HTTP delivery returns PNG and selected ZIP, refusing blocked/stale/unknown', async (t) => {
   const dir = await mkdtemp(path.join(tmpdir(), 'hc-http-media-'));
   process.env.HC_RUNTIME_DIR = dir;
   const { router } = await import('./routes.mjs');
@@ -60,6 +60,26 @@ test('authenticated HTTP delivery returns PNG and selected ZIP, refusing blocked
     assert.equal(JSON.parse(strFromU8(files['manifest.json'])).selections.moments, variant.id);
     assert.equal((await req('/content/tasks/unknown/assets')).status, 404);
     assert.equal((await req(`/content/tasks/${taskId}/assets/not-a-file/download`)).status, 404);
+    for (const platform of ['moments', 'video']) await t.test(`${platform} unsafe image title is blocked at generation/download/export`, async () => {
+      const target = snapshot.variants.find(v => v.platform === platform);
+      const safeTitle = target.title;
+      const generated = await req(`/content/tasks/${taskId}/assets`, 'POST', { variantId: target.id });
+      const safeAssets = (await generated.json()).assets;
+      assert.equal(safeAssets[0].status, 'ready');
+      if (platform === 'moments') assets[0] = safeAssets[0];
+      try {
+        await req(`/content/tasks/${taskId}/variants/${target.id}`, 'PATCH', { title: '限时优惠直降999元，现货当天发货' });
+        const denied = [
+          await req(`/content/tasks/${taskId}/assets`, 'POST', { variantId: target.id }),
+          await req(`/content/tasks/${taskId}/assets/${safeAssets[0].id}/download`),
+          await req(`/content/tasks/${taskId}/export`, 'POST', { selections: { [platform]: target.id } }),
+        ];
+        for (const response of denied) {
+          assert.equal(response.status, 409, `${platform}: all media outlets must verify rendered title`);
+          assert.equal((await response.json()).code, 'CONTENT_BLOCKED', `${platform}: blocked by content gate, not just stale status`);
+        }
+      } finally { await req(`/content/tasks/${taskId}/variants/${target.id}`, 'PATCH', { title: safeTitle }); }
+    });
     await req(`/content/tasks/${taskId}/variants/${variant.id}`, 'PATCH', { body: '限时优惠直降999元，现货当天发货' });
     assert.equal((await req(`/content/tasks/${taskId}/assets/${assets[0].id}/download`)).status, 409);
     assert.equal((await req(`/content/tasks/${taskId}/export`, 'POST', { selections: { moments: variant.id } })).status, 409);

@@ -42,6 +42,20 @@ test('persistent official media, stale copies, unavailable products and true sel
     assert.equal(manifest.selections.moments, selection.moments);
     assert.equal(strFromU8(zipped['copy/moments.txt']), task.variants.find(v => v.id === selection.moments).body);
     assert.ok(manifest.missingImages.length > 0);
+    for (const field of ['title', 'body', 'script', 'summary', 'cta', 'limitations', 'tags', 'shotList', 'overlayText']) {
+      const unsafe = structuredClone(variant);
+      const claim = '限时优惠直降999元，现货当天发货';
+      if (field === 'overlayText') unsafe.imagePlan[0].overlayText = [claim];
+      else unsafe[field] = ['limitations', 'tags', 'shotList'].includes(field) ? [claim] : claim;
+      const unsafeTask = { ...task, variants: [unsafe] };
+      await assert.rejects(repo.generate(unsafeTask, store, unsafe.id), e => e.status === 409, `verify media field: ${field}`);
+    }
+    const beforeFont = process.env.HC_CJK_FONT_PATH;
+    process.env.HC_CJK_FONT_PATH = 'package.json';
+    try {
+      const failed = await repo.generate(task, store, task.variants.find(v => v.id !== variant.id).id);
+      assert.ok(failed.every(a => a.status === 'failed' && a.error.includes('配置中文字体')));
+    } finally { if (beforeFont === undefined) delete process.env.HC_CJK_FONT_PATH; else process.env.HC_CJK_FONT_PATH = beforeFont; }
     variant.body = '限时优惠直降999元，现货当天发货';
     await assert.rejects(repo.generate(task, store, variant.id), e => e.status === 409);
     await assert.rejects(repo.download(task, store, rows[0].id), e => e.status === 409);

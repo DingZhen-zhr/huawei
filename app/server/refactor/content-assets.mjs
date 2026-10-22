@@ -9,7 +9,7 @@ import { composeImage } from './image-compose.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const mediaDir = path.resolve(here, '../../public/media');
-export const MEDIA_RULE_VERSION = 'official-layout-v1';
+export const MEDIA_RULE_VERSION = 'official-layout-v2';
 const ALLOWED = new Map([
   ['matebook-14-harmony', '/media/matebook-14-harmony.png'],
   ['matebook-gt-14', '/media/matebook-gt-14.png'],
@@ -25,9 +25,23 @@ export function authorizeMedia(task, store) {
   if (!task.expiresAt || Date.parse(task.expiresAt) <= Date.now() || !Number.isFinite(Date.parse(task.expiresAt))) throw error(410, '任务已过期');
 }
 
+// One payload drives rendering and all media gates, including fields that a channel's
+// plain-copy serializer intentionally omits (notably moments/video titles).
+function mediaPayload(task, variant) {
+  const product = getProduct(task.productId);
+  if (!product) throw error(404, '型号不存在');
+  const title = variant.title || product.shortName;
+  const subtitle = `${product.shortName} · 官方产品图`;
+  const text = [copyTextFor(variant), title, subtitle, variant.body, variant.script,
+    variant.summary, variant.cta, ...(variant.tags || []), ...(variant.shotList || []),
+    ...(variant.limitations || []), ...(variant.imagePlan || []).flatMap(plan => plan.overlayText || []),
+  ].filter(Boolean).join('\n\n');
+  return { title, subtitle, text };
+}
+
 export function verifyVariant(task, variant) {
   if (!variant) throw error(404, '版本不存在');
-  const verification = verifyContent(copyTextFor(variant), task.productId, { platform: variant.platform });
+  const verification = verifyContent(mediaPayload(task, variant).text, task.productId, { platform: variant.platform });
   if (verification.blocked) throw error(409, '当前文案核验未通过，请修正后重试', 'CONTENT_BLOCKED');
   return verification;
 }
@@ -88,8 +102,8 @@ export function createAssetRepository({ runtimeDir = process.env.HC_RUNTIME_DIR 
       const row = { id: randomUUID(), taskId: task.id, storeId: store.id, variantId, platform: variant.platform, index, purpose: plan.purpose, width: plan.width, height: plan.height, fingerprint: state.fingerprint, mode: 'official-layout', ruleVersion: MEDIA_RULE_VERSION, source: state.product.asset, productId: state.product.id, factDate: state.product.snapshotDate, createdAt: new Date().toISOString(), status: 'unavailable' };
       if (state.source) {
         try {
-          // Title is the exact freshly verified draft title. Supplemental text is factual provenance.
-          const png = await composeImage({ source: state.source, width: plan.width, height: plan.height, title: variant.title || state.product.shortName, subtitle: `${state.product.shortName} · 官方产品图` });
+          const payload = mediaPayload(task, variant);
+          const png = await composeImage({ source: state.source, width: plan.width, height: plan.height, title: payload.title, subtitle: payload.subtitle });
           // Recheck after async rendering: an edit during generation never publishes an obsolete PNG as ready.
           verifyVariant(task, variant);
           if (state.fingerprint !== current(task, store, variant).fingerprint) throw error(409, '文案已变化，请重新生成');

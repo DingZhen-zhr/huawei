@@ -20,6 +20,22 @@ test('official layout makes real PNG and contains all four fixture edges', async
   await assert.rejects(module.composeImage({ source: fixture, width: 900, height: 383, title: '长'.repeat(300), subtitle: '' }), /溢出/);
 });
 
+test('existing nonfont, wrong family, and non-CJK font cannot silently fall back', async (t) => {
+  const { composeImage } = await import('./image-compose.mjs');
+  const beforePath = process.env.HC_CJK_FONT_PATH, beforeFamily = process.env.HC_CJK_FONT_FAMILY;
+  const fixture = await sharp({ create: { width: 20, height: 20, channels: 4, background: '#fff' } }).png().toBuffer();
+  try {
+    for (const [fontPath, family] of [['package.json', 'NotARealFont'], ['C:/Windows/Fonts/msyh.ttc', 'NotARealFont'], ['C:/Windows/Fonts/arial.ttf', 'Arial']]) await t.test(`${fontPath} / ${family}`, async () => {
+      process.env.HC_CJK_FONT_PATH = fontPath;
+      process.env.HC_CJK_FONT_FAMILY = family;
+      await assert.rejects(composeImage({ source: fixture, width: 900, height: 383, title: '中文体验产品图', subtitle: '真实产品' }), /配置中文字体/);
+    });
+  } finally {
+    if (beforePath === undefined) delete process.env.HC_CJK_FONT_PATH; else process.env.HC_CJK_FONT_PATH = beforePath;
+    if (beforeFamily === undefined) delete process.env.HC_CJK_FONT_FAMILY; else process.env.HC_CJK_FONT_FAMILY = beforeFamily;
+  }
+});
+
 test('missing configured CJK font fails clearly instead of delivering tofu glyphs', async () => {
   const { composeImage } = await import('./image-compose.mjs');
   const before = process.env.HC_CJK_FONT_PATH;
@@ -28,4 +44,21 @@ test('missing configured CJK font fails clearly instead of delivering tofu glyph
     const fixture = await sharp({ create: { width: 20, height: 20, channels: 4, background: '#fff' } }).png().toBuffer();
     await assert.rejects(composeImage({ source: fixture, width: 900, height: 383, title: '中文', subtitle: '产品' }), /配置中文字体/);
   } finally { if (before === undefined) delete process.env.HC_CJK_FONT_PATH; else process.env.HC_CJK_FONT_PATH = before; }
+});
+
+test('explicit valid CJK font path and family render real Chinese PNG', async () => {
+  const { composeImage } = await import('./image-compose.mjs');
+  const beforePath = process.env.HC_CJK_FONT_PATH, beforeFamily = process.env.HC_CJK_FONT_FAMILY;
+  process.env.HC_CJK_FONT_PATH = 'C:/Windows/Fonts/msyh.ttc';
+  process.env.HC_CJK_FONT_FAMILY = 'Microsoft YaHei';
+  try {
+    const source = await sharp({ create: { width: 20, height: 20, channels: 4, background: '#fff' } }).png().toBuffer();
+    const png = await composeImage({ source, width: 900, height: 383, title: '中文体验产品图', subtitle: '官方产品' });
+    assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    const metadata = await sharp(png).metadata();
+    assert.deepEqual([metadata.width, metadata.height], [900, 383]);
+  } finally {
+    if (beforePath === undefined) delete process.env.HC_CJK_FONT_PATH; else process.env.HC_CJK_FONT_PATH = beforePath;
+    if (beforeFamily === undefined) delete process.env.HC_CJK_FONT_FAMILY; else process.env.HC_CJK_FONT_FAMILY = beforeFamily;
+  }
 });

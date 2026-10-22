@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import { existsSync } from 'node:fs';
+import { openSync as openFont } from 'fontkit';
 
 const xml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[char]);
 
@@ -30,7 +31,21 @@ export async function composeImage({ source, width, height, title, subtitle }) {
     '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
   ].find(filename => existsSync(filename));
   if (!fontfile || !existsSync(fontfile)) throw Object.assign(new Error('图片排版暂不可用，请联系管理员配置中文字体'), { status: 503, code: 'CJK_FONT_UNAVAILABLE' });
-  const family = process.env.HC_CJK_FONT_FAMILY || (/msyh/i.test(fontfile) ? 'Microsoft YaHei' : /wqy/i.test(fontfile) ? 'WenQuanYi Zen Hei' : 'Noto Sans CJK SC');
+  let family = process.env.HC_CJK_FONT_FAMILY || (/msyh/i.test(fontfile) ? 'Microsoft YaHei' : /wqy/i.test(fontfile) ? 'WenQuanYi Zen Hei' : 'Noto Sans CJK SC');
+  try {
+    // Pango can silently replace invalid font files/families. Parse the actual file
+    // and require its selected face to provide Chinese glyphs before rendering.
+    const loaded = openFont(fontfile);
+    const faces = loaded.fonts || [loaded];
+    const normalize = value => String(value).toLowerCase().replace(/[\s-]/g, '');
+    const face = faces.find(item => [item.familyName, item.fullName, item.postscriptName].some(name => normalize(name) === normalize(family)));
+    const chinese = [...new Set([...`中文体验产品图${title}${subtitle}`].filter(char => /\p{Script=Han}/u.test(char)))];
+    if (!face || chinese.some(char => !face.hasGlyphForCodePoint(char.codePointAt(0)))) throw new Error('Font face or Chinese glyphs unavailable');
+    // Feed Pango the real family rather than an accepted PostScript/full-name alias.
+    family = face.familyName;
+  } catch {
+    throw Object.assign(new Error('图片排版暂不可用，请联系管理员配置中文字体'), { status: 503, code: 'CJK_FONT_UNAVAILABLE' });
+  }
   const top = Math.round(height * 0.34), left = Math.round(width * 0.06);
   const product = await sharp(source).resize(width - 2 * left, Math.round(height * 0.56), { fit: 'contain', background: '#f3f5f7' }).png().toBuffer();
   const overlays = [{ input: product, top, left }];
