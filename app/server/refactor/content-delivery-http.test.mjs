@@ -86,5 +86,37 @@ test('authenticated HTTP delivery returns PNG and selected ZIP, refusing blocked
     await req(`/content/tasks/${taskId}/variants/${variant.id}`, 'PATCH', { body: '限时优惠直降999元，现货当天发货' });
     assert.equal((await req(`/content/tasks/${taskId}/assets/${assets[0].id}/download`)).status, 409);
     assert.equal((await req(`/content/tasks/${taskId}/export`, 'POST', { selections: { moments: variant.id } })).status, 409);
+    await t.test('real D14 drafts return unavailable images and a truthful text-only ZIP', async () => {
+      const created = await (await req('/content/tasks', 'POST', { productId: 'matebook-d-14', audience: '通勤', scene: '通勤', target: '到店体验', realDetail: { text: '到店试着放进自己的包里', confirmed: true, source: 'sales_provided' } })).json();
+      assert.ok(created.taskId);
+      let current;
+      for (let count = 0; count < 30; count++) {
+        current = await (await req(`/content/tasks/${created.taskId}`)).json();
+        if (current.task.status === 'done') break;
+        await new Promise(resolve => setTimeout(resolve, 80));
+      }
+      assert.equal(current.task.status, 'done');
+      assert.equal(current.task.productAsset, null);
+      for (const platform of ['xiaohongshu', 'moments', 'wechat-mp', 'poster', 'video']) {
+        const draft = current.variants.find(v => v.platform === platform);
+        const generated = await req(`/content/tasks/${created.taskId}/assets`, 'POST', { variantId: draft.id });
+        assert.equal(generated.status, 200, await generated.clone().text());
+        const rows = (await generated.json()).assets;
+        assert.equal(rows.length, draft.imagePlan.length);
+        assert.ok(rows.every(row => row.status === 'unavailable' && row.source === null && row.downloadUrl === null));
+        const download = await req(`/content/tasks/${created.taskId}/assets/${rows[0].id}/download`);
+        assert.equal(download.status, 409);
+      }
+      const archive = await req(`/content/tasks/${created.taskId}/export`, 'POST', {});
+      assert.equal(archive.status, 200, await archive.clone().text());
+      assert.match(archive.headers.get('content-type'), /application\/zip/);
+      const files = unzipSync(new Uint8Array(await archive.arrayBuffer()));
+      const manifest = JSON.parse(strFromU8(files['manifest.json']));
+      assert.equal(manifest.productId, 'matebook-d-14');
+      assert.equal(manifest.missingImages.length, 7);
+      assert.deepEqual(manifest.images, []);
+      assert.equal(Object.keys(files).filter(name => name.startsWith('copy/')).length, 5);
+      assert.ok(!Object.keys(files).some(name => name.startsWith('images/')));
+    });
   } finally { await new Promise(resolve => server.close(resolve)); await rm(dir, { recursive: true, force: true }); }
 });

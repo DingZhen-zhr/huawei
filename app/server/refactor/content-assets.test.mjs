@@ -62,7 +62,27 @@ test('persistent official media, stale copies, unavailable products and true sel
     await assert.rejects(exp.exportContent({ task, store, repository: repo }), e => e.status === 409);
     task.expiresAt = '2000-01-01';
     assert.throws(() => repo.list(task, store), e => e.status === 410);
-    const missing = { ...task, id: 'missing', productId: 'matebook-d-14', expiresAt: new Date(Date.now() + 86400000).toISOString(), variants: [{ ...variant, id: 'missing-v', title: '到店体验', body: '到店试一试', script: '', tags: [] }] };
-    assert.ok((await repo.generate(missing, store, 'missing-v')).every(a => a.status === 'unavailable'));
+    const missingProduct = getProduct('matebook-d-14');
+    assert.equal(missingProduct.asset, null);
+    // A no-material task must contain that model's real generated draft, including
+    // its current image-plan evidence. Relabeling a Pro S draft is cross-model data.
+    const missing = { ...task, id: 'missing', productId: missingProduct.id, expiresAt: new Date(Date.now() + 86400000).toISOString(), variants: mod.PLATFORMS.flatMap(platform => generatePlatformVariants({ product: missingProduct, platform, realDetail: '到店试着放进自己的包里', audience: '通勤', scene: '通勤', target: '到店体验' }).map((v, index) => ({ ...v, id: `missing-${platform}-${index}` }))) };
+    for (const draft of missing.variants) {
+      const unavailable = await repo.generate(missing, store, draft.id);
+      assert.equal(unavailable.length, draft.imagePlan.length);
+      assert.ok(unavailable.every(a => a.status === 'unavailable' && a.source === null));
+      await assert.rejects(repo.download(missing, store, unavailable[0].id), error => error.status === 409);
+    }
+    const missingZip = unzipSync(await exp.exportContent({ task: missing, store, repository: repo }));
+    const missingManifest = JSON.parse(strFromU8(missingZip['manifest.json']));
+    assert.equal(missingManifest.productId, missingProduct.id);
+    assert.equal(missingManifest.images.length, 0);
+    assert.equal(missingManifest.missingImages.length, 7);
+    assert.equal(Object.keys(missingZip).filter(name => name.startsWith('copy/')).length, 5);
+    assert.ok(!Object.keys(missingZip).some(name => name.startsWith('images/')));
+    // Keep the original contamination as a negative gate regression: clearing a
+    // cloned draft's visible body must not authorize another model's overlay facts.
+    const contaminated = { ...variant, id: 'cross-model-overlay', title: '到店体验', body: '到店试一试', script: '', tags: [] };
+    await assert.rejects(repo.generate({ ...missing, variants: [contaminated] }, store, contaminated.id), error => error.code === 'CONTENT_BLOCKED');
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
