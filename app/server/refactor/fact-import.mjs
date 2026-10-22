@@ -3,20 +3,52 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { commitFacts, getFacts, getProduct } from "./ledger.mjs";
+import { dbEnabled, dbLoadState, dbSaveState } from "./db.mjs";
 
 const SUPPORTED_FIELDS = new Set(["price", "screen", "processor", "memory", "storage", "weight", "thickness", "battery", "ports"]);
 const proposed = [];
 const digest = (value) => createHash("sha256").update(String(value)).digest("hex").slice(0, 16);
 const runtimeFile = join(dirname(fileURLToPath(import.meta.url)), "..", "data", "runtime", "fact-proposals.json");
 
+let proposalsLoaded = false;
+let proposalsSave = Promise.resolve();
+
 function persist() {
+  if (dbEnabled()) {
+    proposalsSave = dbSaveState("fact-proposals", proposed).catch((error) => {
+      console.error("[fact-import] 保存到 Supabase 失败：", error.message);
+    });
+    return;
+  }
   try { mkdirSync(dirname(runtimeFile), { recursive: true }); writeFileSync(runtimeFile, JSON.stringify(proposed, null, 2)); } catch { /* read-only runtimes retain in-memory state */ }
 }
 
-try {
-  const saved = JSON.parse(readFileSync(runtimeFile, "utf8"));
-  if (Array.isArray(saved)) proposed.push(...saved);
-} catch { /* first boot */ }
+export async function ensureProposals() {
+  if (proposalsLoaded) return;
+  if (dbEnabled()) {
+    const saved = await dbLoadState("fact-proposals");
+    if (Array.isArray(saved)) proposed.push(...saved);
+    proposalsLoaded = true;
+    return;
+  }
+  try {
+    const saved = JSON.parse(readFileSync(runtimeFile, "utf8"));
+    if (Array.isArray(saved)) proposed.push(...saved);
+  } catch { /* first boot */ }
+  proposalsLoaded = true;
+}
+
+export async function flushProposals() {
+  await proposalsSave;
+}
+
+if (!dbEnabled()) {
+  try {
+    const saved = JSON.parse(readFileSync(runtimeFile, "utf8"));
+    if (Array.isArray(saved)) proposed.push(...saved);
+    proposalsLoaded = true;
+  } catch { /* first boot */ }
+}
 
 export function createProposedFacts({ productId, model, sku, field, value, unit, source }) {
   const product = getProduct(productId);

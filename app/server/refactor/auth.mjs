@@ -78,10 +78,11 @@ export function clearSessions(res) {
   res.clearCookie(ADMIN_COOKIE, { path: "/" });
 }
 
-export function getStoreFromRequest(req) {
+export async function getStoreFromRequest(req) {
   const payload = verifyToken(cookies(req)[STORE_COOKIE]);
   if (!payload || payload.scope !== "store") return null;
-  return getStoreById(payload.sub);
+  const store = await getStoreById(payload.sub);
+  return store && store.status === "active" ? store : null;
 }
 
 export function isAdminRequest(req) {
@@ -96,11 +97,15 @@ export function verifyAdminPasscode(passcode) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export function requireStore(req, res, next) {
-  const store = getStoreFromRequest(req);
-  if (!store) return res.status(401).json({ error: "请先输入门店码和 PIN", code: "STORE_AUTH_REQUIRED" });
-  req.store = store;
-  next();
+export async function requireStore(req, res, next) {
+  try {
+    const store = await getStoreFromRequest(req);
+    if (!store) return res.status(401).json({ error: "请先输入门店码和 PIN", code: "STORE_AUTH_REQUIRED" });
+    req.store = store;
+    next();
+  } catch (error) {
+    next(error);
+  }
 }
 
 export function requireAdmin(req, res, next) {

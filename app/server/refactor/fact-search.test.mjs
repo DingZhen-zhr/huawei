@@ -96,9 +96,15 @@ test("search timeout is explicit and never exposes the API key", async () => {
   assert.doesNotMatch(JSON.stringify(result), /super-secret-key/);
 });
 
-test("prices older than seven days are stale", () => {
-  const result = verifyContent("¥7,999", "matebook-gt-14", { sku: "官网产品页对应版本", now: new Date("2026-10-25T00:00:00.000Z") });
+test("prices older than seven days are stale for products with a current mall price", () => {
+  const result = verifyContent("¥7,999", "matebook-pro-s", { now: new Date("2026-10-25T00:00:00.000Z") });
   assert.equal(result.claims[0].status, "stale");
+});
+
+test("reference-only prices are blocked instead of treated as current price", () => {
+  const result = verifyContent("¥7,999", "matebook-gt-14");
+  assert.equal(result.status, "blocked");
+  assert.match(result.claims[0]?.reason || "", /参考起价|不是当前售价/);
 });
 
 test("runtime location is stable when tests start at the repository root", () => {

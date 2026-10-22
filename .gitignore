@@ -12,3 +12,12 @@ tmp/
 
 # Local Netlify folder
 .netlify
+
+# 参赛私有资料 / 知识库（不入库）
+华为PC全板块深度知识库_v7/
+*.pdf
+*.docx
+.agents/
+/supabase/
+/app/supabase/.temp/
+/app/supabase/config.toml

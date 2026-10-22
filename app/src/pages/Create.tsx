@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { api, ApiError, type TaskCard } from "@/lib/api";
+import { api, ApiError, type Product, type TaskCard } from "@/lib/api";
 import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 
 type Step = 0 | 1 | 2;
@@ -118,11 +118,50 @@ export default function Create() {
 
   useEffect(() => {
     let alive = true;
+
+    const cardFromProduct = (product: Product, audience: string, scene: string, target: string): TaskCard => ({
+      id: `product:${product.id}`,
+      productId: product.id,
+      productName: product.name,
+      productShortName: product.shortName,
+      productAsset: product.asset || "",
+      productFamily: product.family,
+      title: product.shortName,
+      scene: scene || "门店接待",
+      audience: audience || "到店顾客",
+      target: target || "到店看实物",
+      reason: `已收录 ${product.factCount} 条同型号事实；${product.price.label}`,
+      requiredDetailHint: "顾客现在最不方便的地方是什么？是重、慢，还是接口不够用？",
+      hasAssets: product.hasAssets,
+      factStatus: product.price.status === "conflict" ? "conflict" : "active",
+      priceLabel: product.price.label,
+      snapshotDate: product.snapshotDate,
+      detailOptions: ["旧电脑开机慢、风扇响", "每天背着走太沉", "接口不够，总要拔来拔去"],
+      audienceOptions: [...new Set([audience, "到店顾客", "学生", "通勤上班族", "创作者"].filter(Boolean))],
+      targetOptions: [...new Set([target, "到店看实物", "私聊问配置", "先收藏对比"].filter(Boolean))],
+    });
+
     api.today()
-      .then((result) => {
+      .then(async (result) => {
         if (!alive) return;
         setCards(result.tasks);
-        const picked = result.tasks.find((t) => t.id === requestedCard) || result.tasks.find((t) => t.productId === requestedProduct) || result.tasks[0] || null;
+        let picked: TaskCard | null =
+          result.tasks.find((t) => t.id === requestedCard) ||
+          result.tasks.find((t) => t.productId === requestedProduct) ||
+          (!requestedProduct && !requestedCard ? result.tasks[0] : null) ||
+          null;
+
+        if (!picked && requestedProduct) {
+          const { products } = await api.products();
+          const product = products.find((item) => item.id === requestedProduct || item.name === requestedProduct);
+          if (!product) {
+            setLoadError("这个型号没有可用的同型号事实，先回问答换一个型号。");
+            return;
+          }
+          picked = cardFromProduct(product, prefillAudience, prefillScene, prefillTarget);
+        }
+
+        if (!alive) return;
         setCard(picked);
         if (picked) {
           const nextAudience = prefillAudience || picked.audience;
@@ -137,8 +176,9 @@ export default function Create() {
           setCustomTargetOpen(!targetIsOption && Boolean(nextTarget));
           setScene(prefillScene || picked.scene);
           setBudget(prefillBudget);
+        } else {
+          setLoadError("今天没有可用的真实任务卡。");
         }
-        if (!picked) setLoadError("今天没有可用的真实任务卡。");
       })
       .catch((e) => { if (alive) setLoadError(e instanceof Error ? e.message : "任务卡加载失败"); })
       .finally(() => { if (alive) setLoading(false); });
@@ -255,7 +295,11 @@ export default function Create() {
             <aside className="order-2 space-y-4 lg:order-1">
               <div className="surface overflow-hidden">
                 <div className="aspect-[4/3] bg-[#eee9e1]">
-                  <img src={card.productAsset} alt={card.productName} className="h-full w-full object-cover" />
+                  {card.productAsset ? (
+                    <img src={card.productAsset} alt={card.productName} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-4 text-center text-[11px] text-[var(--muted)]">官方产品图未就位，配图会留白</div>
+                  )}
                 </div>
                 <div className="p-4">
                   <p className="text-[10.5px] text-[var(--muted)]">{card.productFamily}</p>
@@ -301,7 +345,7 @@ export default function Create() {
             <section className="surface order-1 flex min-h-[430px] flex-col p-5 sm:p-7 lg:order-2">
               <div className="mb-5 flex items-center gap-3 border-b border-[var(--line)] pb-4 lg:hidden">
                 <div className="h-11 w-11 shrink-0 overflow-hidden rounded-[8px] border border-[var(--line)] bg-[#eee9e1]">
-                  <img src={card.productAsset} alt="" className="h-full w-full object-cover" />
+                  {card.productAsset ? <img src={card.productAsset} alt="" className="h-full w-full object-cover" /> : null}
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-[11.5px] font-medium">{card.productName}</p>
@@ -412,7 +456,7 @@ export default function Create() {
                 </button>
                 <button type="button" className="btn-primary min-w-[148px]" onClick={() => void next()} disabled={!canNext || submitting}>
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : step === 2 ? <Sparkles className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-                  {submitting ? "正在建任务" : step === 2 ? "生成内容包" : "下一步"}
+                  {submitting ? "正在生成（约 15–30 秒）" : step === 2 ? "生成内容包" : "下一步"}
                 </button>
               </div>
             </section>

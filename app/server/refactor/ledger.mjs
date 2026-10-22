@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadKB } from "../agent/kb-index.mjs";
+import { dbEnabled, dbLoadState, dbSaveState } from "./db.mjs";
 
 const hash = (s) => createHash("sha1").update(String(s)).digest("hex").slice(0, 12);
 
@@ -15,6 +16,7 @@ const PRODUCT_DEFS = [
     modelKey: "HUAWEI MateBook 14",
     family: "鸿蒙电脑",
     asset: "/media/matebook-14-harmony.png",
+    assetFit: "contain",
     priceConflict: true,
     conflictPrices: [5899, 6599],
   },
@@ -25,6 +27,7 @@ const PRODUCT_DEFS = [
     modelKey: "MateBook GT 系列",
     family: "Windows 创作本",
     asset: "/media/matebook-gt-14.png",
+    assetFit: "contain",
     priceConflict: false,
   },
   {
@@ -34,6 +37,7 @@ const PRODUCT_DEFS = [
     modelKey: "HUAWEI MateBook Pro S",
     family: "鸿蒙电脑",
     asset: "/media/matebook-pro-s.jpg",
+    assetFit: "cover",
     priceConflict: false,
   },
   {
@@ -190,6 +194,19 @@ const products = PRODUCT_DEFS.map((def) => {
   const summary = productRows.find((p) => p.productName === def.name);
   const facts = [...buildModelFacts(def, model), ...buildPriceFacts(def, records)];
   const conflict = buildConflict(def, records);
+  // 只有「官方商城页面价」才算当前售价；只有「官网参考起价」的型号（例如已下架）
+  // 一律标 reference，不写进内容，避免把历史参考价当成当前售价。
+  const hasMallPrice = records.some((record) => /商城|页面价|专区/.test(String(record.priceType || "")));
+  const priceStatus = def.priceConflict ? "conflict" : records.length ? (hasMallPrice ? "active" : "reference") : "missing";
+  const minPrice = records.length ? Math.min(...records.map((r) => Number(r.price))) : null;
+  const priceLabel =
+    priceStatus === "conflict"
+      ? "价格待确认 · 未写入内容"
+      : priceStatus === "reference"
+        ? `参考起价 ¥${minPrice.toLocaleString("zh-CN")}（非当前售价）`
+        : priceStatus === "active"
+          ? `官方商城价 ¥${minPrice.toLocaleString("zh-CN")} 起`
+          : "暂无官方价格事实";
   return {
     ...def,
     hasAssets: Boolean(def.asset),
@@ -197,12 +214,10 @@ const products = PRODUCT_DEFS.map((def) => {
     sourceStatus: summary?.status || "知识库快照",
     price: records.length
       ? {
-          min: Math.min(...records.map((r) => Number(r.price))),
+          min: minPrice,
           max: Math.max(...records.map((r) => Number(r.price))),
-          status: def.priceConflict ? "conflict" : "active",
-          label: def.priceConflict
-            ? "价格待确认 · 未写入内容"
-            : `官方公开价 ¥${Math.min(...records.map((r) => Number(r.price))).toLocaleString("zh-CN")} 起`,
+          status: priceStatus,
+          label: priceLabel,
           records: records.map((r) => ({
             sku: r.sku,
             price: Number(r.price),
@@ -223,7 +238,43 @@ const resolutions = new Map();
 const importedFacts = new Map();
 const runtimeFile = join(dirname(fileURLToPath(import.meta.url)), "..", "data", "runtime", "fact-search.json");
 
+let runtimeLoaded = false;
+let runtimeSave = Promise.resolve();
+
+function runtimePayload() {
+  return { resolutions: [...resolutions.entries()], importedFacts: [...importedFacts.entries()] };
+}
+
+function persistRuntime() {
+  if (dbEnabled()) {
+    runtimeSave = dbSaveState("ledger", runtimePayload()).catch((error) => {
+      console.error("[ledger] 保存到 Supabase 失败：", error.message);
+    });
+    return runtimeSave;
+  }
+  saveRuntime();
+  return Promise.resolve();
+}
+
+export async function ensureFactRuntime() {
+  if (runtimeLoaded) return;
+  if (dbEnabled()) {
+    const saved = await dbLoadState("ledger");
+    for (const [id, records] of saved?.resolutions || []) resolutions.set(id, records);
+    for (const [id, records] of saved?.importedFacts || []) importedFacts.set(id, records);
+    runtimeLoaded = true;
+    return;
+  }
+  loadRuntime();
+  runtimeLoaded = true;
+}
+
+export async function flushFactRuntime() {
+  await runtimeSave;
+}
+
 function saveRuntime() {
+  if (dbEnabled()) return;
   try {
     mkdirSync(dirname(runtimeFile), { recursive: true });
     writeFileSync(runtimeFile, JSON.stringify({ resolutions: [...resolutions.entries()], importedFacts: [...importedFacts.entries()] }, null, 2));
@@ -233,6 +284,7 @@ function saveRuntime() {
 }
 
 function loadRuntime() {
+  if (dbEnabled()) return;
   try {
     const saved = JSON.parse(readFileSync(runtimeFile, "utf8"));
     for (const [id, records] of saved.resolutions || []) resolutions.set(id, records);
@@ -269,14 +321,14 @@ export function resolveConflict(conflictId, input) {
   };
   const existing = resolutions.get(conflictId) || [];
   resolutions.set(conflictId, [...existing.filter((item) => item.sku !== record.sku), record]);
-  saveRuntime();
+  void persistRuntime();
   return getConflict(product.id);
 }
 
 export function resetFactSearchRuntime() {
   resolutions.clear();
   importedFacts.clear();
-  saveRuntime();
+  void persistRuntime();
 }
 
 export function commitFacts(candidates) {
@@ -289,7 +341,7 @@ export function commitFacts(candidates) {
     importedFacts.set(product.id, [...facts.filter((item) => item.id !== fact.id), fact]);
     committed.push(fact);
   }
-  saveRuntime();
+  void persistRuntime();
   return committed;
 }
 
@@ -320,6 +372,7 @@ export function publicProduct(p) {
     shortName: p.shortName,
     family: p.family,
     asset: p.asset,
+    assetFit: p.assetFit || "cover",
     hasAssets: p.hasAssets,
     snapshotDate: p.snapshotDate,
     sourceStatus: p.sourceStatus,

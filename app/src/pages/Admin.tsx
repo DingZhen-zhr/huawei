@@ -210,7 +210,7 @@ export default function Admin() {
                     <td className="py-2.5 pr-3 text-[var(--ink)]">{product.name}</td>
                     <td className="py-2.5 pr-3 text-[var(--muted)]">{product.family}</td>
                     <td className="mono py-2.5 pr-3 text-[var(--muted)]">{product.factCount}</td>
-                    <td className="py-2.5 pr-3"><span className={`status-pill ${product.factStatus === "conflict" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-[var(--success-soft)] text-[var(--success)]"}`}>{product.price.status === "conflict" ? "冲突冻结" : product.price.status === "active" ? "可用" : "缺失"}</span></td>
+                    <td className="py-2.5 pr-3"><span className={`status-pill ${product.factStatus === "conflict" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-[var(--success-soft)] text-[var(--success)]"}`}>{product.price.status === "conflict" ? "冲突冻结" : product.price.status === "active" ? "可用" : product.price.status === "reference" ? "参考价" : "缺失"}</span></td>
                     <td className="mono py-2.5 text-[var(--muted)]">{product.snapshotDate}</td>
                   </tr>
                 ))}

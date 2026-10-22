@@ -42,12 +42,22 @@ function productFacts(productId) {
 }
 
 function priceLine(product) {
-  if (product.price?.status === "conflict") return "价格到店确认，先不写具体数字";
+  if (product.price?.status !== "active") return "价格到店确认，先不写具体数字";
   if (product.price?.min) return `${product.price.label}（2026-10-17 官方快照，以门店实际报价为准）`;
   return "具体配置和价格到店确认";
 }
 
-function evidenceFor(product, keys = ["screen", "portable", "ports", "limit"]) {
+function priceBlocked(product) {
+  return product.price?.status !== "active";
+}
+
+function priceBlockReason(product) {
+  if (product.price?.status === "conflict") return "价格冲突未解决";
+  if (product.price?.status === "reference") return "只有官网参考价，不是当前售价";
+  return "暂无官方价格";
+}
+
+export function evidenceFor(product, keys = ["screen", "portable", "ports", "limit"]) {
   return product.facts
     .filter((f) => f.field !== "price")
     .filter((f) => {
@@ -111,8 +121,8 @@ function xhsVariant(product, detail, angle, audience, scene, target) {
   };
   const sceneLine = `对${audience || "每天带着电脑走动的人"}来说，${scene || h.scene}才是每天真正发生的事。机器轻一点、接口顺手一点，体验差别会很直接。`;
   const limitLine = `有一个边界要先说清楚：${h.limit}。这不是劝退，是避免买回去才发现不合用。`;
-  const priceSection = product.price?.status === "conflict"
-    ? "具体配置和价格，到店按实际机型确认。"
+  const priceSection = priceBlocked(product)
+    ? `价格先不写数字：${priceBlockReason(product)}，到店按实际配置确认。`
     : `价格口径也给清楚：${price}。`;
   const body = [openings[angle], bridge[angle], sceneLine, limitLine, priceSection, `${targetShort(target)}，比在屏幕前反复比较更快。`]
     .filter(Boolean)
@@ -126,7 +136,7 @@ function xhsVariant(product, detail, angle, audience, scene, target) {
     firstComment: "产品信息来自官方公开资料；具体配置和价格以门店实际报价为准。",
     cta: ctaFor(target),
     evidence: evidenceFor(product),
-    limitations: [h.limit, product.price?.status === "conflict" ? "价格字段冻结，正文不写具体价格" : "价格以门店实际报价为准"],
+    limitations: [h.limit, priceBlocked(product) ? `${priceBlockReason(product)}，正文不写具体价格` : "价格以门店实际报价为准"],
   };
 }
 
@@ -148,7 +158,7 @@ function momentsVariant(product, detail, angle, audience, scene, target) {
     tags: [],
     cta: ctaFor(target),
     evidence: evidenceFor(product),
-    limitations: [h.limit, product.price?.status === "conflict" ? "价格字段冻结，正文不写具体价格" : "价格以门店实际报价为准"],
+    limitations: [h.limit, priceBlocked(product) ? `${priceBlockReason(product)}，正文不写具体价格` : "价格以门店实际报价为准"],
   };
 }
 
@@ -171,7 +181,7 @@ function wechatVariant(product, detail, audience, scene, target) {
     `这些信息来自同型号官方规格页，具体配置仍要按 SKU 核对。`,
   ].join("\n\n");
   const p3 = [
-    `有一个边界需要提前说：${h.limit}。${product.price?.status === "conflict" ? "这款产品的价格记录目前存在冲突，正文不写具体价格，等门店核对配置后再确认。" : `价格口径为：${price}。`}`,
+    `有一个边界需要提前说：${h.limit}。${priceBlocked(product) ? `这款产品${priceBlockReason(product)}，正文不写具体价格，等门店核对配置后再确认。` : `价格口径为：${price}。`}`,
     `如果你正在${scene || h.scene}，可以把现在的电脑重量、常用软件和接口列出来，再和这台机器逐项对。到店时把自己的鼠标、硬盘或读卡器带上，试一遍比只看参数表更直接。`,
     `如果暂时不换，也可以先到店把重量和屏幕放在一起比较，确认自己真正介意的是哪一项，再决定要不要继续看配置。`,
     `${ctaFor(target)}`,
@@ -184,7 +194,7 @@ function wechatVariant(product, detail, audience, scene, target) {
     tags: [],
     cta: ctaFor(target),
     evidence: evidenceFor(product),
-    limitations: [h.limit, product.price?.status === "conflict" ? "价格字段冻结，正文不写具体价格" : "价格以门店实际报价为准"],
+    limitations: [h.limit, priceBlocked(product) ? `${priceBlockReason(product)}，正文不写具体价格` : "价格以门店实际报价为准"],
   };
 }
 
@@ -196,7 +206,7 @@ function posterVariant(product, detail, target) {
     detailLine.length <= 18 ? detailLine : "真实场景，到店聊",
     h.portable,
     h.screen,
-    product.price?.status === "conflict" ? "价格到店确认" : "官方价以门店为准",
+    product.price?.status !== "active" ? "价格到店确认" : "官方商城价以门店为准",
   ];
   return {
     title: truncateText(title, 12),
@@ -204,7 +214,7 @@ function posterVariant(product, detail, target) {
     tags: [],
     cta: ctaFor(target),
     evidence: evidenceFor(product),
-    limitations: [h.limit, product.price?.status === "conflict" ? "价格字段冻结，海报不写具体价格" : "二维码与门店信息需使用真实配置"],
+    limitations: [h.limit, priceBlocked(product) ? `${priceBlockReason(product)}，海报不写具体价格` : "二维码与门店信息需使用真实配置"],
   };
 }
 
@@ -237,7 +247,7 @@ function videoVariant(product, detail, angle, audience, scene, target) {
     tags: [],
     cta: ctaFor(target),
     evidence: evidenceFor(product),
-    limitations: [h.limit, product.price?.status === "conflict" ? "价格字段冻结，视频不写具体价格" : "价格以门店实际报价为准"],
+    limitations: [h.limit, priceBlocked(product) ? `${priceBlockReason(product)}，视频不写具体价格` : "价格以门店实际报价为准"],
   };
 }
 
@@ -267,13 +277,13 @@ export function generatePlatformVariants({ product, platform, realDetail, audien
       status: "writing",
       editBurden: "light",
       imagePlan: imagePlanFor(product, platform, realDetail, target),
-      priceIncluded: product.price?.status !== "conflict" && /¥\s*[\d,]/.test(v.body || ""),
+      priceIncluded: product.price?.status === "active" && /¥\s*[\d,]/.test(v.body || ""),
       evidenceIds: v.evidence.map((f) => f.id),
     };
   });
 }
 
-function imagePlanFor(product, platform, realDetail, target) {
+export function imagePlanFor(product, platform, realDetail, target) {
   const common = {
     productAssetId: product.id,
     backgroundBrief: "官方产品本体保持原样，仅生成校园或门店桌面背景与自然光影；背景不出现其他电脑、手机品牌、文字或二维码。",

@@ -24,7 +24,7 @@ export interface Store {
 export interface PriceSummary {
   min: number | null;
   max: number | null;
-  status: "active" | "conflict" | "missing";
+  status: "active" | "conflict" | "reference" | "missing";
   label: string;
 }
 
@@ -166,6 +166,7 @@ export interface Variant {
   target: string;
   model: string;
   priceIncluded?: boolean;
+  generatedBy?: "model" | "model-repaired" | "rules";
 }
 
 export interface ChannelSnapshot {
@@ -193,7 +194,16 @@ export interface TaskSnapshot {
     productId: string;
     productName: string;
     productShortName: string;
-    productAsset: string;
+    productAsset: string | null;
+    productAssetFit?: "cover" | "contain";
+    productFamily?: string;
+    hasAssets?: boolean;
+    priceLabel?: string;
+    priceStatus?: "active" | "conflict" | "reference" | "missing";
+    snapshotDate?: string;
+    storeName?: string;
+    storeProfile?: StoreProfile;
+    fallbacks?: { platform: string; message: string; at: string }[];
     audience: string;
     scene: string;
     target: string;
@@ -209,7 +219,8 @@ export interface TaskSnapshot {
   evidence: Fact[];
   conflicts: Conflict[];
   progress: { stage: string; label: string; percent: number };
-  errors: { platform?: string; label?: string; message: string; retryable?: boolean }[];
+  errors: { platform?: string; label?: string; code?: string; message: string; retryable?: boolean }[];
+  blockedCount?: number;
 }
 
 class ApiError extends Error {
@@ -234,7 +245,12 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     },
   });
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { error: text.slice(0, 200) || `请求失败（${res.status}）` };
+  }
   if (!res.ok) {
     throw new ApiError(data?.error || `请求失败（${res.status}）`, res.status, data?.code, data?.detail);
   }

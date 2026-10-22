@@ -5,10 +5,14 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { getProduct, getConflict } from "./ledger.mjs";
 import { getTaskCard } from "./task-cards.mjs";
-import { generatePlatformVariants, copyTextFor, PLATFORM_LABEL } from "./generator.mjs";
+import { generatePlatformVariants, evidenceFor, imagePlanFor, copyTextFor, PLATFORM_LABEL, ANGLE_LABEL } from "./generator.mjs";
+import { generateWithModel, modelEnabled, contentModel, repairVariant } from "./model-writer.mjs";
 import { verifyContent } from "./verifier.mjs";
 import { analyzeCopy } from "./copy-quality.mjs";
+import { dbEnabled, dbSaveTask, dbLoadTask, dbListTasks } from "./db.mjs";
 
+const DB = dbEnabled();
+const INLINE = Boolean(process.env.VERCEL || process.env.NETLIFY || process.env.HC_INLINE_TASKS === "true");
 const DATA_DIR = process.env.HC_RUNTIME_DIR
   ? path.resolve(process.env.HC_RUNTIME_DIR)
   : path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "runtime");
@@ -32,7 +36,7 @@ function ensureDir() {
 }
 
 function load() {
-  if (!existsSync(FILE)) return;
+  if (DB || !existsSync(FILE)) return;
   try {
     const rows = JSON.parse(readFileSync(FILE, "utf-8"));
     for (const row of rows) {
@@ -47,6 +51,7 @@ function load() {
 }
 
 function persist() {
+  if (DB) return;
   ensureDir();
   const rows = [...tasks.values()]
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
@@ -55,6 +60,26 @@ function persist() {
   const tmp = `${FILE}.${process.pid}.tmp`;
   writeFileSync(tmp, JSON.stringify(rows, null, 2));
   renameSync(tmp, FILE);
+}
+
+export async function persistTask(task) {
+  if (!DB) { persist(); return; }
+  await dbSaveTask(task, events.get(task.id) || []);
+}
+
+function pruneCache() {
+  if (tasks.size <= 200) return;
+  const keep = [...tasks.values()]
+    .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")))
+    .slice(0, 200)
+    .map((task) => task.id);
+  const allowed = new Set(keep);
+  for (const id of tasks.keys()) {
+    if (!allowed.has(id)) {
+      tasks.delete(id);
+      events.delete(id);
+    }
+  }
 }
 
 function broadcast(taskId, event) {
@@ -75,7 +100,7 @@ function addEvent(taskId, event) {
   list.push(row);
   events.set(taskId, list.slice(-200));
   broadcast(taskId, row);
-  persist();
+  if (!DB) persist();
   return row;
 }
 
@@ -88,33 +113,116 @@ function setStage(task, stageKey) {
   addEvent(task.id, { type: "stage", ...stage });
 }
 
-function createVariant(task, product, input, platform) {
-  const variants = generatePlatformVariants({
+function evidenceForText(product, text) {
+  const numbers = new Set(String(text || "").match(/\d+(?:\.\d+)?/g) || []);
+  const matched = (product.facts || [])
+    .filter((fact) => fact.field !== "price")
+    .filter((fact) => [...String(fact.value || "").matchAll(/\d+(?:\.\d+)?/g)].some((m) => numbers.has(m[0])))
+    .slice(0, 6);
+  return matched.length ? matched : evidenceFor(product);
+}
+
+function finalizeVariant(task, product, variant, platform, generatedBy) {
+  const copyText = copyTextFor(variant);
+  const verification = verifyContent(copyText, product.id, { platform });
+  const copyQuality = analyzeCopy(copyText);
+  return {
+    ...variant,
+    id: randomUUID(),
+    taskId: task.id,
+    platform,
+    platformLabel: PLATFORM_LABEL[platform],
+    angleLabel: ANGLE_LABEL[variant.angle] || variant.angle,
+    audience: variant.audience || task.audience,
+    scene: variant.scene || task.scene,
+    target: variant.target || task.target,
+    model: product.name,
+    copyText,
+    status: verification.blocked ? "blocked" : "ready",
+    verification,
+    copyQuality,
+    editBurden: verification.blocked ? "heavy" : copyQuality.issues.length ? "light" : "none",
+    verifiedAt: verification.checkedAt,
+    recommended: variant.angle === "pain",
+    generatedBy,
+    evidence: variant.evidence?.length ? variant.evidence : evidenceForText(product, copyText),
+    evidenceIds: variant.evidenceIds?.length
+      ? variant.evidenceIds
+      : (variant.evidence?.length ? variant.evidence : evidenceForText(product, copyText)).map((fact) => fact.id),
+    imagePlan: variant.imagePlan?.length ? variant.imagePlan : imagePlanFor(product, platform, task.realDetail?.text, task.target),
+    priceIncluded: product.price?.status === "active" && /¥\s*[\d,]/.test(copyText),
+  };
+}
+
+async function repairBlocked(task, product, platform, variants) {
+  if (!modelEnabled() || process.env.HC_MODEL_REPAIR === "false") return variants;
+  if (INLINE && process.env.HC_MODEL_REPAIR !== "true") return variants;
+  const out = [];
+  let repaired = 0;
+  for (const variant of variants) {
+    if (variant.verification.blocked && repaired < 2) {
+      try {
+        const fixed = await repairVariant({
+          product,
+          platform,
+          variant,
+          reasons: variant.verification.reasons.slice(0, 4),
+        });
+        const merged = {
+          ...variant,
+          ...fixed,
+          title: fixed.title || variant.title,
+          body: fixed.body || variant.body,
+          evidence: variant.evidence,
+          limitations: variant.limitations,
+          imagePlan: variant.imagePlan,
+        };
+        if (!merged.body || String(merged.body).length < 20) {
+          out.push(variant);
+          continue;
+        }
+        const next = finalizeVariant(task, product, merged, platform, "model-repaired");
+        if (!next.verification.blocked) {
+          repaired += 1;
+          out.push(next);
+          continue;
+        }
+      } catch {
+        // 修复失败就保留被拦版本，不把失败伪装成通过。
+      }
+    }
+    out.push(variant);
+  }
+  return out;
+}
+
+async function buildPlatform(task, product, platform) {
+  const input = {
     product,
     platform,
     realDetail: task.realDetail.text,
     audience: task.audience,
     scene: task.scene,
     target: task.target,
-  });
-  return variants.map((v) => {
-    const copyText = copyTextFor(v);
-    const verification = verifyContent(copyText, product.id, { platform });
-    const copyQuality = analyzeCopy(copyText);
-    const status = verification.blocked ? "blocked" : "ready";
-    return {
-      ...v,
-      id: randomUUID(),
-      taskId: task.id,
-      copyText,
-      status,
-      verification,
-      copyQuality,
-      editBurden: verification.blocked ? "heavy" : copyQuality.issues.length ? "light" : "none",
-      verifiedAt: verification.checkedAt,
-      recommended: v.angle === "pain",
-    };
-  });
+  };
+  if (modelEnabled()) {
+    try {
+      const made = await generateWithModel({ ...input, store: task.storeProfile });
+      const finalized = made.map((variant) => finalizeVariant(task, product, variant, platform, "model"));
+      return await repairBlocked(task, product, platform, finalized);
+    } catch (error) {
+      task.fallbacks = [
+        ...(task.fallbacks || []),
+        { platform, message: String(error?.message || "模型写作失败").slice(0, 200), at: new Date().toISOString() },
+      ];
+      addEvent(task.id, {
+        type: "notice",
+        platform,
+        message: `${PLATFORM_LABEL[platform]} 模型写作未通过，已回退规则稿`,
+      });
+    }
+  }
+  return generatePlatformVariants(input).map((variant) => finalizeVariant(task, product, variant, platform, "rules"));
 }
 
 async function runPlatforms(taskId, platforms = PLATFORMS) {
@@ -125,14 +233,37 @@ async function runPlatforms(taskId, platforms = PLATFORMS) {
 
   task.status = "running";
   task.errors = (task.errors || []).filter((e) => !platforms.includes(e.platform));
+  task.fallbacks = (task.fallbacks || []).filter((f) => !platforms.includes(f.platform));
   task.updatedAt = new Date().toISOString();
   for (const stage of STAGES.slice(0, 2)) setStage(task, stage.stage);
+  setStage(task, "writing");
 
   const variantMap = new Map((task.variants || []).map((v) => [`${v.platform}:${v.angle}`, v]));
-  for (const platform of platforms) {
-    setStage(task, "writing");
-    try {
-      const made = createVariant(task, product, task, platform);
+  const results = await Promise.all(
+    platforms.map(async (platform) => {
+      try {
+        return { platform, made: await buildPlatform(task, product, platform) };
+      } catch (error) {
+        return { platform, error };
+      }
+    }),
+  );
+
+  for (const result of results) {
+    const { platform } = result;
+    if (result.error) {
+      const row = {
+        platform,
+        label: PLATFORM_LABEL[platform],
+        stage: "writing",
+        code: "PLATFORM_FAILED",
+        message: result.error?.message || "这个渠道生成失败",
+        retryable: true,
+      };
+      task.errors.push(row);
+      addEvent(task.id, { type: "error", ...row });
+    } else {
+      const made = result.made;
       for (const v of made) variantMap.set(`${v.platform}:${v.angle}`, v);
       addEvent(task.id, {
         type: "variant",
@@ -141,21 +272,11 @@ async function runPlatforms(taskId, platforms = PLATFORMS) {
         status: made.some((v) => v.status === "blocked") ? "blocked" : "ready",
         variantIds: made.map((v) => v.id),
         count: made.length,
+        generatedBy: made[0]?.generatedBy,
       });
-    } catch (error) {
-      const row = {
-        platform,
-        label: PLATFORM_LABEL[platform],
-        stage: "writing",
-        code: "PLATFORM_FAILED",
-        message: error?.message || "这个渠道生成失败",
-        retryable: true,
-      };
-      task.errors.push(row);
-      addEvent(task.id, { type: "error", ...row });
     }
     task.variants = [...variantMap.values()];
-    persist();
+    if (!DB) persist();
   }
 
   setStage(task, "reviewing");
@@ -163,6 +284,11 @@ async function runPlatforms(taskId, platforms = PLATFORMS) {
   const current = [...variantMap.values()];
   const blocked = current.filter((v) => v.status === "blocked");
   const failedPlatforms = new Set(task.errors.map((e) => e.platform));
+  task.generationMode = (() => {
+    const kinds = new Set(current.map((v) => (v.generatedBy === "model-repaired" ? "model" : v.generatedBy)));
+    if (kinds.size === 1) return kinds.has("model") ? `model:${contentModel()}` : "rules-v1";
+    return "mixed";
+  })();
   task.status = failedPlatforms.size ? "partial" : "done";
   task.progress = {
     stage: "done",
@@ -176,8 +302,10 @@ async function runPlatforms(taskId, platforms = PLATFORMS) {
     status: task.status,
     blocked: blocked.length,
     errors: task.errors.length,
+    fallbacks: (task.fallbacks || []).length,
+    generationMode: task.generationMode,
   });
-  persist();
+  await persistTask(task);
 }
 
 function queueRun(taskId, platforms) {
@@ -193,14 +321,14 @@ function queueRun(taskId, platforms) {
         task.updatedAt = new Date().toISOString();
         addEvent(taskId, { type: "error", code: "TASK_FAILED", message: error.message, retryable: false });
         addEvent(taskId, { type: "done", status: "failed" });
-        persist();
+        await persistTask(task);
       }
     }
   }, 60);
   timers.add(timer);
 }
 
-export function createTask({ store, body = {} }) {
+export async function createTask({ store, body = {} }) {
   const card = body.taskCardId ? getTaskCard(body.taskCardId) : null;
   const product = getProduct(body.productId || card?.productId);
   if (!product) throw Object.assign(new Error("未找到真实产品资料"), { status: 400, code: "PRODUCT_NOT_FOUND" });
@@ -231,9 +359,17 @@ export function createTask({ store, body = {} }) {
     target: String(body.target || card?.target || "到店看实物").trim(),
     realDetail: { text: detailText, source: "sales_provided", confirmed: true },
     questionAnswers: body.questionAnswers || {},
+    storeProfile: {
+      name: store.name,
+      city: store.profile?.city || "",
+      phone: store.profile?.phone || "",
+      businessHours: store.profile?.businessHours || "",
+      voiceTone: store.profile?.voiceTone || "",
+    },
     status: "queued",
     progress: { stage: "queued", label: "排队中", percent: 5 },
-    generationMode: "rules-v1",
+    generationMode: modelEnabled() ? `queued:${contentModel()}` : "rules-v1",
+    fallbacks: [],
     variants: [],
     evidence: product.facts.filter((f) => f.field !== "price").slice(0, 8),
     conflicts: getConflict(product.id) ? [getConflict(product.id)] : [],
@@ -244,10 +380,55 @@ export function createTask({ store, body = {} }) {
   };
   tasks.set(task.id, task);
   events.set(task.id, []);
+  pruneCache();
   addEvent(task.id, { type: "stage", stage: "queued", label: "排队中", percent: 5 });
-  persist();
+  if (DB) await persistTask(task);
+  else persist();
+
+  if (INLINE) {
+    try {
+      await runPlatforms(task.id);
+    } catch (error) {
+      task.status = "failed";
+      task.errors = [...(task.errors || []), { code: "TASK_FAILED", message: error.message, retryable: false }];
+      task.updatedAt = new Date().toISOString();
+      addEvent(task.id, { type: "error", code: "TASK_FAILED", message: error.message, retryable: false });
+      addEvent(task.id, { type: "done", status: "failed" });
+      await persistTask(task);
+    }
+    return { taskId: task.id, status: task.status };
+  }
   queueRun(task.id);
   return { taskId: task.id, status: "queued" };
+}
+
+async function expireStaleTask(task) {
+  if (!DB || !task || !["queued", "running"].includes(task.status)) return task;
+  const age = Date.now() - new Date(task.updatedAt || task.createdAt || 0).getTime();
+  if (!Number.isFinite(age) || age < 10 * 60 * 1000) return task;
+  task.status = "failed";
+  task.errors = [
+    ...(task.errors || []),
+    { code: "TASK_STALE", message: "任务中断（服务重启或超时），可以单渠道重试或重新生成。", retryable: true },
+  ];
+  task.progress = { stage: "failed", label: "任务中断，请重试", percent: 100, updatedAt: new Date().toISOString() };
+  task.updatedAt = new Date().toISOString();
+  addEvent(task.id, { type: "error", code: "TASK_STALE", message: "任务中断，请重试", retryable: true });
+  await persistTask(task);
+  return task;
+}
+
+export async function ensureTask(taskId, storeId) {
+  const cached = getTask(taskId, storeId);
+  if (cached) return expireStaleTask(cached);
+  if (!DB) return null;
+  const row = await dbLoadTask(taskId);
+  if (!row) return null;
+  if (storeId && row.task.storeId !== storeId) return null;
+  tasks.set(taskId, row.task);
+  events.set(taskId, row.events || []);
+  pruneCache();
+  return expireStaleTask(row.task);
 }
 
 export function getTask(taskId, storeId) {
@@ -257,8 +438,8 @@ export function getTask(taskId, storeId) {
   return task;
 }
 
-export function getTaskSnapshot(taskId, storeId) {
-  const task = getTask(taskId, storeId);
+export async function getTaskSnapshot(taskId, storeId) {
+  const task = await ensureTask(taskId, storeId);
   if (!task) return null;
   const current = task.variants || [];
   const byPlatform = Object.fromEntries(
@@ -276,6 +457,8 @@ export function getTaskSnapshot(taskId, storeId) {
       ];
     }),
   );
+  const product = getProduct(task.productId);
+  const blocked = current.filter((v) => v.status === "blocked");
   return {
     task: {
       id: task.id,
@@ -285,14 +468,23 @@ export function getTaskSnapshot(taskId, storeId) {
       productName: task.productName,
       productShortName: task.productShortName,
       productAsset: task.productAsset,
+      productAssetFit: product?.assetFit || "cover",
+      productFamily: product?.family || "",
+      hasAssets: Boolean(product?.hasAssets),
+      priceLabel: product?.price?.label || "",
+      priceStatus: product?.price?.status || "missing",
+      snapshotDate: product?.snapshotDate || "2026-10-17",
       audience: task.audience,
       scene: task.scene,
       target: task.target,
       realDetail: task.realDetail,
       brief: task.brief,
+      storeName: task.storeName,
+      storeProfile: task.storeProfile || {},
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
       generationMode: task.generationMode,
+      fallbacks: task.fallbacks || [],
     },
     variants: current,
     channels: byPlatform,
@@ -301,24 +493,33 @@ export function getTaskSnapshot(taskId, storeId) {
     conflicts: task.conflicts || [],
     progress: task.progress,
     errors: task.errors || [],
+    blockedCount: blocked.length,
   };
 }
 
-export function listTasks(storeId, limit = 12) {
+function taskSummary(t) {
+  return {
+    id: t.id,
+    productName: t.productName,
+    productShortName: t.productShortName,
+    status: t.status,
+    progress: t.progress,
+    createdAt: t.createdAt,
+    blockedCount: (t.variants || []).filter((v) => v.status === "blocked").length,
+    readyCount: (t.variants || []).filter((v) => v.status === "ready").length,
+  };
+}
+
+export async function listTasks(storeId, limit = 12) {
+  if (DB) {
+    const rows = await dbListTasks(storeId, limit);
+    return rows.map(taskSummary);
+  }
   return [...tasks.values()]
     .filter((t) => !storeId || t.storeId === storeId)
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
     .slice(0, limit)
-    .map((t) => ({
-      id: t.id,
-      productName: t.productName,
-      productShortName: t.productShortName,
-      status: t.status,
-      progress: t.progress,
-      createdAt: t.createdAt,
-      blockedCount: (t.variants || []).filter((v) => v.status === "blocked").length,
-      readyCount: (t.variants || []).filter((v) => v.status === "ready").length,
-    }));
+    .map(taskSummary);
 }
 
 export function subscribe(taskId, res) {
@@ -345,8 +546,8 @@ export function subscribe(taskId, res) {
   });
 }
 
-export function retryPlatform(taskId, platform, storeId) {
-  const task = getTask(taskId, storeId);
+export async function retryPlatform(taskId, platform, storeId) {
+  const task = await ensureTask(taskId, storeId);
   if (!task) throw Object.assign(new Error("任务不存在"), { status: 404 });
   if (!PLATFORMS.includes(platform)) throw Object.assign(new Error("未知渠道"), { status: 400 });
   task.variants = (task.variants || []).filter((v) => v.platform !== platform);
@@ -355,12 +556,17 @@ export function retryPlatform(taskId, platform, storeId) {
   task.progress = { stage: "queued", label: "重试这一个渠道", percent: 10 };
   task.updatedAt = new Date().toISOString();
   addEvent(task.id, { type: "stage", stage: "queued", label: `重试${PLATFORM_LABEL[platform]}`, percent: 10 });
+  if (DB) await persistTask(task);
+  if (INLINE) {
+    await runPlatforms(task.id, [platform]);
+    return { taskId, platform, status: task.status };
+  }
   queueRun(task.id, [platform]);
   return { taskId, platform, status: "queued" };
 }
 
-export function updateVariant(taskId, variantId, patch, storeId) {
-  const task = getTask(taskId, storeId);
+export async function updateVariant(taskId, variantId, patch, storeId) {
+  const task = await ensureTask(taskId, storeId);
   if (!task) throw Object.assign(new Error("任务不存在"), { status: 404 });
   const variant = (task.variants || []).find((v) => v.id === variantId);
   if (!variant) throw Object.assign(new Error("版本不存在"), { status: 404 });
@@ -375,11 +581,12 @@ export function updateVariant(taskId, variantId, patch, storeId) {
   variant.updatedAt = new Date().toISOString();
   task.updatedAt = new Date().toISOString();
   addEvent(task.id, { type: "variant", platform: variant.platform, status: variant.status, variantIds: [variant.id] });
-  persist();
+  await persistTask(task);
   return variant;
 }
 
 function recoverInterruptedTasks() {
+  if (DB) return;
   const interrupted = [...tasks.values()].filter((task) => ["queued", "running"].includes(task.status));
   if (!interrupted.length) return;
   for (const task of interrupted) {

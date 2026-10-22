@@ -9,10 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server/index.mjs",
-    "vectorize": "node server/vectorize.mjs",
-    "mcp": "node server/mcp/server.mjs",
-    "mcp:smoke": "node server/mcp/smoke.mjs",
-    "dev:all": "bash scripts/dev.sh"
+    "dev:all": "bash scripts/dev.sh",
+    "test": "NODE_ENV=test HC_PERSISTENCE=local node --test server/refactor/*.test.mjs",
+    "db:migrate": "node server/db/apply-migrations.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -87,5 +86,8 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

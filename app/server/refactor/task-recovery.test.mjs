@@ -46,7 +46,7 @@ test("an interrupted persisted task is requeued and completed on boot", () => {
   const child = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
     cwd: appDir,
     encoding: "utf8",
-    env: { ...process.env, HC_RUNTIME_DIR: runtimeDir },
+    env: { ...process.env, HC_RUNTIME_DIR: runtimeDir, HC_GENERATION: "rules" },
   });
   assert.equal(child.status, 0, child.stderr);
   const result = JSON.parse(child.stdout.trim().split("\n").at(-1));

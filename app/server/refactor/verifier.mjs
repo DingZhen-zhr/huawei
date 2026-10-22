@@ -1,9 +1,10 @@
 // 确定性核验：不改稿、不替模型背书；数字必须落到同型号、同字段、同单位的事实。
-import { getFacts, getPriceFacts, getConflict, getPriceResolution, isPriceFrozen } from "./ledger.mjs";
+import { getProduct, getFacts, getPriceFacts, getConflict, getPriceResolution } from "./ledger.mjs";
 import { getSpec } from "../mcp/core.mjs";
 
 const DAY = 24 * 60 * 60 * 1000;
 const UNIT_RE = /(?<![\dA-Za-z.])(\d+(?:\.\d+)?)\s*(英寸|寸|GB|TB|kg|g|mm|Wh|Hz|nits|ppi|W)/gi;
+const RANGE_UNIT_RE = /(\d+(?:\.\d+)?)\s*[-–—~至]\s*(\d+(?:\.\d+)?)\s*(英寸|寸|GB|TB|kg|g|mm|Wh|Hz|nits|ppi|W)/gi;
 const RESOLUTION_RE = /(?<![\d.])(\d{3,4})\s*[×xX]\s*(\d{3,4})(?![\d.])/g;
 const PRICE_PREFIX_RE = /[¥￥]\s*(\d[\d,，]*)(?:\s*起)?/g;
 const PRICE_SUFFIX_RE = /(\d[\d,，]*)\s*(?:元|块)(?:\s*起)?/g;
@@ -37,6 +38,10 @@ function measureMatches(text) {
   const out = [];
   for (const match of String(text || "").matchAll(UNIT_RE)) {
     out.push({ value: Number(match[1]), unit: match[2].toLowerCase(), text: match[0] });
+  }
+  for (const match of String(text || "").matchAll(RANGE_UNIT_RE)) {
+    out.push({ value: Number(match[1]), unit: match[3].toLowerCase(), text: match[0] });
+    out.push({ value: Number(match[2]), unit: match[3].toLowerCase(), text: match[0] });
   }
   return out;
 }
@@ -118,21 +123,28 @@ function commercialSupported(segment, term, facts) {
  */
 export function verifyContent(text, productId, { platform, sku, now } = {}) {
   const t = String(text || "");
+  const product = getProduct(productId);
   const facts = specClaims(getFacts(productId, { includePrice: true }));
   const priceFacts = getPriceFacts(productId);
+  const priceWritable = product?.price.status === "active";
   const conflict = getConflict(productId);
+  const priceStateReason = conflict
+    ? "该型号价格存在未解决冲突，价格字段冻结"
+    : product?.price.status === "reference"
+      ? "该型号只有官网参考起价，不是当前售价"
+      : "该型号暂无当前售价";
   const claims = [];
   const reasons = [];
 
   for (const match of priceMatches(t)) {
     const value = match.value;
     const resolution = getPriceResolution(productId, sku, value);
-    const blockedByConflict = Boolean(conflict && isPriceFrozen(productId, sku, value));
+    const blockedByPriceState = !priceWritable && !resolution;
     const exact = priceFacts
       .filter((f) => Number(f.value) === value && (!sku || f.sku === sku || (!f.sku && sku === "")))
       .sort((a, b) => new Date(b.capturedAt || 0) - new Date(a.capturedAt || 0))[0];
     const stale = exact ? daysSince(exact.capturedAt, now) > 7 : false;
-    const status = blockedByConflict ? "blocked" : resolution ? "supported" : exact ? (stale ? "stale" : "supported") : "blocked";
+    const status = blockedByPriceState ? "blocked" : resolution ? "supported" : exact ? (stale ? "stale" : "supported") : "blocked";
     claims.push({
       type: "price",
       text: match.text,
@@ -141,8 +153,8 @@ export function verifyContent(text, productId, { platform, sku, now } = {}) {
       status,
       span: { start: match.start, end: match.end },
       evidenceIds: resolution ? [resolution.id] : exact ? [exact.id] : [],
-      reason: blockedByConflict
-        ? "该型号价格存在未解决冲突，价格字段冻结"
+      reason: blockedByPriceState
+        ? priceStateReason
         : exact
           ? stale
             ? "价格快照超过 7 天，需要重新确认"

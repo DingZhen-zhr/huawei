@@ -49,18 +49,31 @@ export default function Ask() {
       localStorage.setItem(key, id);
     }
     deviceRef.current = `${id}:ask`;
-    type RestoredMessage = { role: "user" | "assistant"; content: string; facts?: Fact[]; options?: string[] };
-    type SessionPayload = { messages?: RestoredMessage[] };
-    fetch(`/api/session?deviceId=${encodeURIComponent(deviceRef.current)}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((payload: SessionPayload) => {
-        if (Array.isArray(payload.messages) && payload.messages.length) {
-          setMessages(payload.messages.map((x) => ({ id: uid(), role: x.role, content: x.content, facts: x.facts, options: x.options })));
-          setRestored(true);
-        }
-      })
-      .catch(() => {});
+    try {
+      const raw = localStorage.getItem("hc_ask_history");
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { savedAt?: number; messages?: Message[] };
+      if (!saved?.savedAt || Date.now() - saved.savedAt > 7 * 86400000) {
+        localStorage.removeItem("hc_ask_history");
+        return;
+      }
+      if (Array.isArray(saved.messages) && saved.messages.length) {
+        setMessages(saved.messages.slice(-40));
+        setRestored(true);
+      }
+    } catch {
+      localStorage.removeItem("hc_ask_history");
+    }
   }, []);
+
+  useEffect(() => {
+    if (!messages.length) return;
+    try {
+      localStorage.setItem("hc_ask_history", JSON.stringify({ savedAt: Date.now(), messages: messages.slice(-40) }));
+    } catch {
+      /* 浏览器禁用本地存储时不影响问答 */
+    }
+  }, [messages]);
 
   const send = async (text = input) => {
     const content = text.trim();
@@ -131,12 +144,11 @@ export default function Ask() {
   };
 
   const reset = async () => {
-    fetch("/api/session", {
-      method: "DELETE",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId: deviceRef.current }),
-    }).catch(() => {});
+    try {
+      localStorage.removeItem("hc_ask_history");
+    } catch {
+      /* ignore */
+    }
     setMessages([]);
     setRestored(false);
     setError("");
@@ -222,7 +234,7 @@ export default function Ask() {
                             <div key={card.id} className="border border-[var(--line)] bg-[var(--surface)] p-3">
                               <div className="flex items-start justify-between gap-2">
                                 <p className="text-[12px] font-medium">{card.model}</p>
-                                <span className={`status-pill ${card.priceStatus === "conflict" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-[var(--success-soft)] text-[var(--success)]"}`}>
+                                <span className={`status-pill ${card.priceStatus === "active" ? "bg-[var(--success-soft)] text-[var(--success)]" : "bg-[var(--warning-soft)] text-[var(--warning)]"}`}>
                                   {card.priceLabel}
                                 </span>
                               </div>

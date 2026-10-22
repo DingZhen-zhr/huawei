@@ -1,91 +1,37 @@
-# 智能体服务端（RAG + DeepSeek）
+# 服务端（华采智营）
 
-把原 demo 的「正则规则引擎 + 硬编码模板」升级为真正的 Agent：
-
-- **本地向量化 RAG**：`@xenova/transformers` 本地跑 `Xenova/bge-m3`（1024 维，中文友好），走 hf-mirror 镜像
-- **DeepSeek 生成**：调用 `deepseek-chat`（实测路由 `deepseek-flash`），密钥从 `.env` 读取
-- **Agent 编排**：系统提示词骨架（8 模块）+ RAG 检索上下文 → DeepSeek 生成 → 返回 `{ reply, evidence }`
-
-## 文件
+Express 5 + 本地 JSON 运行时。入口 `server/index.mjs`，所有业务路由在 `server/refactor/routes.mjs`。
 
 | 文件 | 作用 |
 |---|---|
-| `index.mjs` | Express 服务端：`/api/free-chat`、`/api/retrieve`、`/api/kb-file`、`/api/prompt`、`/api/health` |
-| `rag.mjs` | 本地 embedding + 知识库分块 + 混合检索（余弦 + 意图加权 + 型号覆盖 + 多样性） |
-| `vectorize.mjs` | 知识库向量化（遍历 md → 分块 → 嵌入 → 存索引），支持 `--boards` / `--reset` / `--limit` |
-| `deepseek.mjs` | DeepSeek 调用封装 |
-| `data/` | 运行时生成的向量索引（已 gitignore，勿提交） |
-
-## 对话层（导购 / 写文案）
-
-| 文件 | 作用 |
-|---|---|
-| `chat/agent.mjs` | 槽位抽取、事实检索、系统提示、多轮对话、问句收敛 |
-| `agent/kb-index.mjs` | 解析 v7 知识库：型号检索卡 + 官方价格快照 → 结构化事实 |
-
-接口：`POST /api/chat`、`GET /api/chat/health`。
-
-## 平台适配层（MCP）
-
-| 文件 | 作用 |
-|---|---|
-| `mcp/core.mjs` | 规则卡加载 + adapt / review / publish / collect（零依赖） |
-| `mcp/server.mjs` | 最小 MCP stdio server（JSON-RPC 2.0，6 个工具） |
-| `platforms/*.json` | 平台规则卡：字数、标签、图片比例、极限词、必备声明 |
-| `mcp/smoke.mjs` | 冒烟测试：规则命中、误报抑制、交接包、归因、协议握手 |
-
-```bash
-npm run mcp:smoke   # 一键验证
-npm run mcp         # stdio 方式启动，供 MCP 客户端接入
-```
-
-设计说明见仓库根目录 `docs/重构方案.md` 第 7 节。
-
-## 检索增强（针对业务场景）
-
-1. **多样性**：每个文件最多 2 块，避免上下文全挤在同一文档
-2. **型号覆盖**：问题提到多个型号时，保证每个型号的「产品事实」关键小节都进入上下文（防混淆）
-3. **意图加权**：问价格时提升「价格卡」权重；问平台时提升「平台模板」权重
-4. **价格表完整**：价格类问题会把命中价格卡的其余分块带上，避免具体 SKU 行被切掉
+| `refactor/ledger.mjs` | 从 v7 知识库解析 10 个型号的事实与价格；价格冲突/参考价冻结 |
+| `refactor/model-writer.mjs` | DeepSeek 生成五渠道文案；失败回退规则稿 |
+| `refactor/generator.mjs` | 规则稿兜底、配图计划、复制文本 |
+| `refactor/verifier.mjs` | 确定性核验：价格/参数/商业承诺/极限词 |
+| `refactor/tasks.mjs` | 内容任务、SSE、部分失败、单渠道重试、刷新恢复 |
+| `refactor/ask.mjs` | 顾客问答槽位（预算/场景/系统/否定表达） |
+| `fact-import.mjs` / `tavily.mjs` | 候选事实、官方来源搜索 |
+| `agent/kb-index.mjs` | 解析 `华为PC全板块深度知识库_v7` |
+| `mcp/core.mjs` + `platforms/*.json` | 平台规则卡（五渠道） |
 
 ## 运行
 
 ```bash
 cd app
-cp .env.example .env        # 填 DEEPSEEK_API_KEY
-npm run vectorize           # 构建向量索引
-npm run server              # 启动服务端（端口 8787）
+npm run server   # 8787
+npm run dev      # 3000，/api 代理到 8787
 ```
 
-前端 `npm run dev` 时 Vite 会把 `/api` 代理到 8787。
+环境变量见 `app/.env.example`。生产环境必须配置 `HC_SESSION_SECRET` 与 `ADMIN_PASSCODE`。
 
-## 索引范围（当前默认）
+## 生成模式
 
-`vectorize.mjs` 的 `CORE_BOARDS` 默认只索引核心业务板块（全库 1363 个 md，CPU 上需 1 小时以上）：
+- 有 `DEEPSEEK_API_KEY`：`HC_GENERATION` 未设为 `rules` 时，五渠道文案走模型（`model:deepseek-chat`）；单渠道失败自动回退规则稿并在任务里标记。
+- 没有密钥或 `HC_GENERATION=rules`：全部规则稿，界面显示 `rules-v1`，不伪装成模型生成。
+- 模型输出仍经过 `verifier.mjs` 确定性核验；被拦版本不可复制/导出。
 
-- `P1-产品参数库`（产品事实 / 卖点 / 型号检索卡 / 官方价格快照）
-- `P6-营销素材库`、`P8-客户场景库`、`P2-卖点话术库`、`P7-常见问题库`、`P4-价格政策库（机密）`
-
-也可指定具体目录（支持二级目录），增量追加（不加 `--reset` 会跳过已完成文件）：
+## 测试
 
 ```bash
-# 只补平台模板 + 智能体规则 + 零售话术（快速）
-npm run vectorize -- --boards "P6-营销素材库/02-平台模板,00-建库规范/06-智能体规则,P2-卖点话术库/01-零售"
-
-# 全库（较慢）
-npm run vectorize -- --boards ""
+npm test   # node --test server/refactor/*.test.mjs
 ```
-
-## 已知限制
-
-- bge-m3 为 CPU 推理，实测约 7 段/秒；全库索引耗时较长
-- 单文件 embedding 超过 120 秒会被跳过并打印警告（防止整批卡死），可重跑补齐
-- 索引 JSON 较大（约 70MB+），服务端按 mtime 缓存在内存，避免每次请求重复解析
-
-## API
-
-- `GET /api/health` → `{ ok, model }`
-- `GET /api/prompt` → 系统提示词全文
-- `GET /api/kb-file?path=<相对知识库根路径>` → 知识库文件原文（防目录穿越）
-- `POST /api/retrieve` `{ query, topK }` → 检索到的知识块
-- `POST /api/free-chat` `{ messages }` → `{ reply, evidence[] }`

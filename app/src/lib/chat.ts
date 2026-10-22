@@ -14,7 +14,7 @@ export interface AskCard {
   overBy?: number;
   reason: string;
   limitation: string;
-  priceStatus: "active" | "conflict" | "missing";
+  priceStatus: "active" | "conflict" | "reference" | "missing";
 }
 
 export interface Message {

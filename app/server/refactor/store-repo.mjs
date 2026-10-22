@@ -1,8 +1,17 @@
-// 本地门店仓库：开发环境持久化到 server/data/runtime；接上 Supabase 后可替换为 DB 仓储。
+// 门店仓库：Supabase Postgres 优先；本地开发/测试回退到 server/data/runtime JSON。
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import {
+  dbEnabled,
+  dbFindStoreByCode,
+  dbGetStoreById,
+  dbInsertStore,
+  dbListStores,
+  dbUpdatePin,
+  dbUpdateStoreProfile,
+} from "./db.mjs";
 
 const DATA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "runtime");
 const FILE = path.join(DATA_DIR, "stores.json");
@@ -46,13 +55,13 @@ function verifyHash(pin, stored) {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-function idFor(code) {
+function localIdFor(code) {
   return `store:${createHash("sha1").update(String(code)).digest("hex").slice(0, 12)}`;
 }
 
-function makeDemoStore() {
+function makeDemoStore(id = localIdFor(DEMO_CODE)) {
   return {
-    id: idFor(DEMO_CODE),
+    id,
     code: DEMO_CODE,
     name: "华为体验店 · 演示门店",
     status: "active",
@@ -72,21 +81,17 @@ function makeDemoStore() {
   };
 }
 
-function ensureDemoStore() {
+function ensureLocalDemoStore() {
   const state = readState();
   let changed = false;
   if (!state.stores.length && demoMode) {
     state.stores.push(makeDemoStore());
     changed = true;
   }
-  // 开发环境如果换了演示 PIN，允许本地文件里的演示门店跟着更新。
   const demo = state.stores.find((s) => s.demo && s.code === DEMO_CODE);
-  if (demo && demoMode) {
-    const expected = hashPin(DEMO_PIN, "demo-fixed-salt");
-    if (!demo.pinHash || !demo.pinHash.startsWith("scrypt$")) {
-      demo.pinHash = expected;
-      changed = true;
-    }
+  if (demo && demoMode && !verifyHash(DEMO_PIN, demo.pinHash)) {
+    demo.pinHash = hashPin(DEMO_PIN);
+    changed = true;
   }
   if (changed) writeState(state);
   return state;
@@ -97,18 +102,27 @@ export function getDemoCredentials() {
   return { storeCode: DEMO_CODE, pin: DEMO_PIN, label: "演示门店" };
 }
 
-export function findStoreByCode(code) {
+export async function findStoreByCode(code) {
   const clean = String(code || "").trim();
   if (!clean) return null;
-  return ensureDemoStore().stores.find((s) => s.code.toLowerCase() === clean.toLowerCase()) || null;
+  if (!dbEnabled()) {
+    return ensureLocalDemoStore().stores.find((s) => s.code.toLowerCase() === clean.toLowerCase()) || null;
+  }
+  let store = await dbFindStoreByCode(clean);
+  if (!store && demoMode && clean.toLowerCase() === DEMO_CODE.toLowerCase()) {
+    store = await dbInsertStore(makeDemoStore(randomUUID()));
+    if (!store) store = await dbFindStoreByCode(clean);
+  }
+  return store;
 }
 
 export function verifyStorePin(store, pin) {
   return Boolean(store && store.status === "active" && verifyHash(pin, store.pinHash));
 }
 
-export function getStoreById(id) {
-  return ensureDemoStore().stores.find((s) => s.id === id) || null;
+export async function getStoreById(id) {
+  if (!dbEnabled()) return ensureLocalDemoStore().stores.find((s) => s.id === id) || null;
+  return dbGetStoreById(id);
 }
 
 export function publicStore(store) {
@@ -123,63 +137,82 @@ export function publicStore(store) {
   };
 }
 
-export function updateStoreProfile(id, patch = {}) {
-  const state = ensureDemoStore();
-  const store = state.stores.find((s) => s.id === id);
-  if (!store) throw new Error("门店不存在");
+export async function updateStoreProfile(id, patch = {}) {
   const allowed = ["city", "address", "phone", "businessHours", "qrAssetUrl", "voiceTone", "voiceSamples"];
-  const profile = { ...(store.profile || {}) };
-  for (const key of allowed) {
-    if (patch[key] !== undefined) profile[key] = patch[key];
+  if (!dbEnabled()) {
+    const state = ensureLocalDemoStore();
+    const store = state.stores.find((s) => s.id === id);
+    if (!store) throw new Error("门店不存在");
+    const profile = { ...(store.profile || {}) };
+    for (const key of allowed) if (patch[key] !== undefined) profile[key] = patch[key];
+    store.profile = profile;
+    store.updatedAt = new Date().toISOString();
+    writeState(state);
+    return publicStore(store);
   }
-  store.profile = profile;
-  store.updatedAt = new Date().toISOString();
-  writeState(state);
+  const current = await dbGetStoreById(id);
+  if (!current) throw new Error("门店不存在");
+  const profile = { ...(current.profile || {}) };
+  for (const key of allowed) if (patch[key] !== undefined) profile[key] = patch[key];
+  const store = await dbUpdateStoreProfile(id, profile);
   return publicStore(store);
 }
 
-export function addStore({ code, name, pin }) {
+export async function addStore({ code, name, pin }) {
   if (!code || !name || !/^\d{4,6}$/.test(String(pin || ""))) throw new Error("门店码、名称和 4–6 位 PIN 必填");
-  const state = ensureDemoStore();
-  if (state.stores.some((s) => s.code.toLowerCase() === String(code).toLowerCase())) {
-    throw new Error("门店码已存在");
+  if (!dbEnabled()) {
+    const state = ensureLocalDemoStore();
+    if (state.stores.some((s) => s.code.toLowerCase() === String(code).toLowerCase())) throw new Error("门店码已存在");
+    const store = {
+      ...makeDemoStore(localIdFor(code)),
+      id: localIdFor(code),
+      code: String(code).trim(),
+      name: String(name).trim(),
+      pinHash: hashPin(pin),
+      demo: false,
+      profile: {
+        city: "",
+        address: "",
+        phone: "",
+        businessHours: "",
+        qrAssetUrl: "",
+        voiceTone: "直接、克制",
+        voiceSamples: [],
+      },
+    };
+    state.stores.push(store);
+    writeState(state);
+    return publicStore(store);
   }
   const store = {
-    id: idFor(code),
+    ...makeDemoStore(randomUUID()),
     code: String(code).trim(),
     name: String(name).trim(),
-    status: "active",
     pinHash: hashPin(pin),
     demo: false,
-    profile: {
-      city: "",
-      address: "",
-      phone: "",
-      businessHours: "",
-      qrAssetUrl: "",
-      voiceTone: "直接、克制",
-      voiceSamples: [],
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   };
-  state.stores.push(store);
-  writeState(state);
-  return publicStore(store);
+  const created = await dbInsertStore(store);
+  if (!created) throw new Error("门店码已存在");
+  return publicStore(created);
 }
 
-export function listStores() {
-  return ensureDemoStore().stores.map(publicStore);
+export async function listStores() {
+  if (!dbEnabled()) return ensureLocalDemoStore().stores.map(publicStore);
+  return (await dbListStores()).map(publicStore);
 }
 
-export function resetStorePin(id, pin) {
+export async function resetStorePin(id, pin) {
   if (!/^\d{4,6}$/.test(String(pin || ""))) throw new Error("PIN 需要 4–6 位数字");
-  const state = ensureDemoStore();
-  const store = state.stores.find((s) => s.id === id);
-  if (!store) throw new Error("门店不存在");
-  store.pinHash = hashPin(pin);
-  store.updatedAt = new Date().toISOString();
-  writeState(state);
+  if (!dbEnabled()) {
+    const state = ensureLocalDemoStore();
+    const store = state.stores.find((s) => s.id === id);
+    if (!store) throw new Error("门店不存在");
+    store.pinHash = hashPin(pin);
+    store.updatedAt = new Date().toISOString();
+    writeState(state);
+    return { ok: true };
+  }
+  await dbUpdatePin(id, hashPin(pin));
   return { ok: true };
 }
 

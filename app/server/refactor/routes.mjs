@@ -11,14 +11,15 @@ import {
 } from "./auth.mjs";
 import { demoMode, findStoreByCode, getDemoCredentials, publicStore, updateStoreProfile, verifyStorePin } from "./store-repo.mjs";
 import { getTaskCards } from "./task-cards.mjs";
-import { getConflict, getProduct, listProducts, publicProduct, resolveConflict } from "./ledger.mjs";
-import { commitProposedFacts, createProposedFacts, listProposedFacts, listSources } from "./fact-import.mjs";
+import { ensureFactRuntime, flushFactRuntime, getConflict, getProduct, listProducts, publicProduct, resolveConflict } from "./ledger.mjs";
+import { commitProposedFacts, createProposedFacts, ensureProposals, flushProposals, listProposedFacts, listSources } from "./fact-import.mjs";
 import { searchOfficialSources } from "./tavily.mjs";
 import {
   createTask,
-  getTask,
+  ensureTask,
   getTaskSnapshot,
   listTasks,
+  persistTask,
   retryPlatform,
   subscribe,
   updateVariant,
@@ -27,8 +28,40 @@ import { rewriteVariant } from "./rewrite.mjs";
 import { verifyContent } from "./verifier.mjs";
 import { analyzeCopy } from "./copy-quality.mjs";
 import { localAsk } from "./ask.mjs";
+import { dbEnabled } from "./db.mjs";
 
 export const router = Router();
+
+let runtimeReady = null;
+router.use(async (_req, _res, next) => {
+  try {
+    if (!runtimeReady) {
+      runtimeReady = (async () => {
+        await ensureFactRuntime();
+        await ensureProposals();
+      })();
+    }
+    await runtimeReady;
+    next();
+  } catch (error) {
+    runtimeReady = null;
+    next(error);
+  }
+});
+
+const attempts = new Map();
+function clientIp(req) {
+  return String(req.headers["x-forwarded-for"] || req.ip || "unknown").split(",")[0].trim();
+}
+function allowAttempt(key, limit = 10, windowMs = 10 * 60 * 1000) {
+  const now = Date.now();
+  const list = (attempts.get(key) || []).filter((time) => now - time < windowMs);
+  if (list.length >= limit) return false;
+  list.push(now);
+  attempts.set(key, list);
+  if (attempts.size > 2000) attempts.clear();
+  return true;
+}
 
 function fail(res, error) {
   const status = error?.status || 500;
@@ -40,38 +73,41 @@ function fail(res, error) {
 }
 
 router.get("/health", (_req, res) => {
-  res.json({ ok: true, refactor: true, demo: demoMode, runtime: "local-json-fallback" });
+  res.json({ ok: true, refactor: true, demo: demoMode, persistence: dbEnabled() ? "supabase" : "local-json" });
 });
 
-router.post("/auth/store", (req, res) => {
-  const store = findStoreByCode(req.body?.storeCode);
+router.post("/auth/store", async (req, res) => {
+  const key = `store:${clientIp(req)}:${String(req.body?.storeCode || "").toUpperCase()}`;
+  if (!allowAttempt(key)) return res.status(429).json({ error: "尝试次数过多，请稍后再试", code: "LOGIN_RATE_LIMITED" });
+  const store = await findStoreByCode(req.body?.storeCode);
   if (!store || !verifyStorePin(store, req.body?.pin)) {
     return res.status(401).json({ error: "门店码或 PIN 不正确", code: "STORE_LOGIN_FAILED" });
   }
+  attempts.delete(key);
   setStoreSession(res, store.id);
   res.json({ store: publicStore(store), expiresAt: new Date(Date.now() + 7 * 86400000).toISOString() });
 });
 
-router.post("/auth/demo", (_req, res) => {
+router.post("/auth/demo", async (_req, res) => {
   if (!adminDemoEnabled()) return res.status(404).json({ error: "演示入口未开启" });
   const creds = getDemoCredentials();
-  const store = findStoreByCode(creds.storeCode);
+  const store = await findStoreByCode(creds.storeCode);
   if (!store) return res.status(503).json({ error: "演示门店未初始化" });
   setStoreSession(res, store.id);
   res.json({ store: publicStore(store), expiresAt: new Date(Date.now() + 7 * 86400000).toISOString() });
 });
 
-router.get("/auth/demo-redirect", (_req, res) => {
+router.get("/auth/demo-redirect", async (_req, res) => {
   if (!adminDemoEnabled()) return res.status(404).send("演示入口未开启");
   const creds = getDemoCredentials();
-  const store = findStoreByCode(creds.storeCode);
+  const store = await findStoreByCode(creds.storeCode);
   if (!store) return res.status(503).send("演示门店未初始化");
   setStoreSession(res, store.id);
   res.redirect("/");
 });
 
-router.get("/auth/me", (req, res) => {
-  const store = getStoreFromRequest(req);
+router.get("/auth/me", async (req, res) => {
+  const store = await getStoreFromRequest(req);
   if (!store) return res.status(401).json({ error: "未登录", code: "STORE_AUTH_REQUIRED" });
   res.json({ store: publicStore(store) });
 });
@@ -82,9 +118,11 @@ router.post("/auth/logout", (req, res) => {
 });
 
 router.post("/admin/login", (req, res) => {
+  if (!allowAttempt(`admin:${clientIp(req)}`)) return res.status(429).json({ error: "尝试次数过多，请稍后再试", code: "ADMIN_RATE_LIMITED" });
   if (!verifyAdminPasscode(req.body?.passcode)) {
     return res.status(401).json({ error: "管理员口令不正确", code: "ADMIN_LOGIN_FAILED" });
   }
+  attempts.delete(`admin:${clientIp(req)}`);
   setAdminSession(res);
   res.json({ ok: true, demo: demoMode });
 });
@@ -108,31 +146,34 @@ router.get("/admin/conflicts", requireAdmin, (_req, res) => {
   res.json({ conflicts });
 });
 
-router.get("/admin/overview", requireAdmin, (_req, res) => {
+router.get("/admin/overview", requireAdmin, async (_req, res) => {
   res.json({
     products: listProducts(),
     conflicts: listProducts()
       .map((p) => getConflict(p.id))
       .filter(Boolean),
-    tasks: listTasks(null, 20),
+    tasks: await listTasks(null, 20),
   });
 });
 
 // P2 fact-admin APIs. They are deliberately admin-only: search output remains proposed
 // until an operator reviews evidence and resolves any price conflict with an audit record.
-router.post("/admin/import/preview", requireAdmin, (req, res) => {
+router.post("/admin/import/preview", requireAdmin, async (req, res) => {
   try {
     const candidates = Array.isArray(req.body?.facts) ? req.body.facts : [req.body];
     const proposed = candidates.map((candidate) => createProposedFacts(candidate)).flat();
+    await flushProposals();
     res.status(201).json({ status: "proposed", facts: proposed });
   } catch (error) {
     fail(res, error);
   }
 });
 
-router.post("/admin/import/commit", requireAdmin, (req, res) => {
+router.post("/admin/import/commit", requireAdmin, async (req, res) => {
   try {
     const facts = commitProposedFacts(Array.isArray(req.body?.ids) ? req.body.ids : []);
+    await flushFactRuntime();
+    await flushProposals();
     res.json({ status: "committed", facts });
   } catch (error) {
     fail(res, error);
@@ -143,9 +184,10 @@ router.get("/admin/sources", requireAdmin, (_req, res) => {
   res.json({ sources: listSources(), proposed: listProposedFacts() });
 });
 
-router.post("/admin/conflicts/:id/resolve", requireAdmin, (req, res) => {
+router.post("/admin/conflicts/:id/resolve", requireAdmin, async (req, res) => {
   try {
     const conflict = resolveConflict(req.params.id, req.body || {});
+    await flushFactRuntime();
     res.json({ conflict, audit: conflict.audit });
   } catch (error) {
     res.status(400).json({ error: error?.message || "价格确认请求不合法", code: "CONFLICT_RESOLUTION_INVALID" });
@@ -159,12 +201,12 @@ router.post("/admin/recheck-prices", requireAdmin, async (req, res) => {
   res.json({ ...result, note: "搜索结果仅作为 proposed 来源候选，未写入事实账本" });
 });
 
-router.get("/tasks/today", requireStore, (req, res) => {
+router.get("/tasks/today", requireStore, async (req, res) => {
   res.json({
     date: new Date().toISOString().slice(0, 10),
     store: publicStore(req.store),
     tasks: getTaskCards(),
-    recent: listTasks(req.store.id, 5),
+    recent: await listTasks(req.store.id, 5),
   });
 });
 
@@ -178,41 +220,41 @@ router.get("/products/:id", requireStore, (req, res) => {
   res.json({ product: publicProduct(product), facts: product.facts.filter((f) => f.field !== "price").slice(0, 12), conflict: product.conflict });
 });
 
-router.post("/content/tasks", requireStore, (req, res) => {
+router.post("/content/tasks", requireStore, async (req, res) => {
   try {
-    res.status(201).json(createTask({ store: req.store, body: req.body }));
+    res.status(201).json(await createTask({ store: req.store, body: req.body }));
   } catch (e) {
     fail(res, e);
   }
 });
 
-router.get("/content/tasks", requireStore, (req, res) => {
-  res.json({ tasks: listTasks(req.store.id, 30) });
+router.get("/content/tasks", requireStore, async (req, res) => {
+  res.json({ tasks: await listTasks(req.store.id, 30) });
 });
 
-router.get("/content/tasks/:id", requireStore, (req, res) => {
-  const snapshot = getTaskSnapshot(req.params.id, req.store.id);
+router.get("/content/tasks/:id", requireStore, async (req, res) => {
+  const snapshot = await getTaskSnapshot(req.params.id, req.store.id);
   if (!snapshot) return res.status(404).json({ error: "任务不存在" });
   res.json(snapshot);
 });
 
-router.get("/content/tasks/:id/events", requireStore, (req, res) => {
-  const task = getTask(req.params.id, req.store.id);
+router.get("/content/tasks/:id/events", requireStore, async (req, res) => {
+  const task = await ensureTask(req.params.id, req.store.id);
   if (!task) return res.status(404).json({ error: "任务不存在" });
   subscribe(req.params.id, res);
 });
 
-router.post("/content/tasks/:id/retry", requireStore, (req, res) => {
+router.post("/content/tasks/:id/retry", requireStore, async (req, res) => {
   try {
-    res.json(retryPlatform(req.params.id, req.body?.platform, req.store.id));
+    res.json(await retryPlatform(req.params.id, req.body?.platform, req.store.id));
   } catch (e) {
     fail(res, e);
   }
 });
 
-router.patch("/content/tasks/:taskId/variants/:variantId", requireStore, (req, res) => {
+router.patch("/content/tasks/:taskId/variants/:variantId", requireStore, async (req, res) => {
   try {
-    const variant = updateVariant(req.params.taskId, req.params.variantId, req.body || {}, req.store.id);
+    const variant = await updateVariant(req.params.taskId, req.params.variantId, req.body || {}, req.store.id);
     res.json({ variant });
   } catch (e) {
     fail(res, e);
@@ -221,7 +263,7 @@ router.patch("/content/tasks/:taskId/variants/:variantId", requireStore, (req, r
 
 router.post("/content/variants/:id/rewrite", requireStore, async (req, res) => {
   const taskId = String(req.body?.taskId || "");
-  const snapshot = getTaskSnapshot(taskId, req.store.id);
+  const snapshot = await getTaskSnapshot(taskId, req.store.id);
   if (!snapshot) return res.status(404).json({ error: "任务不存在" });
   const variant = snapshot.variants.find((v) => v.id === req.params.id);
   if (!variant) return res.status(404).json({ error: "版本不存在" });
@@ -233,7 +275,7 @@ router.post("/content/variants/:id/rewrite", requireStore, async (req, res) => {
       variant,
       instruction: String(req.body?.instruction || ""),
     });
-    const updated = updateVariant(
+    const updated = await updateVariant(
       taskId,
       variant.id,
       {
@@ -257,9 +299,9 @@ router.post("/content/variants/:id/rewrite", requireStore, async (req, res) => {
   }
 });
 
-router.post("/content/variants/:id/verify", requireStore, (req, res) => {
+router.post("/content/variants/:id/verify", requireStore, async (req, res) => {
   const taskId = String(req.body?.taskId || "");
-  const snapshot = getTaskSnapshot(taskId, req.store.id);
+  const snapshot = await getTaskSnapshot(taskId, req.store.id);
   if (!snapshot) return res.status(404).json({ error: "任务不存在" });
   const variant = snapshot.variants.find((v) => v.id === req.params.id);
   if (!variant) return res.status(404).json({ error: "版本不存在" });
@@ -268,16 +310,17 @@ router.post("/content/variants/:id/verify", requireStore, (req, res) => {
   res.json({ status: verification.status, claims: verification.claims, blocked: verification.blocked, reasons: verification.reasons });
 });
 
-router.post("/content/variants/:id/select", requireStore, (req, res) => {
+router.post("/content/variants/:id/select", requireStore, async (req, res) => {
   const taskId = String(req.body?.taskId || "");
-  const snapshot = getTaskSnapshot(taskId, req.store.id);
+  const snapshot = await getTaskSnapshot(taskId, req.store.id);
   if (!snapshot) return res.status(404).json({ error: "任务不存在" });
   const variant = snapshot.variants.find((v) => v.id === req.params.id);
   if (!variant) return res.status(404).json({ error: "版本不存在" });
-  const task = getTask(taskId, req.store.id);
+  const task = await ensureTask(taskId, req.store.id);
   for (const v of task.variants) {
     if (v.platform === variant.platform) v.selected = v.id === variant.id;
   }
+  await persistTask(task);
   res.json({ ok: true });
 });
 
@@ -285,9 +328,9 @@ router.get("/store/profile", requireStore, (req, res) => {
   res.json({ store: publicStore(req.store), profile: req.store.profile || {} });
 });
 
-router.patch("/store/profile", requireStore, (req, res) => {
+router.patch("/store/profile", requireStore, async (req, res) => {
   try {
-    const store = updateStoreProfile(req.store.id, req.body || {});
+    const store = await updateStoreProfile(req.store.id, req.body || {});
     res.json({ store });
   } catch (e) {
     fail(res, e);

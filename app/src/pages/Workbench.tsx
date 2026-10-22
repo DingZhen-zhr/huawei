@@ -8,8 +8,10 @@ import {
   CircleAlert,
   ClipboardCheck,
   Copy,
+  Download,
   FileText,
   Image as ImageIcon,
+  Images,
   Layers3,
   Loader2,
   PenLine,
@@ -20,6 +22,8 @@ import {
   X,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { downloadImage, renderImages, type RenderedImage } from "@/lib/render-images";
+import { buildPack, shareOrDownload } from "@/lib/export-pack";
 import {
   api,
   type ChannelSnapshot,
@@ -48,6 +52,15 @@ function statusTone(status: string) {
   return "bg-[var(--warning-soft)] text-[var(--warning)]";
 }
 
+function generationLabel(mode?: string) {
+  if (!mode) return "生成方式未知";
+  if (mode.startsWith("model:")) return `模型生成 · ${mode.slice(6)}`;
+  if (mode === "mixed") return "模型 + 规则稿（部分回退）";
+  if (mode === "rules-v1") return "规则稿（未用模型）";
+  if (mode.startsWith("queued:")) return `排队 · ${mode.slice(7)}`;
+  return mode;
+}
+
 function textBlocks(text: string) {
   return String(text || "")
     .split(/\n{2,}/)
@@ -73,6 +86,7 @@ function Paragraphs({ text }: { text: string }) {
 function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapshot["task"] }) {
   const [coverFailed, setCoverFailed] = useState(false);
   const image = task.productAsset;
+  const fit = task.productAssetFit || "cover";
 
   if (variant.platform === "xiaohongshu") {
     return (
@@ -80,7 +94,7 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
         <div className="overflow-hidden bg-white shadow-[0_10px_36px_-26px_rgba(0,0,0,.38)]">
           <div className="relative aspect-[3/4] bg-[#e9e3da]">
             {image && !coverFailed ? (
-              <img src={image} alt="" className="h-full w-full object-cover" onError={() => setCoverFailed(true)} />
+              <img src={image} alt="" className="h-full w-full" style={{ objectFit: fit }} onError={() => setCoverFailed(true)} />
             ) : (
               <div className="flex h-full items-center justify-center text-[11px] text-[var(--muted)]">官方产品图未就位</div>
             )}
@@ -118,7 +132,7 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
                 <div className="mt-3 grid grid-cols-3 gap-1">
                   {[0, 1, 2].slice(0, 3).map((i) => (
                     <div key={i} className="aspect-square overflow-hidden bg-[#eee9e1]">
-                      <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      <img src={image} alt="" className="h-full w-full" style={{ objectFit: fit }} loading="lazy" />
                     </div>
                   ))}
                 </div>
@@ -144,7 +158,7 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
         </div>
         {image && (
           <div className="mt-5 aspect-[900/383] overflow-hidden bg-[#eee9e1]">
-            <img src={image} alt="" className="h-full w-full object-cover" />
+            <img src={image} alt="" className="h-full w-full" style={{ objectFit: fit }} />
           </div>
         )}
         <div className="mt-6">
@@ -160,7 +174,7 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
       <div className="mx-auto w-full max-w-[370px] bg-[#111] p-3 shadow-[0_16px_50px_-30px_rgba(0,0,0,.6)]">
         <div className="relative aspect-[3/4] overflow-hidden bg-[#161616] text-white">
           {image && (
-            <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-55" />
+            <img src={image} alt="" className="absolute inset-0 h-full w-full opacity-55" style={{ objectFit: fit }} />
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/10 to-black/90" />
           <div className="relative flex h-full flex-col justify-between p-6">
@@ -195,7 +209,7 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
   return (
     <div className="mx-auto grid w-full max-w-[860px] gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
       <div className="relative mx-auto aspect-[9/16] w-full max-w-[280px] overflow-hidden bg-[#101010] text-white shadow-[0_16px_44px_-32px_rgba(0,0,0,.7)]">
-        {image && <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45" />}
+        {image && <img src={image} alt="" className="absolute inset-0 h-full w-full opacity-45" style={{ objectFit: fit }} />}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/90" />
         <div className="relative flex h-full flex-col justify-between p-4">
           <span className="w-fit rounded-full bg-black/45 px-2 py-1 text-[9px] text-white/70">视频号 · 9:16</span>
@@ -268,7 +282,11 @@ function RiskBlock({ snapshot, variant }: { snapshot: TaskSnapshot; variant: Var
             <div>
               <p className="text-[11.5px] font-medium text-[var(--success)]">数字与承诺已过账本</p>
               <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
-                {conflict ? "这一版没有写价格；规格与场景已核验。价格仍需管理员确认后再恢复。" : "价格、规格与商业条件都落到了同型号事实；发布前仍需门店确认实际报价与库存。"}
+                {conflict
+                  ? "这一版没有写价格；规格与场景已核验。价格仍需管理员确认后再恢复。"
+                  : snapshot.task.priceStatus === "reference"
+                    ? "这一版没有写价格：该型号只有官网参考价，不是当前售价；规格与场景已核验。"
+                    : "价格、规格与商业条件都落到了同型号事实；发布前仍需门店确认实际报价与库存。"}
               </p>
             </div>
           </div>
@@ -323,21 +341,71 @@ function EvidencePanel({ snapshot, variant }: { snapshot: TaskSnapshot; variant:
         </div>
       </div>
 
-      <div className="border-t border-[var(--line)] pt-4">
-        <p className="text-[11px] font-medium">配图计划</p>
-        <div className="mt-2 space-y-2">
-          {variant.imagePlan.map((plan, index) => (
-            <div key={`${plan.purpose}-${index}`} className="flex items-start gap-2.5 text-[11px] leading-5">
-              <ImageIcon className="mt-1 h-3.5 w-3.5 shrink-0 text-[var(--muted-2)]" />
-              <div>
-                <p className="text-[var(--ink)]">{plan.purpose === "cover" ? "封面" : plan.purpose === "poster" ? "海报" : plan.purpose === "video-cover" ? "视频封面" : "场景图"} · {plan.ratio}</p>
-                <p className="text-[10px] text-[var(--muted)]">{plan.width}×{plan.height} · 官方产品图 + AI 背景，待按需生成</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-2 text-[10px] leading-5 text-[var(--muted-2)]">图片不阻塞文案；未生成时 manifest 会如实记录。</p>
+    </div>
+  );
+}
+
+function ImageStudio({
+  snapshot,
+  images,
+  busy,
+  onGenerate,
+}: {
+  snapshot: TaskSnapshot;
+  images: RenderedImage[];
+  busy: boolean;
+  onGenerate: () => void;
+}) {
+  return (
+    <div className="space-y-3 border-t border-[var(--line)] pt-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-medium">配图 · 官方产品图 + 模板排版</p>
+        <Images className="h-3.5 w-3.5 text-[var(--muted-2)]" />
       </div>
+      {!snapshot.task.hasAssets && (
+        <p className="border border-[var(--warning)]/25 bg-[var(--warning-soft)] p-2.5 text-[10.5px] leading-5 text-[var(--warning)]">
+          这个型号还没有官方产品图。先补素材；文案和导出不受影响。
+        </p>
+      )}
+      {images.length > 0 ? (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            {images.map((image) => (
+              <button
+                key={image.id}
+                type="button"
+                onClick={() => downloadImage(image)}
+                className="group relative overflow-hidden border border-[var(--line)] bg-[#eee9e1]"
+                title={`下载 ${image.label}`}
+              >
+                <img src={image.dataUrl} alt={image.label} className="aspect-[3/4] h-full w-full bg-[#f5efe5] object-contain" />
+                <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-1 text-[9px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  下载
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="chip" onClick={onGenerate} disabled={busy}>
+              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              重新生成
+            </button>
+            {images.map((image) => (
+              <button key={`dl-${image.id}`} type="button" className="chip" onClick={() => downloadImage(image)}>
+                <Download className="h-3 w-3" /> {image.label.split(" ")[0]}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <button type="button" className="btn-secondary w-full" onClick={onGenerate} disabled={busy}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+          {busy ? "正在排版" : "生成这一版的配图"}
+        </button>
+      )}
+      <p className="text-[10px] leading-5 text-[var(--muted-2)]">
+        使用官方产品图与 Canvas 排版；AI 不生成产品外观、不画二维码。二维码未配置时留白。生成后可单张下载，或随整包导出。
+      </p>
     </div>
   );
 }
@@ -390,6 +458,9 @@ export default function Workbench() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ title: "", body: "", tags: "", script: "" });
   const [busy, setBusy] = useState<"copy" | "save" | "rewrite" | "retry" | null>(null);
+  const [images, setImages] = useState<Record<string, RenderedImage[]>>({});
+  const [imageBusy, setImageBusy] = useState<string | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [drawer, setDrawer] = useState<"evidence" | "risk" | "images" | null>(null);
 
@@ -407,6 +478,7 @@ export default function Workbench() {
   };
 
   useEffect(() => {
+    setImages({});
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
@@ -514,6 +586,11 @@ export default function Workbench() {
         script: draft.script,
       });
       setEditing(false);
+      setImages((prev) => {
+        const next = { ...prev };
+        delete next[activeVariant.id];
+        return next;
+      });
       await refresh(true);
       setNotice("已保存并重新核验。");
     } catch (e) {
@@ -530,12 +607,70 @@ export default function Workbench() {
     try {
       const result = await api.rewrite(taskId, activeVariant.id, instruction);
       setEditing(false);
+      setImages((prev) => {
+        const next = { ...prev };
+        delete next[activeVariant.id];
+        return next;
+      });
       await refresh(true);
       setNotice(result.rewriteMode === "llm" ? "已改写并重新核验。" : "模型未返回，已用本地去套话并重新核验。");
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "改写失败");
     } finally {
       setBusy(null);
+    }
+  };
+
+  const generateImages = async (variant: Variant, targetPlatform: Platform) => {
+    if (!snapshot) return;
+    setImageBusy(variant.id);
+    setNotice("");
+    try {
+      const rendered = await renderImages({
+        platform: targetPlatform,
+        variant,
+        task: snapshot.task,
+        facts: snapshot.evidence,
+      });
+      setImages((prev) => ({ ...prev, [variant.id]: rendered }));
+      setNotice(`已生成 ${rendered.length} 张配图，可单张下载或随整包导出。`);
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "配图生成失败");
+    } finally {
+      setImageBusy(null);
+    }
+  };
+
+  const exportPack = async () => {
+    if (!snapshot) return;
+    setExportBusy(true);
+    setNotice("");
+    try {
+      const map: Record<string, RenderedImage[]> = { ...images };
+      for (const key of PLATFORM_ORDER) {
+        const channel = snapshot.channels[key];
+        const variant = channel?.variants.find((item) => item.selected) || channel?.recommended || channel?.variants[0];
+        if (variant && !map[variant.id]) {
+          map[variant.id] = await renderImages({
+            platform: key,
+            variant,
+            task: snapshot.task,
+            facts: snapshot.evidence,
+          });
+        }
+      }
+      const { blob, missing } = await buildPack({ snapshot, images: map });
+      const result = await shareOrDownload(blob, `huacai-${snapshot.task.id.slice(0, 8)}.zip`);
+      setImages(map);
+      setNotice(
+        result === "shared"
+          ? "已调起系统分享。"
+          : `已导出整包${missing.length ? `（${missing.length} 项待补，见 manifest）` : ""}。`,
+      );
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "导出失败");
+    } finally {
+      setExportBusy(false);
     }
   };
 
@@ -598,7 +733,12 @@ export default function Workbench() {
 
             <div className="mt-auto border-t border-[var(--line)] pt-4">
               <p className="text-[10.5px] leading-5 text-[var(--muted)]">生成方式</p>
-              <p className="mono mt-1 text-[10px] text-[var(--muted-2)]">{snapshot.task.generationMode}</p>
+              <p className="mt-1 text-[10px] leading-5 text-[var(--muted-2)]">{generationLabel(snapshot.task.generationMode)}</p>
+              {(snapshot.task.fallbacks || []).length > 0 && (
+                <p className="mt-1 text-[10px] leading-5 text-[var(--warning)]">
+                  {(snapshot.task.fallbacks || []).length} 个渠道模型失败，已如实回退规则稿
+                </p>
+              )}
               <p className="mt-3 text-[10.5px] leading-5 text-[var(--muted)]">任务保存 30 天。价格与库存仍以门店实际为准。</p>
             </div>
           </aside>
@@ -645,6 +785,25 @@ export default function Workbench() {
                     {busy === "retry" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     只重试这一渠道
                   </button>
+                </div>
+              )}
+
+              {snapshot.task.status === "failed" && !activeVariant && (
+                <div className="mt-4 border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-5">
+                  <p className="text-[13px] font-medium">这次生成没有完成</p>
+                  <ul className="mt-1 space-y-1 text-[11px] leading-5 text-[var(--muted)]">
+                    {(snapshot.errors || []).slice(0, 4).map((item, index) => (
+                      <li key={`${item.code || "err"}-${index}`}>{item.message}</li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button className="btn-secondary" onClick={() => void refresh(true)}>
+                      <RefreshCw className="h-4 w-4" /> 刷新状态
+                    </button>
+                    <Link to={`/create?productId=${snapshot.task.productId}`} className="btn-secondary">
+                      重新发起
+                    </Link>
+                  </div>
                 </div>
               )}
 
@@ -696,6 +855,10 @@ export default function Workbench() {
                     </button>
                     <button className="btn-secondary" onClick={() => setEditing((v) => !v)}>
                       <PenLine className="h-4 w-4" /> {editing ? "收起编辑" : "编辑文字"}
+                    </button>
+                    <button className="btn-secondary" onClick={() => void exportPack()} disabled={exportBusy}>
+                      {exportBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      {exportBusy ? "正在打包" : "导出整包"}
                     </button>
                     {activeVariant.verification.blocked && <span className="text-[10.5px] text-[var(--danger)]">核验未过，复制已禁用</span>}
                     {activeVariant.editBurden !== "none" && <span className="text-[10.5px] text-[var(--muted)]">预计轻改：{activeVariant.editBurden === "light" ? "一次" : "较大"}</span>}
@@ -768,6 +931,12 @@ export default function Workbench() {
               {activeVariant ? (
                 <>
                   <RiskBlock snapshot={snapshot} variant={activeVariant} />
+                  <ImageStudio
+                    snapshot={snapshot}
+                    images={images[activeVariant.id] || []}
+                    busy={imageBusy === activeVariant.id}
+                    onGenerate={() => void generateImages(activeVariant, platform)}
+                  />
                   <EvidencePanel snapshot={snapshot} variant={activeVariant} />
                 </>
               ) : (
@@ -783,22 +952,19 @@ export default function Workbench() {
           <button type="button" className="drawer-backdrop lg:hidden" aria-label="关闭面板" onClick={() => setDrawer(null)} />
           <section className="drawer-panel lg:hidden" role="dialog" aria-modal="true" aria-label="依据与风险">
             <div className="flex items-center justify-between">
-              <h2 className="text-[14px] font-medium">{drawer === "risk" ? "风险" : drawer === "images" ? "配图计划" : "依据"}</h2>
+              <h2 className="text-[14px] font-medium">{drawer === "risk" ? "风险" : drawer === "images" ? "配图" : "依据"}</h2>
               <button className="icon-button" onClick={() => setDrawer(null)} aria-label="关闭"><X className="h-4 w-4" /></button>
             </div>
             <div className="mt-5">
               {drawer === "risk" && <RiskBlock snapshot={snapshot} variant={activeVariant} />}
               {drawer === "evidence" && <EvidencePanel snapshot={snapshot} variant={activeVariant} />}
               {drawer === "images" && (
-                <div className="space-y-3">
-                  {activeVariant.imagePlan.map((plan, index) => (
-                    <div key={`${plan.purpose}-${index}`} className="border-b border-[var(--line)] pb-3">
-                      <p className="text-[12px] font-medium">{plan.purpose} · {plan.ratio}</p>
-                      <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">{plan.width}×{plan.height} · {plan.overlayText.join(" / ")}</p>
-                      <p className="mt-1 text-[10px] leading-5 text-[var(--muted-2)]">官方产品图或门店实拍；AI 只生成背景。当前状态：待按需生成。</p>
-                    </div>
-                  ))}
-                </div>
+                <ImageStudio
+                  snapshot={snapshot}
+                  images={images[activeVariant.id] || []}
+                  busy={imageBusy === activeVariant.id}
+                  onGenerate={() => void generateImages(activeVariant, platform)}
+                />
               )}
             </div>
           </section>
