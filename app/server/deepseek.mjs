@@ -10,19 +10,21 @@ if (!API_KEY) {
   console.warn("[deepseek] 未读取到 DEEPSEEK_API_KEY，请在 app/.env 配置");
 }
 
-export async function chat({ messages, temperature = 0.7, maxTokens = 1500, stream = false }) {
+export async function chat({ messages, temperature = 0.7, maxTokens = 1500, stream = false, responseFormat, model = MODEL }) {
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${API_KEY}`,
     },
+    signal: AbortSignal.timeout(25000),
     body: JSON.stringify({
-      model: MODEL,
+      model,
       messages,
       temperature,
       max_tokens: maxTokens,
       stream,
+      ...(responseFormat ? { response_format: responseFormat } : {}),
     }),
   });
   if (!res.ok) {

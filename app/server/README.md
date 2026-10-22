@@ -16,6 +16,31 @@
 | `deepseek.mjs` | DeepSeek 调用封装 |
 | `data/` | 运行时生成的向量索引（已 gitignore，勿提交） |
 
+## 对话层（导购 / 写文案）
+
+| 文件 | 作用 |
+|---|---|
+| `chat/agent.mjs` | 槽位抽取、事实检索、系统提示、多轮对话、问句收敛 |
+| `agent/kb-index.mjs` | 解析 v7 知识库：型号检索卡 + 官方价格快照 → 结构化事实 |
+
+接口：`POST /api/chat`、`GET /api/chat/health`。
+
+## 平台适配层（MCP）
+
+| 文件 | 作用 |
+|---|---|
+| `mcp/core.mjs` | 规则卡加载 + adapt / review / publish / collect（零依赖） |
+| `mcp/server.mjs` | 最小 MCP stdio server（JSON-RPC 2.0，6 个工具） |
+| `platforms/*.json` | 平台规则卡：字数、标签、图片比例、极限词、必备声明 |
+| `mcp/smoke.mjs` | 冒烟测试：规则命中、误报抑制、交接包、归因、协议握手 |
+
+```bash
+npm run mcp:smoke   # 一键验证
+npm run mcp         # stdio 方式启动，供 MCP 客户端接入
+```
+
+设计说明见仓库根目录 `docs/重构方案.md` 第 7 节。
+
 ## 检索增强（针对业务场景）
 
 1. **多样性**：每个文件最多 2 块，避免上下文全挤在同一文档

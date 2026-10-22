@@ -30,3 +30,5 @@ dist-ssr
 
 # 服务端运行时生成的向量索引（体积大，勿提交）
 server/data/
+.vercel
+.env*

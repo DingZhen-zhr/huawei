@@ -1,0 +1,61 @@
+{
+  "platform": "poster",
+  "label": "门店海报",
+  "capability": "RENDER_ONLY",
+  "capabilityNote": "本地渲染 HTML→PNG，可打印/门店屏投放",
+  "limits": {
+    "titleMin": 6,
+    "titleMax": 12,
+    "bodyMin": 10,
+    "bodyMax": 100,
+    "tagsMin": 0,
+    "tagsMax": 0,
+    "paragraphMaxLines": 3,
+    "images": {
+      "min": 1,
+      "max": 1,
+      "ratio": "3:4",
+      "minWidth": 1242
+    }
+  },
+  "banned": [
+    "最好",
+    "最佳",
+    "最强",
+    "最低价",
+    "最高级",
+    "第一",
+    "国家级",
+    "顶级",
+    "绝对",
+    "100%",
+    "全网最低"
+  ],
+  "bannedReason": "极限词风险",
+  "falsePositiveGuards": [
+    {
+      "word": "100%",
+      "allowSuffixes": [
+        "sRGB",
+        "Adobe RGB",
+        "DCI-P3",
+        "NTSC"
+      ],
+      "reason": "色域参数属客观规格，不构成绝对化用语"
+    }
+  ],
+  "required": [],
+  "style": {
+    "tone": "短语、数字优先",
+    "emojiPer100": 0,
+    "hashtagStyle": "",
+    "titlePattern": "3 秒可读"
+  },
+  "checklist": [
+    "主标题是否 ≤12 字",
+    "价格区是否写『以门店实际报价为准』",
+    "是否标注活动期限",
+    "是否预留二维码/来源码位",
+    "是否 3 秒可读（短语、数字优先）"
+  ]
+}

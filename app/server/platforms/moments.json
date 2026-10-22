@@ -1,0 +1,73 @@
+{
+  "platform": "moments",
+  "label": "朋友圈",
+  "capability": "MANUAL",
+  "capabilityNote": "无开放接口；导出短文案与九宫格图包，人工发布",
+  "limits": {
+    "titleMin": 0,
+    "titleMax": 0,
+    "bodyMin": 40,
+    "bodyMax": 300,
+    "tagsMin": 0,
+    "tagsMax": 0,
+    "paragraphMaxLines": 2,
+    "collapseLines": 6,
+    "images": {
+      "min": 1,
+      "max": 9,
+      "ratio": "1:1",
+      "allowedCount": [
+        1,
+        3,
+        4,
+        6,
+        9
+      ]
+    }
+  },
+  "banned": [
+    "最好",
+    "最佳",
+    "最强",
+    "最低价",
+    "最高级",
+    "第一",
+    "国家级",
+    "顶级",
+    "绝对",
+    "100%",
+    "全网最低",
+    "史无前例",
+    "永久"
+  ],
+  "bannedReason": "极限词风险",
+  "falsePositiveGuards": [
+    {
+      "word": "100%",
+      "allowSuffixes": [
+        "sRGB",
+        "Adobe RGB",
+        "DCI-P3",
+        "NTSC"
+      ],
+      "reason": "色域参数属客观规格，不构成绝对化用语"
+    }
+  ],
+  "required": [
+    {
+      "key": "CONTACT",
+      "label": "联系方式/到店引导",
+      "hint": "附门店或顾问联系方式"
+    }
+  ],
+  "style": {
+    "tone": "朋友口吻、短句",
+    "emojiPer100": 1,
+    "hashtagStyle": "",
+    "titlePattern": "无标题，首句即钩子"
+  },
+  "checklist": [
+    "前 6 行是否把关键信息说完（防折叠）",
+    "是否有一张实拍/场景图"
+  ]
+}
