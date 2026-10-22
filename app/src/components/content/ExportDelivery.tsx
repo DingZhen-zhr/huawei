@@ -6,7 +6,12 @@ const platforms: Platform[] = ["xiaohongshu", "moments", "wechat-mp", "poster", 
 export default function ExportDelivery({ snapshot, selections, onSelect }: { snapshot: TaskSnapshot; selections: Partial<Record<Platform, string>>; onSelect: (platform: Platform, variantId: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const selected = Object.fromEntries(platforms.map(platform => [platform, selections[platform] || snapshot.channels[platform].variants.find(v => v.selected)?.id || snapshot.channels[platform].recommended?.id || ""])) as Record<Platform, string>;
+  const selected = Object.fromEntries(platforms.map(platform => {
+    const channel = snapshot.channels[platform];
+    const requested = channel.variants.find(variant => variant.id === selections[platform]);
+    const recommended = channel.variants.find(variant => variant.id === channel.recommended?.id);
+    return [platform, requested?.id || channel.variants.find(variant => variant.selected)?.id || recommended?.id || channel.variants[0]?.id || ""];
+  })) as Record<Platform, string>;
   const download = (blob: Blob) => {
     const url = URL.createObjectURL(blob), link = document.createElement("a");
     link.href = url; link.download = "content-delivery.zip"; link.click();

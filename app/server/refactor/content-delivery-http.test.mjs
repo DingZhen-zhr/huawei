@@ -40,6 +40,9 @@ test('authenticated HTTP delivery returns PNG and selected ZIP, refusing blocked
     const gen = await req(`/content/tasks/${taskId}/assets`, 'POST', { variantId: variant.id });
     assert.equal(gen.status, 200, await gen.clone().text());
     const { assets } = await gen.json(); assert.equal(assets[0].status, 'ready');
+    const reused = await req(`/content/tasks/${taskId}/assets`, 'POST', { variantId: variant.id });
+    assert.equal(reused.status, 200);
+    assert.equal((await reused.json()).assets[0].id, assets[0].id, 'HTTP repeat request reuses its existing PNG');
     assert.equal((await req(`/content/tasks/${taskId}/assets`, 'POST', { variantId: variant.id, source: '../../outside.png' })).status, 400);
     const { getTask } = await import('./tasks.mjs');
     const owned = getTask(taskId);

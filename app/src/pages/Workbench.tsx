@@ -693,7 +693,7 @@ export default function Workbench() {
                     <PlatformPreview key={activeVariant.id} variant={activeVariant} task={snapshot.task} />
                   </div>
                   <ImageDelivery key={activeVariant.id} taskId={snapshot.task.id} variant={activeVariant} assets={snapshot.assets} onRefresh={() => refresh(true)} />
-                  <ExportDelivery snapshot={snapshot} selections={exportSelections} onSelect={(channel, id) => setExportSelections(current => ({ ...current, [channel]: id }))} />
+                  <ExportDelivery key={snapshot.task.id} snapshot={snapshot} selections={exportSelections} onSelect={(channel, id) => setExportSelections(current => ({ ...current, [channel]: id }))} />
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <button className="btn-primary" onClick={() => void copy()} disabled={busy === "copy" || activeVariant.verification.blocked}>
