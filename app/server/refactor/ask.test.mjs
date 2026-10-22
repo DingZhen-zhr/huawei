@@ -23,6 +23,14 @@ test("budget events apply in textual order within a turn", () => {
   assert.equal(ask("预算4000，预算先不变，只想看看8000左右的差别，最终预算改为6000，办公").slots.budget, 6000);
 });
 
+for (const phrase of ["预算大约6000", "预算控制在6000", "预算只有6000"]) {
+  test(`short budget connector works on first and later turns: ${phrase}`, () => {
+    assert.equal(ask(`${phrase}，办公`).slots.budget, 6000, phrase);
+    assert.equal(ask("预算4000，办公", phrase).slots.budget, 6000, phrase);
+    assert.equal(ask(`${phrase}，办公，预算改为7000`).slots.budget, 7000, phrase);
+  });
+}
+
 test("nonexclusive OS requirements remain positive Windows constraints", () => {
   for (const inclusive of ["不仅", "不只", "不光"]) {
     const result = ask(`预算10000，办公，${inclusive}要Windows，还要轻一点`);

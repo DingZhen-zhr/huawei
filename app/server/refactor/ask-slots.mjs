@@ -8,9 +8,12 @@ const USES = {
 const BUDGET_RANGE = String.raw`\d{3,5}\s*[-–—~至到]\s*\d{3,5}`;
 const BUDGET_THOUSANDS = String.raw`\d(?:\.\d+)?\s*[千kK]`;
 const BUDGET_VALUE = `(?:${BUDGET_RANGE}|${BUDGET_THOUSANDS}|\\d{3,5})`;
+// Explicit connector tokens keep a budget event from consuming intervening
+// clauses or a later budget keyword.
+const BUDGET_CONNECTOR = "(?:改为|改成|调整到|提高到|降低到|大约|大概|控制在|只有|最多|不超过|为|是)?";
 const BUDGET_EVENTS = new RegExp([
   String.raw`预算\s*(?:先|暂时|保持|仍然|还)?\s*(?:不变|不改|保持原样)`,
-  String.raw`(?:预算|价格|最多|不超过)\s*(?:改为|改成|调整到|提高到|降低到|大概|最多|不超过|为|是)?\s*${BUDGET_VALUE}`,
+  String.raw`(?:预算|价格|最多|不超过)\s*${BUDGET_CONNECTOR}\s*${BUDGET_VALUE}`,
   String.raw`${BUDGET_VALUE}\s*(?:元|块)?\s*(?:预算|左右|以内|以上|\+|元|块)`,
   BUDGET_RANGE, BUDGET_THOUSANDS,
 ].join("|"), "g");
