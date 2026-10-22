@@ -260,3 +260,23 @@ test('ZIP contains five selected copy files and actual generated PNG',()=>{
 ## 计划自审记录
 
 已覆盖报告四项及受保护文件授权边界；未重构应用壳、全局样式、任务引擎。图文选择服务端sharp是为了把真实PNG字节、核验、刷新和ZIP闭环放在同一可信出口，代价为新增原生图片依赖；必须在部署平台验证安装和中文字体。当前无可用真实服务key，因此本轮验收仅覆盖规则内容与官方图排版，不将其描述为真实LLM/AI背景效果。开发采用已经授权的SDLC多Agent方式，不再次要求用户选择执行方式。
+
+## 最终实施与验收状态（2026-10-22）
+
+以下以代码383ed63的实际实现为准，覆盖上方各步骤；原始步骤保留为设计历史，不将未保留的红测运行证据补写为已执行。最终证据见 [整体验收记录](../../workflow-quality-validation.md)。
+
+|原计划项目|最终状态与对应实现|
+|---|---|
+|Task1步骤1–5|DONE：预算/用途/OS条件与真实型号接续已完成并回归；CHANGED：使用 `ask-slots.mjs`、`create-selection.ts`，实际测试为 `ask.test.mjs`、`create-selection.test.mjs`、`create-flow.test.mjs`，不创建计划示意的create-context/followup模块。接续复用现有带参数URL，不新增to-content端点。历史独立红测步骤不追认。|
+|Task1步骤6|DONE：独立开发提交与集成checkpoint已推送GitHub。|
+|Task2步骤1–5|DONE：scene-strategy接入五渠道，A/C各11稿实际差异、三角度动作及所有型号事实归属通过；所有导卡角度保留连接→识别→目录依赖。CHANGED：按实际generator-scenarios/scene-strategy测试组织，历史红测不追认。|
+|Task2步骤6|DONE：开发提交已集成，随最终发布分支上传。|
+|Task3步骤1–7|DONE：sharp/fflate/fontkit、真实PNG/ZIP、完整媒体核验、授权、指纹、持久化与清理均完成。CHANGED：模块实际接口为composeImage/createAssetRepository/exportContent；回归拆为content-assets、content-delivery-http、content-media-lifecycle、content-plan-images、image-compose等测试，无计划中的独立content-export/workflow-http测试文件。运行目录实际为content-media。红测历史不追认。|
+|Task3步骤8|DONE：独立ImageDelivery/ExportDelivery及Workbench最小接入，选稿同步与自动回退通过。CHANGED：浏览器验证下载fallback，未验证原生share/取消；分享能力不超出实际实现声明。|
+|Task3步骤9|DONE：75/75、build、7个TS/TSX的lint、保护文件零diff；手机/桌面实际PNG与ZIP下载、打开、解包、非默认选稿及刷新通过。全量lint保留18个既有错误。|
+|Task3步骤10|DONE：代码已提交；发布阶段提交必要说明、push并创建feat/workflow-quality→zhr PR，不合并。|
+|最终验收1–3|DONE：D14身份与预算场景、逐轮预算/否定/Windows约束、场景内容与动作差异均已自动及独立浏览器/HTTP验证。|
+|最终验收4–5|DONE：真实PNG/ZIP、所选稿和来源一致、缺图透明；服务器核验/权限/失效及刷新恢复通过。CHANGED：合法edit旧图HTTP409有可读error但无ASSET_STALE字段；视频长标题可省略尾部，CTA/限定条件完整。|
+|最终验收6–7|DONE：原基线测试保留、最终75项通过，禁止文件零差异；Git管理代码、锁文件、测试及必要说明。发布PR与远端SHA由发布结果确认，不删除无关用户工作。|
+
+PNG实际渲染逐计划overlay及当前稿正文/CTA，来源记录renderedText，规则版本official-layout-v4。Windows中文字形已验证；Linux字体、真实LLM/外部AI图片与生产部署不在已验证范围。事实来源政策与既定版本架构未改。
