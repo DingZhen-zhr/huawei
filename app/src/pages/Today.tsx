@@ -20,8 +20,8 @@ function dateLabel(date: string) {
 }
 
 function statusText(card: TaskCard) {
-  if (card.factStatus === "conflict") return "价格冻结";
-  return "事实可用";
+  if (card.factStatus === "conflict") return "价格待确认";
+  return "资料齐";
 }
 
 function TaskRow({ card, onPick }: { card: TaskCard; onPick: () => void }) {
@@ -59,7 +59,7 @@ function RecentList({ tasks }: { tasks: RecentTask[] }) {
   if (!tasks.length) {
     return (
       <div className="border-t border-[var(--line)] pt-5">
-        <p className="text-[12px] leading-6 text-[var(--muted)]">最近生成的内容会留在这里 30 天。第一条写完后，刷新也不会丢。</p>
+        <p className="text-[12px] leading-6 text-[var(--muted)]">最近写的的内容会留在这里 30 天。第一条写完后，刷新也不会丢。</p>
       </div>
     );
   }
@@ -116,18 +116,18 @@ export default function Today() {
       <div className="mx-auto max-w-[1120px]">
         <header className="flex flex-col gap-4 border-b border-[var(--line)] pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-[28px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[34px]">今天先发这一条</h1>
+            <h1 className="text-[28px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[34px]">今天先发这条</h1>
             <p className="mt-2 max-w-[34rem] text-[13px] leading-6 text-[var(--muted)]">
-              从三张有真实资料的任务卡里选一个。补一句门店现场细节，再生成五个渠道。
+              三张卡都有官方资料和产品图。挑一个，补一句店里的事，五个渠道一起出。
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10.5px] text-[var(--muted-2)]">
               <span className="mono">{data ? dateLabel(data.date) : dateLabel(new Date().toISOString().slice(0, 10))}</span>
               <span>{store.name}</span>
-              <span>事实快照 2026-10-17</span>
+              <span>资料 2026-10-17</span>
             </div>
           </div>
           <Link to="/create" className="btn-secondary shrink-0">
-            直接开写
+            自己写一条
             <ArrowUpRight className="h-4 w-4" />
           </Link>
         </header>
@@ -159,7 +159,7 @@ export default function Today() {
             <div className="flex items-start gap-3">
               <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
               <div>
-                <p className="text-[13px] font-medium">任务卡没加载出来</p>
+                <p className="text-[13px] font-medium">任务卡没出来</p>
                 <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">{error}</p>
                 <button className="btn-secondary mt-4" onClick={() => { setError(""); setLoading(true); setReloadKey((n) => n + 1); }}>
                   <RefreshCw className="h-4 w-4" /> 重试
@@ -186,16 +186,16 @@ export default function Today() {
                   <p className="mt-3 max-w-[42ch] text-[13px] leading-6 text-[var(--muted)]">{lead.reason}</p>
 
                   <div className="mt-5 border-t border-[var(--line)] pt-4">
-                    <p className="text-[11px] font-medium text-[var(--ink)]">生成前只补这一句</p>
+                    <p className="text-[11px] font-medium text-[var(--ink)]">只差一句店里的事</p>
                     <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">{lead.requiredDetailHint}</p>
                   </div>
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     <Link to={`/create?taskCardId=${encodeURIComponent(lead.id)}`} className="btn-primary">
-                      从这张卡开始
+                      写这条
                       <ArrowUpRight className="h-4 w-4" />
                     </Link>
-                    <span className="text-[10.5px] text-[var(--muted-2)]">约 90 秒到文字内容包</span>
+                    <span className="text-[10.5px] text-[var(--muted-2)]">大概一分半，先出文字</span>
                   </div>
 
                   <div className="mt-auto grid grid-cols-3 gap-3 border-t border-[var(--line)] pt-4 text-[10.5px] text-[var(--muted)]">
@@ -221,33 +221,33 @@ export default function Today() {
               <aside className="flex flex-col gap-4">
                 <section className="surface p-5">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-[13px] font-medium">先看三条边界</h2>
+                    <h2 className="text-[13px] font-medium">先说清楚三件事</h2>
                     <ShieldCheck className="h-4 w-4 text-[var(--muted-2)]" />
                   </div>
                   <div className="mt-4 space-y-4">
                     <div className="flex gap-3">
                       <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--red)]" />
                       <div>
-                        <p className="text-[12px] font-medium">没有真实细节，不生成</p>
-                        <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">旧电脑哪里不好用、顾客怎么带着走，必须由销售补一句。</p>
+                        <p className="text-[12px] font-medium">没细节，不写</p>
+                        <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">旧电脑哪里不好用，顾客怎么带着走，得由销售补一句。</p>
                       </div>
                     </div>
                     <div className="flex gap-3">
                       <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]" />
                       <div>
-                        <p className="text-[12px] font-medium">{conflictCount ? "价格冲突先冻结" : "价格只写官方口径"}</p>
+                        <p className="text-[12px] font-medium">{conflictCount ? "价格没对上，先不写价" : "价格只写官方价"}</p>
                         <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
                           {conflictCount
-                            ? "MateBook 14 鸿蒙版的 5,899 / 6,599 未解决，相关内容默认不写具体价格。"
-                            : "价格必须绑定同型号、同 SKU 和快照日期，门店实际报价另行确认。"}
+                            ? "MateBook 14 鸿蒙版的 5,899 和 6,599 还没对上，带价的内容先不发。"
+                            : "价格要落到具体型号和 SKU，门店实际报价另算。"}
                         </p>
                       </div>
                     </div>
                     <div className="flex gap-3">
                       <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--info)]" />
                       <div>
-                        <p className="text-[12px] font-medium">图片按需生成</p>
-                        <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">文案先交付。图片只用官方产品图或门店实拍，不画假产品、假二维码。</p>
+                        <p className="text-[12px] font-medium">图不用等</p>
+                        <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">文字先出。图只用官方产品图或店里实拍，不做假产品、假二维码。</p>
                       </div>
                     </div>
                   </div>
@@ -255,7 +255,7 @@ export default function Today() {
 
                 <section className="surface flex-1 p-5">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-[13px] font-medium">最近生成</h2>
+                    <h2 className="text-[13px] font-medium">最近写的</h2>
                     <Clock3 className="h-4 w-4 text-[var(--muted-2)]" />
                   </div>
                   <div className="mt-4">
@@ -269,11 +269,11 @@ export default function Today() {
               <section className="mt-9">
                 <div className="flex items-end justify-between gap-4">
                   <div>
-                    <h2 className="text-[20px] font-semibold tracking-[-0.02em]">另外两张，换着写</h2>
-                    <p className="mt-1 text-[12px] text-[var(--muted)]">不要求每天全发。挑一个最像今天门店的。</p>
+                    <h2 className="text-[20px] font-semibold tracking-[-0.02em]">另外两条，换着写</h2>
+                    <p className="mt-1 text-[12px] text-[var(--muted)]">不用每天全发。挑一个最像今天店里的。</p>
                   </div>
                   <span className="hidden items-center gap-1.5 text-[10.5px] text-[var(--muted-2)] sm:flex">
-                    <ImageIcon className="h-3.5 w-3.5" /> 官方产品图已就位
+                    <ImageIcon className="h-3.5 w-3.5" /> 有官方产品图
                   </span>
                 </div>
                 <div className="mt-3 border-t border-[var(--line)]">
@@ -292,17 +292,17 @@ export default function Today() {
 
         {!loading && data && !lead && (
           <div className="mt-8 border border-dashed border-[var(--line-strong)] px-5 py-10 text-center">
-            <p className="text-[14px] font-medium">今天还没有可发的真实任务</p>
+            <p className="text-[14px] font-medium">今天没有能写的题</p>
             <p className="mx-auto mt-2 max-w-[30rem] text-[12px] leading-6 text-[var(--muted)]">
-              任务卡需要同时有产品事实和官方素材。缺一个都不会出现在这里，也不会用假数据补。
+              题得有产品资料和官方图，缺一样就不放上来，也不拿假数据凑。
             </p>
-            <Link to="/settings" className="btn-secondary mt-5">检查门店资料</Link>
+            <Link to="/settings" className="btn-secondary mt-5">看看门店资料</Link>
           </div>
         )}
 
         {loading && (
           <div className="mt-8 flex items-center gap-2 text-[11px] text-[var(--muted)]">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> 正在读今日任务
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> 正在看今天有什么可写
           </div>
         )}
       </div>

@@ -1,5 +1,16 @@
 // 去 AI 味检查：只指出问题句和替换方向，不静默改原意。
 const PATTERNS = [
+  { re: /不是[^。！？\n]{0,30}而是/g, type: "AI 对比句", suggestion: "直接说后半句，别先否定再反转" },
+  { re: /真正[^。！？\n]{0,20}的是/g, type: "AI 对比句", suggestion: "把要说的那件事直接讲出来" },
+  { re: /与其说[^。！？\n]{0,30}不如说/g, type: "AI 对比句", suggestion: "直接说结论，不要绕" },
+  { re: /说到底|说白了|值得注意的是|更重要的是|更关键的是/g, type: "AI 口头禅", suggestion: "删掉，直接进入下一句" },
+  { re: /不仅[^。！？\n]{0,24}还/g, type: "AI 排比", suggestion: "拆成两句具体的话" },
+  { re: /既[^。！？\n]{0,16}又/g, type: "AI 排比", suggestion: "写两件具体的事，不用对仗" },
+  { re: /先说结论|综上所述|总的来说/g, type: "AI 开头/收尾", suggestion: "直接说事，别先总结" },
+  { re: /在这个[^。！？\n]{0,24}的时代/g, type: "AI 套话", suggestion: "从顾客现在做的事写起" },
+  { re: /真正/g, type: "AI 强调", suggestion: "删掉“真正”，直接说事" },
+  { re: /这意味着|换句话说|某种程度上|不难看出/g, type: "AI 解释腔", suggestion: "删掉，直接说下一步" },
+  { re: /边界/g, type: "产品黑话", suggestion: "改成“不合适的地方”或具体条件" },
   { re: /赋能/g, type: "空泛动词", suggestion: "换成具体动作，例如“把参数整理成一页给顾客”" },
   { re: /打造/g, type: "营销套话", suggestion: "直接说做了什么，例如“把接口和重量列出来”" },
   { re: /引领/g, type: "营销套话", suggestion: "删掉“引领”，补充可核实的场景" },
@@ -87,6 +98,14 @@ export function humanizeLocally(text) {
     [/焕新/g, "换新"],
     [/解锁/g, "使用"],
     [/轻松搞定/g, "可以完成"],
+    [/说到底[，,]?/g, ""],
+    [/说白了[，,]?/g, ""],
+    [/值得注意的是[，,]?/g, ""],
+    [/更重要的是[，,]?/g, ""],
+    [/先说结论[：:，,]?/g, ""],
+    [/换句话说[，,]?/g, ""],
+    [/这意味着/g, "也就是说"],
+    [/某种程度上[，,]?/g, ""],
   ];
   for (const [re, value] of replacements) out = out.replace(re, value);
   out = out.replace(/[！!]{2,}/g, "！").replace(/\n{3,}/g, "\n\n").trim();

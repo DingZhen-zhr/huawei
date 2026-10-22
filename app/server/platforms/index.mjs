@@ -28,7 +28,6 @@ export default {
       }
     },
     "banned": [
-      "最好",
       "最佳",
       "最强",
       "最低价",
@@ -43,7 +42,9 @@ export default {
       "第一品牌",
       "行业第一",
       "排名第一",
-      "销量第一"
+      "销量第一",
+      "最好的",
+      "最好用"
     ],
     "bannedReason": "极限词风险",
     "falsePositiveGuards": [
@@ -148,7 +149,6 @@ export default {
       }
     },
     "banned": [
-      "最好",
       "最佳",
       "最强",
       "最低价",
@@ -161,7 +161,9 @@ export default {
       "第一品牌",
       "行业第一",
       "排名第一",
-      "销量第一"
+      "销量第一",
+      "最好的",
+      "最好用"
     ],
     "bannedReason": "极限词风险",
     "falsePositiveGuards": [
@@ -263,7 +265,6 @@ export default {
       }
     },
     "banned": [
-      "最好",
       "最佳",
       "最强",
       "最低价",
@@ -279,7 +280,9 @@ export default {
       "第一品牌",
       "行业第一",
       "排名第一",
-      "销量第一"
+      "销量第一",
+      "最好的",
+      "最好用"
     ],
     "bannedReason": "极限词/绝对化用语，违反《广告法》第九条",
     "falsePositiveGuards": [
@@ -386,7 +389,6 @@ export default {
       }
     },
     "banned": [
-      "最好",
       "最佳",
       "最强",
       "最低价",
@@ -402,7 +404,9 @@ export default {
       "第一品牌",
       "行业第一",
       "排名第一",
-      "销量第一"
+      "销量第一",
+      "最好的",
+      "最好用"
     ],
     "bannedReason": "极限词/绝对化用语，违反《广告法》第九条",
     "falsePositiveGuards": [
@@ -508,7 +512,6 @@ export default {
       }
     },
     "banned": [
-      "最好",
       "最佳",
       "最强",
       "最低价",
@@ -524,7 +527,9 @@ export default {
       "第一品牌",
       "行业第一",
       "排名第一",
-      "销量第一"
+      "销量第一",
+      "最好的",
+      "最好用"
     ],
     "bannedReason": "极限词/绝对化用语，违反《广告法》第九条",
     "falsePositiveGuards": [

@@ -99,7 +99,7 @@ export default function Ask() {
         },
       ]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "网络异常");
+      setError(e instanceof Error ? e.message : "网络断了，再试一次。");
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -112,7 +112,7 @@ export default function Ask() {
       setCopiedId(id);
       window.setTimeout(() => setCopiedId(null), 1500);
     } catch {
-      setError("浏览器没有允许复制，请长按选中文字。");
+      setError("浏览器不让复制，长按选中文字。");
     }
   };
 
@@ -164,11 +164,11 @@ export default function Ask() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-[24px] font-semibold tracking-[-0.025em]">顾客问答</h1>
-              <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">先问清楚在意什么，再给机型和下一步。价格只从账本里取。</p>
+              <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">顾客什么情况，说一句就行。信息不够我会追问，价格只从资料里取。</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-[var(--muted-2)]">
                 <span>{store.name}</span>
-                <span>不进入 CRM</span>
-                <span>会话 7 天删除</span>
+                <span>不建客户档案</span>
+                <span>对话 7 天后清掉</span>
               </div>
             </div>
             <button type="button" className="btn-quiet shrink-0" onClick={() => void reset()}>
@@ -183,9 +183,9 @@ export default function Ask() {
               <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[var(--line)] bg-[var(--surface)]">
                 <Sparkles className="h-4 w-4 text-[var(--red)]" />
               </div>
-              <h2 className="mt-5 text-[20px] font-semibold tracking-[-0.02em]">把顾客的情况说一句就行</h2>
+              <h2 className="mt-5 text-[20px] font-semibold tracking-[-0.02em]">顾客什么情况，直接说</h2>
               <p className="mt-2 max-w-[36rem] text-[12.5px] leading-6 text-[var(--muted)]">
-                预算、用途、现在最不方便的地方，知道多少说多少。信息不够时会只追问一个最关键的问题。
+                预算、用途、现在最烦的地方，知道多少说多少。不够我会再问一句。
               </p>
               <div className="mt-6 space-y-2">
                 {STARTERS.map((starter) => (
@@ -200,14 +200,14 @@ export default function Ask() {
                   </button>
                 ))}
               </div>
-              <p className="mt-5 text-[10.5px] leading-5 text-[var(--muted-2)]">演示提示：不要输入真实顾客姓名、电话或学校。</p>
+              <p className="mt-5 text-[10.5px] leading-5 text-[var(--muted-2)]">演示用，别输真实顾客的姓名、电话和学校。</p>
             </div>
           )}
 
           {restored && messages.length > 0 && (
             <div className="mb-4 flex items-center justify-between border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[10.5px] text-[var(--muted)]">
-              <span>已恢复最近 7 天内的对话</span>
-              <button type="button" className="text-[var(--red)] underline underline-offset-4" onClick={() => void reset()}>开新对话</button>
+              <span>把最近 7 天的对话找回来了</span>
+              <button type="button" className="text-[var(--red)] underline underline-offset-4" onClick={() => void reset()}>重新开始</button>
             </div>
           )}
 
@@ -238,11 +238,11 @@ export default function Ask() {
                                   {card.priceLabel}
                                 </span>
                               </div>
-                              {card.overBy ? <p className="mt-1 text-[10px] text-[var(--warning)]">比预算高约 ¥{card.overBy.toLocaleString("zh-CN")}，先确认是否值得加。</p> : null}
+                              {card.overBy ? <p className="mt-1 text-[10px] text-[var(--warning)]">比预算高约 ¥{card.overBy.toLocaleString("zh-CN")}，值不值得加你判断。</p> : null}
                               <p className="mt-1 text-[10.5px] leading-5 text-[var(--muted)]">{card.reason}</p>
-                              <p className="mt-1 border-t border-[var(--line)] pt-1.5 text-[10px] leading-5 text-[var(--muted-2)]">先确认：{card.limitation}</p>
+                              <p className="mt-1 border-t border-[var(--line)] pt-1.5 text-[10px] leading-5 text-[var(--muted-2)]">先问清楚：{card.limitation}</p>
                               <Link to={followupHref(card, message.slots)} className="mt-2 inline-flex min-h-[44px] items-center gap-1 text-[10.5px] text-[var(--red)] underline underline-offset-4">
-                                做成跟进内容 <ArrowUp className="h-3 w-3 rotate-45" />
+                                接着写一条 <ArrowUp className="h-3 w-3 rotate-45" />
                               </Link>
                             </div>
                           ))}
@@ -260,7 +260,7 @@ export default function Ask() {
 
                       {message.facts && message.facts.length > 0 && (
                         <details className="mt-2 px-1">
-                          <summary className="cursor-pointer text-[10.5px] text-[var(--muted)]">依据 {message.facts.length} 条</summary>
+                          <summary className="cursor-pointer text-[10.5px] text-[var(--muted)]">看依据（{message.facts.length} 条）</summary>
                           <ul className="mt-2 space-y-1.5 border-l border-[var(--line-strong)] pl-3">
                             {message.facts.slice(0, 4).map((fact: Fact, index: number) => (
                               <li key={index} className="text-[10.5px] leading-5 text-[var(--muted)]">
@@ -288,7 +288,7 @@ export default function Ask() {
             {loading && (
               <div className="flex items-center gap-1.5 pl-1 text-[var(--muted)]">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span className="text-[11.5px]">在看资料…</span>
+                <span className="text-[11.5px]">想一下…</span>
               </div>
             )}
             <div ref={endRef} />
@@ -297,7 +297,7 @@ export default function Ask() {
           {messages.length > 0 && (
             <div className="mt-7 flex items-start gap-2 border border-[var(--info)]/20 bg-[var(--info-soft)] p-3 text-[11px] leading-5 text-[var(--info)]">
               <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>问答只解决现场判断。要发内容，去内容工坊补一个真实场景，五渠道会共用这套事实。</span>
+              <span>这里只管现场怎么答。要发内容，去内容页补一句店里的事，五个渠道用同一套资料。</span>
             </div>
           )}
         </main>
@@ -334,8 +334,8 @@ export default function Ask() {
               </button>
             </div>
             <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-[var(--muted-2)]">
-              <span>价格与参数来自 2026-10-17 快照</span>
-              <Link to="/create" className="underline underline-offset-4 hover:text-[var(--ink)]">去做内容</Link>
+              <span>价格和参数截至 2026-10-17</span>
+              <Link to="/create" className="underline underline-offset-4 hover:text-[var(--ink)]">去写内容</Link>
             </div>
           </div>
         </div>

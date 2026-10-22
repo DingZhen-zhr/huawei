@@ -96,8 +96,8 @@ export default function AppShell({
           </div>
 
           <div className="mt-8 border-t border-[var(--line)] pt-5">
-            <p className="mono-label">事实基线</p>
-            <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">2026-10-17 官方公开资料快照。价格与库存以门店实际为准。</p>
+            <p className="mono-label">资料来源</p>
+            <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">资料截至 2026-10-17，价格和库存以门店当天为准。</p>
           </div>
         </aside>}
 

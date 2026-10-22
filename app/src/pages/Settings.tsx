@@ -35,7 +35,7 @@ export default function Settings() {
       setStore(result.store);
       setForm(result.store.profile);
       setSamples((result.store.profile.voiceSamples || []).join("\n"));
-      setNotice("门店资料已保存。海报二维码和联系方式会按真实配置使用；没配置就留白。");
+      setNotice("存好了。海报上的二维码和联系方式只用你填的真实信息，没填就空着。");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存失败");
     } finally {
@@ -49,7 +49,7 @@ export default function Settings() {
         <header className="border-b border-[var(--line)] pb-5">
           <p className="mono text-[10px] text-[var(--muted-2)]">{store.code}</p>
           <h1 className="mt-2 text-[26px] font-semibold tracking-[-0.03em] sm:text-[30px]">门店资料</h1>
-          <p className="mt-1.5 text-[12.5px] leading-6 text-[var(--muted)]">只影响门店口吻、海报留白和联系方式，不会改动产品事实。</p>
+          <p className="mt-1.5 text-[12.5px] leading-6 text-[var(--muted)]">只改门店口吻、海报留白和联系方式，不动产品资料。</p>
         </header>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
@@ -85,12 +85,12 @@ export default function Settings() {
                 <input className="field mt-1.5" value={form.qrAssetUrl || ""} onChange={(e) => set("qrAssetUrl", e.target.value)} placeholder="只填门店真实素材地址；没有就留空" />
               </label>
               <label className="block sm:col-span-2">
-                <span className="field-label">历史文案样本（1–3 条，仅学表达，不复制原文）</span>
+                <span className="field-label">门店以前的文案（1–3 条，只学说话方式，不抄原文）</span>
                 <textarea
                   className="field mt-1.5 min-h-[112px] resize-y"
                   value={samples}
                   onChange={(e) => setSamples(e.target.value)}
-                  placeholder={"每行一条门店真实文案。没有就留空。\n例如：这台机器我自己背过一周，通勤路上确实轻。注意不要写虚构体验。"}
+                  placeholder={"每行一条门店真实文案。没有就留空。\n例如：这台机器我陪顾客试过，通勤包能放下。别写没发生过的体验。"}
                 />
               </label>
             </div>
@@ -107,7 +107,7 @@ export default function Settings() {
             )}
 
             <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-5">
-              <p className="text-[10.5px] leading-5 text-[var(--muted)]">保存不会改变产品价格事实；价格冲突仍需管理员确认。</p>
+              <p className="text-[10.5px] leading-5 text-[var(--muted)]">保存不会改价格。价格有冲突，还是等管理员确认。</p>
               <button className="btn-primary shrink-0" onClick={() => void save()} disabled={saving}>
                 {saving ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : <Save className="h-4 w-4" />}
                 {saving ? "保存中" : "保存门店资料"}
@@ -117,12 +117,12 @@ export default function Settings() {
 
           <aside className="space-y-4">
             <div className="surface p-4">
-              <div className="flex items-center gap-2 text-[12px] font-medium"><QrCode className="h-4 w-4 text-[var(--red)]" /> 二维码与地址</div>
-              <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">没有真实配置时，海报只留白并提示，不会画一个假码。地址和电话也只在留空时显示“待配置”。</p>
+              <div className="flex items-center gap-2 text-[12px] font-medium"><QrCode className="h-4 w-4 text-[var(--red)]" /> 二维码和地址</div>
+              <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">没填二维码就空着，不画假码。地址和电话没填，海报上也不编。</p>
             </div>
             <div className="surface p-4">
               <div className="flex items-center gap-2 text-[12px] font-medium"><ShieldCheck className="h-4 w-4 text-[var(--success)]" /> 门店隔离</div>
-              <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">产品事实共享；门店资料、口吻、历史内容和二维码按门店隔离。</p>
+              <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">产品资料大家共用；门店资料、口吻、历史内容和二维码各店分开。</p>
             </div>
             <div className="border-t border-[var(--line)] pt-4">
               <button className="btn-quiet w-full justify-start" onClick={() => void logout()}>

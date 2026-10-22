@@ -110,27 +110,27 @@ function xhsVariant(product, detail, angle, audience, scene, target) {
   const detailLine = normalizeDetail(detail);
   const price = priceLine(product);
   const openings = {
-    pain: `门店里遇到的情况很具体：${detailLine}。这种时候，先别急着换，也别只看一张参数表。`,
-    avoidance: `先别被“轻薄”两个字带跑。${detailLine}，这种场景更该先看重量、屏幕和接口。`,
-    story: `这次的内容只围绕一个门店里的真实场景：${detailLine}。没有夸张的成交故事，只有一台机器适不适合。`,
+    pain: `${detailLine}。先别急着换，也别只看参数表。`,
+    avoidance: `先别光看“轻薄”两个字。${detailLine}，这种场景更该先看重量、屏幕和接口。`,
+    story: `${detailLine}。不说成交，只看合不合适。`,
   };
   const bridge = {
-    pain: `这台${product.shortName}放回这个场景里看，${h.screen}，${h.portable}。这些不是纸面热闹，是每天会碰到的部分。`,
-    avoidance: `如果只看一个数字，很容易漏掉后面要用的东西。这台机器采用 ${h.screen}，还有${h.ports}，更适合先按使用方式筛选。`,
-    story: `这类场景里，真正要确认的不是参数，而是“带出去会不会累、坐下来能不能顺手”。${product.shortName} ${h.portable}，屏幕采用 ${h.screen}，这两点正好对应。`,
+    pain: `这台${product.shortName}放回这个场景里看，${h.screen}，${h.portable}。这些是每天都要用的。`,
+    avoidance: `只看一个数字，容易漏掉后面要用的。这台机器采用 ${h.screen}，还有${h.ports}，得按你怎么用来选。`,
+    story: `这类场景里，要确认的就两件：带出去累不累，坐下来顺不顺手。${product.shortName} ${h.portable}，屏幕采用 ${h.screen}，这两点对得上。`,
   };
-  const sceneLine = `对${audience || "每天带着电脑走动的人"}来说，${scene || h.scene}才是每天真正发生的事。机器轻一点、接口顺手一点，体验差别会很直接。`;
-  const limitLine = `有一个边界要先说清楚：${h.limit}。这不是劝退，是避免买回去才发现不合用。`;
+  const sceneLine = `${audience || "每天带电脑的人"}，每天就是${scene || h.scene}。轻一点、接口顺手一点，差别上手就知道。`;
+  const limitLine = `有个地方先说：${h.limit}。不是劝退，是免得买回去才发现不合适。`;
   const priceSection = priceBlocked(product)
-    ? `价格先不写数字：${priceBlockReason(product)}，到店按实际配置确认。`
-    : `价格口径也给清楚：${price}。`;
-  const body = [openings[angle], bridge[angle], sceneLine, limitLine, priceSection, `${targetShort(target)}，比在屏幕前反复比较更快。`]
+    ? `价格先不写。${priceBlockReason(product)}，到店按实际配置问。`
+    : `价格按官方口径：${price}。`;
+  const body = [openings[angle], bridge[angle], sceneLine, limitLine, priceSection, `${targetShort(target)}，比在家刷参数快。`]
     .filter(Boolean)
     .join("\n\n");
   return {
     title: angle === "pain"
       ? (product.id === "matebook-pro-s" ? "轻一点，带出门" : product.id === "matebook-gt-14" ? "素材多，先看接口" : "背去教室，轻一点")
-      : angle === "avoidance" ? "先看这三点再决定" : "门店里的真实一幕",
+      : angle === "avoidance" ? "先看这三点再决定" : "店里的一幕",
     body: truncateText(body, 790),
     tags: tagSet(product, angle),
     firstComment: "产品信息来自官方公开资料；具体配置和价格以门店实际报价为准。",
@@ -144,13 +144,13 @@ function momentsVariant(product, detail, angle, audience, scene, target) {
   const h = HIGHLIGHTS[product.id];
   const detailLine = normalizeDetail(detail);
   const first = {
-    pain: `${detailLine}。今天店里又聊到这个情况。`,
+    pain: `${detailLine}。今天又碰到一个。`,
     avoidance: `${detailLine}，先别急着看参数。`,
-    story: `门店里真实遇到的情况：${detailLine}。`,
+    story: `店里碰到的情况：${detailLine}。`,
   }[angle];
   const second = angle === "avoidance"
     ? `${product.shortName} 先看重量、屏幕和接口：${h.portable}，${h.ports}。`
-    : `${product.shortName}：${h.portable}，屏幕采用 ${h.screen}，放在${scene || h.scene}里更说得通。`;
+    : `${product.shortName}：${h.portable}，屏幕采用 ${h.screen}，放在${scene || h.scene}里更合适。`;
   const third = `${h.limit}。${ctaFor(target)}`;
   return {
     title: "",
@@ -166,27 +166,27 @@ function wechatVariant(product, detail, audience, scene, target) {
   const h = HIGHLIGHTS[product.id];
   const detailLine = normalizeDetail(detail);
   const price = priceLine(product);
-  const title = `${product.shortName}适合谁：先把${audience || "日常使用"}这件事说清楚`;
-  const summary = `从门店里一个真实场景出发，看看${product.shortName}的屏幕、重量和接口是否适合${audience || "你的日常"}。`;
+  const title = `${product.shortName}适合谁：先看${audience || "日常使用"}怎么用`;
+  const summary = `从店里一个场景说起，看看${product.shortName}的屏幕、重量和接口适不适合${audience || "你的日常"}。`;
   const p1 = [
-    `门店里遇到的情况是：${detailLine}。这类问题很难靠一句“够不够用”回答，因为${scene || h.scene}里的动作完全不同。`,
-    `先把场景拆开：你要带它去哪里，坐下来要开什么，回家之后还要接什么。把这三件事说清楚，再去看参数，判断会稳很多。`,
-    `这篇不写夸张的体验，也不替顾客做决定，只把官方资料里和这个场景直接相关的部分摆出来。`,
+    `店里碰到的情况：${detailLine}。“够不够用”这句话没法回答，因为${scene || h.scene}里的动作完全不同。`,
+    `先看三件事：带去哪儿、坐下开什么、回家接什么。`,
+    `不写夸张体验，也不替顾客做决定，只把官方资料里和这个场景有关的摆出来。`,
   ].join("\n\n");
   const p2 = [
-    `屏幕部分，${product.shortName} 采用 ${h.screen}。如果你经常看长文档、对照表格，3:2 的纵向空间会比单纯的尺寸数字更直观。`,
-    `便携部分，${h.portable}。这个数字不能直接换成“背着不累”，但可以拿去和你现在的电脑对比，差别通常一上手就有感觉。`,
-    `接口部分，${h.ports}。接口少不一定不能买，关键看你现有的鼠标、硬盘、显示器和读卡器需不需要转接。`,
+    `屏幕是 ${h.screen}。如果你经常看长文档、对照表格，3:2 比单纯的尺寸数字更直观。`,
+    `重量：${h.portable}。不能直接等于“背着不累”，但可以和你现在的电脑比。`,
+    `接口：${h.ports}。少不一定不能买，看你现有的鼠标、硬盘、显示器和读卡器要不要转接。`,
     `如果你平时还要外接显示器，先确认现有线材和接口能不能直接连；如果经常带出门，再把重量和适配器一起算进去，别只看机身数字。`,
-    `这些信息来自同型号官方规格页，具体配置仍要按 SKU 核对。`,
+    `这些是官方规格页上的，具体配置还是按 SKU 对。`,
   ].join("\n\n");
   const p3 = [
-    `有一个边界需要提前说：${h.limit}。${priceBlocked(product) ? `这款产品${priceBlockReason(product)}，正文不写具体价格，等门店核对配置后再确认。` : `价格口径为：${price}。`}`,
-    `如果你正在${scene || h.scene}，可以把现在的电脑重量、常用软件和接口列出来，再和这台机器逐项对。到店时把自己的鼠标、硬盘或读卡器带上，试一遍比只看参数表更直接。`,
-    `如果暂时不换，也可以先到店把重量和屏幕放在一起比较，确认自己真正介意的是哪一项，再决定要不要继续看配置。`,
+    `有个地方要提前说：${h.limit}。${priceBlocked(product) ? `${priceBlockReason(product)}，正文先不写价，等门店核对配置。` : `价格：${price}。`}`,
+    `如果你每天就是${scene || h.scene}，把现在的电脑重量、常用软件和接口列出来，和这台逐项对。到店把自己的鼠标、硬盘或读卡器带上，试一遍比看参数表直接。`,
+    `不急着换也行，先到店把重量和屏幕放一起比。`,
     `${ctaFor(target)}`,
   ].join("\n\n");
-  const body = `一、先把这个真实场景说清楚\n\n${p1}\n\n二、屏幕、重量和接口分别解决什么\n\n${p2}\n\n三、哪些情况要先确认\n\n${p3}\n\n信息基准日 2026-10-17，产品信息来自华为官方公开资料；具体配置与价格以门店实际报价为准。本文由 AI 辅助整理，事实经账本核验。`;
+  const body = `一、店里当时是这样\n\n${p1}\n\n二、屏幕、重量、接口，各管什么\n\n${p2}\n\n三、哪些情况先想清楚\n\n${p3}\n\n信息基准日 2026-10-17，产品信息来自华为官方公开资料；具体配置与价格以门店实际报价为准。本文由 AI 辅助整理，事实已核对。`;
   return {
     title: truncateText(title, 64),
     summary: truncateText(summary, 120),
@@ -230,7 +230,7 @@ function videoVariant(product, detail, angle, audience, scene, target) {
     `0–3 秒：${hooks[angle]}`,
     `3–15 秒：如果你是${audience || "每天带着电脑出门的人"}，先看重量。${product.shortName} ${h.portable}。`,
     `15–32 秒：再看屏幕和接口。${h.screen}，${h.ports}。这些决定了你在${scene || h.scene}里顺不顺手。`,
-    `32–48 秒：边界也要讲清楚：${h.limit}。价格以门店实际报价为准。`,
+    `32–48 秒：不好的地方也说：${h.limit}。价格以门店实际报价为准。`,
     `48–60 秒：${ctaFor(target)}`,
   ].join("\n");
   return {
@@ -238,11 +238,11 @@ function videoVariant(product, detail, angle, audience, scene, target) {
     body: script,
     script,
     shotList: [
-      "第一幕：销售拿起机器，手指比一下厚度（3 秒）",
-      "第二幕：屏幕显示长文档或表格，镜头扫过键盘（12 秒）",
-      "第三幕：接口特写，旁边放上常用外设（17 秒）",
-      "第四幕：销售把机器放回桌面，面对镜头说限制条件（16 秒）",
-      "第五幕：门店桌面收尾，字幕给出下一步动作（10 秒）",
+      "镜头一：销售拿起机器，手指比一下厚度（3 秒）",
+      "镜头二：屏幕显示长文档或表格，镜头扫过键盘（12 秒）",
+      "镜头三：接口特写，旁边放上常用外设（17 秒）",
+      "镜头四：销售把机器放回桌面，面对镜头说限制条件（16 秒）",
+      "镜头五：门店桌面收尾，字幕给出下一步动作（10 秒）",
     ],
     tags: [],
     cta: ctaFor(target),

@@ -66,7 +66,7 @@ function allowAttempt(key, limit = 10, windowMs = 10 * 60 * 1000) {
 function fail(res, error) {
   const status = error?.status || 500;
   res.status(status).json({
-    error: error?.message || "服务出错",
+    error: error?.message || "出了点问题，再试一次",
     code: error?.code,
     detail: error?.detail,
   });
@@ -92,7 +92,7 @@ router.post("/auth/demo", async (_req, res) => {
   if (!adminDemoEnabled()) return res.status(404).json({ error: "演示入口未开启" });
   const creds = getDemoCredentials();
   const store = await findStoreByCode(creds.storeCode);
-  if (!store) return res.status(503).json({ error: "演示门店未初始化" });
+  if (!store) return res.status(503).json({ error: "演示门店还没建好" });
   setStoreSession(res, store.id);
   res.json({ store: publicStore(store), expiresAt: new Date(Date.now() + 7 * 86400000).toISOString() });
 });
@@ -101,14 +101,14 @@ router.get("/auth/demo-redirect", async (_req, res) => {
   if (!adminDemoEnabled()) return res.status(404).send("演示入口未开启");
   const creds = getDemoCredentials();
   const store = await findStoreByCode(creds.storeCode);
-  if (!store) return res.status(503).send("演示门店未初始化");
+  if (!store) return res.status(503).send("演示门店还没建好");
   setStoreSession(res, store.id);
   res.redirect("/");
 });
 
 router.get("/auth/me", async (req, res) => {
   const store = await getStoreFromRequest(req);
-  if (!store) return res.status(401).json({ error: "未登录", code: "STORE_AUTH_REQUIRED" });
+  if (!store) return res.status(401).json({ error: "还没登录", code: "STORE_AUTH_REQUIRED" });
   res.json({ store: publicStore(store) });
 });
 
@@ -190,15 +190,15 @@ router.post("/admin/conflicts/:id/resolve", requireAdmin, async (req, res) => {
     await flushFactRuntime();
     res.json({ conflict, audit: conflict.audit });
   } catch (error) {
-    res.status(400).json({ error: error?.message || "价格确认请求不合法", code: "CONFLICT_RESOLUTION_INVALID" });
+    res.status(400).json({ error: error?.message || "价格确认的信息不完整", code: "CONFLICT_RESOLUTION_INVALID" });
   }
 });
 
 router.post("/admin/recheck-prices", requireAdmin, async (req, res) => {
   const product = getProduct(req.body?.productId || "");
-  if (!product) return res.status(404).json({ error: "产品不存在" });
+  if (!product) return res.status(404).json({ error: "没有这个型号的资料" });
   const result = await searchOfficialSources(`${product.name} 价格`);
-  res.json({ ...result, note: "搜索结果仅作为 proposed 来源候选，未写入事实账本" });
+  res.json({ ...result, note: "搜到的只是候选来源，确认前不会写进事实库" });
 });
 
 router.get("/tasks/today", requireStore, async (req, res) => {
@@ -216,7 +216,7 @@ router.get("/products", requireStore, (_req, res) => {
 
 router.get("/products/:id", requireStore, (req, res) => {
   const product = getProduct(req.params.id);
-  if (!product) return res.status(404).json({ error: "产品不存在" });
+  if (!product) return res.status(404).json({ error: "没有这个型号的资料" });
   res.json({ product: publicProduct(product), facts: product.facts.filter((f) => f.field !== "price").slice(0, 12), conflict: product.conflict });
 });
 
@@ -234,13 +234,13 @@ router.get("/content/tasks", requireStore, async (req, res) => {
 
 router.get("/content/tasks/:id", requireStore, async (req, res) => {
   const snapshot = await getTaskSnapshot(req.params.id, req.store.id);
-  if (!snapshot) return res.status(404).json({ error: "任务不存在" });
+  if (!snapshot) return res.status(404).json({ error: "这条内容找不到了" });
   res.json(snapshot);
 });
 
 router.get("/content/tasks/:id/events", requireStore, async (req, res) => {
   const task = await ensureTask(req.params.id, req.store.id);
-  if (!task) return res.status(404).json({ error: "任务不存在" });
+  if (!task) return res.status(404).json({ error: "这条内容找不到了" });
   subscribe(req.params.id, res);
 });
 
@@ -264,9 +264,9 @@ router.patch("/content/tasks/:taskId/variants/:variantId", requireStore, async (
 router.post("/content/variants/:id/rewrite", requireStore, async (req, res) => {
   const taskId = String(req.body?.taskId || "");
   const snapshot = await getTaskSnapshot(taskId, req.store.id);
-  if (!snapshot) return res.status(404).json({ error: "任务不存在" });
+  if (!snapshot) return res.status(404).json({ error: "这条内容找不到了" });
   const variant = snapshot.variants.find((v) => v.id === req.params.id);
-  if (!variant) return res.status(404).json({ error: "版本不存在" });
+  if (!variant) return res.status(404).json({ error: "这条稿子找不到了" });
   const product = getProduct(snapshot.task.productId);
   try {
     const rewritten = await rewriteVariant({
@@ -302,9 +302,9 @@ router.post("/content/variants/:id/rewrite", requireStore, async (req, res) => {
 router.post("/content/variants/:id/verify", requireStore, async (req, res) => {
   const taskId = String(req.body?.taskId || "");
   const snapshot = await getTaskSnapshot(taskId, req.store.id);
-  if (!snapshot) return res.status(404).json({ error: "任务不存在" });
+  if (!snapshot) return res.status(404).json({ error: "这条内容找不到了" });
   const variant = snapshot.variants.find((v) => v.id === req.params.id);
-  if (!variant) return res.status(404).json({ error: "版本不存在" });
+  if (!variant) return res.status(404).json({ error: "这条稿子找不到了" });
   const text = String(req.body?.text || variant.copyText || "");
   const verification = verifyContent(text, snapshot.task.productId, { platform: variant.platform });
   res.json({ status: verification.status, claims: verification.claims, blocked: verification.blocked, reasons: verification.reasons });
@@ -313,9 +313,9 @@ router.post("/content/variants/:id/verify", requireStore, async (req, res) => {
 router.post("/content/variants/:id/select", requireStore, async (req, res) => {
   const taskId = String(req.body?.taskId || "");
   const snapshot = await getTaskSnapshot(taskId, req.store.id);
-  if (!snapshot) return res.status(404).json({ error: "任务不存在" });
+  if (!snapshot) return res.status(404).json({ error: "这条内容找不到了" });
   const variant = snapshot.variants.find((v) => v.id === req.params.id);
-  if (!variant) return res.status(404).json({ error: "版本不存在" });
+  if (!variant) return res.status(404).json({ error: "这条稿子找不到了" });
   const task = await ensureTask(taskId, req.store.id);
   for (const v of task.variants) {
     if (v.platform === variant.platform) v.selected = v.id === variant.id;

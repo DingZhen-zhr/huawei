@@ -52,12 +52,18 @@ function statusTone(status: string) {
   return "bg-[var(--warning-soft)] text-[var(--warning)]";
 }
 
+function trustLabel(tier: number) {
+  if (tier <= 2) return "官方资料";
+  if (tier === 3) return "整理资料";
+  return "参考来源";
+}
+
 function generationLabel(mode?: string) {
-  if (!mode) return "生成方式未知";
-  if (mode.startsWith("model:")) return `模型生成 · ${mode.slice(6)}`;
-  if (mode === "mixed") return "模型 + 规则稿（部分回退）";
-  if (mode === "rules-v1") return "规则稿（未用模型）";
-  if (mode.startsWith("queued:")) return `排队 · ${mode.slice(7)}`;
+  if (!mode) return "不知道是怎么写的";
+  if (mode.startsWith("model:")) return `模型写的（${mode.slice(6)}）`;
+  if (mode === "mixed") return "一半模型，一半模板";
+  if (mode === "rules-v1") return "模板稿（模型没跑成）";
+  if (mode.startsWith("queued:")) return `排队中（${mode.slice(7)}）`;
   return mode;
 }
 
@@ -96,11 +102,11 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
             {image && !coverFailed ? (
               <img src={image} alt="" className="h-full w-full" style={{ objectFit: fit }} onError={() => setCoverFailed(true)} />
             ) : (
-              <div className="flex h-full items-center justify-center text-[11px] text-[var(--muted)]">官方产品图未就位</div>
+              <div className="flex h-full items-center justify-center text-[11px] text-[var(--muted)]">官方图还没到</div>
             )}
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-5 pt-24 text-white">
               <p className="text-[20px] font-semibold leading-7">{variant.title}</p>
-              <p className="mt-2 text-[11px] text-white/75">{task.productShortName} · 门店真实场景</p>
+              <p className="mt-2 text-[11px] text-white/75">{task.productShortName} · 店里的事</p>
             </div>
           </div>
           <div className="p-4 sm:p-5">
@@ -154,7 +160,7 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
         <div className="border-b border-black/8 pb-5">
           <p className="text-[10px] text-[var(--muted)]">华采智营 · 门店内容</p>
           <h2 className="mt-2 text-[24px] font-semibold leading-[1.35] tracking-[-0.02em]">{variant.title}</h2>
-          <p className="mt-2 text-[11px] text-[var(--muted)]">2026-10-22 · 门店内容副驾驶</p>
+          <p className="mt-2 text-[11px] text-[var(--muted)]">资料截至 2026-10-17</p>
         </div>
         {image && (
           <div className="mt-5 aspect-[900/383] overflow-hidden bg-[#eee9e1]">
@@ -180,7 +186,7 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
           <div className="relative flex h-full flex-col justify-between p-6">
             <div className="flex items-center justify-between text-[9px] text-white/55">
               <span className="mono">HUAWEI STORE</span>
-              <span>真实素材</span>
+              <span>官方图</span>
             </div>
             <div>
               <div className="mb-3 h-[3px] w-12 bg-[var(--red)]" />
@@ -253,10 +259,10 @@ function RiskBlock({ snapshot, variant }: { snapshot: TaskSnapshot; variant: Var
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
             <div>
-              <p className="text-[11.5px] font-medium text-[var(--warning)]">价格字段冻结</p>
+              <p className="text-[11.5px] font-medium text-[var(--warning)]">价格先不写</p>
               <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
-                {conflict.candidates.map((c) => `¥${c.value.toLocaleString("zh-CN")}`).join(" / ")} 未完成 SKU 与页面日期确认。
-                所有带价内容先拦下，管理员确认后才恢复。
+                {conflict.candidates.map((c) => `¥${c.value.toLocaleString("zh-CN")}`).join(" / ")} 5,899 和 6,599 还没对上。
+                带价的先不发，管理员确认后再写。
               </p>
             </div>
           </div>
@@ -267,7 +273,7 @@ function RiskBlock({ snapshot, variant }: { snapshot: TaskSnapshot; variant: Var
           <div className="flex items-start gap-2.5">
             <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
             <div>
-              <p className="text-[11.5px] font-medium text-[var(--danger)]">这一版不能复制</p>
+              <p className="text-[11.5px] font-medium text-[var(--danger)]">这版先别发</p>
               <ul className="mt-1 space-y-1 text-[11px] leading-5 text-[var(--muted)]">
                 {variant.verification.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}
               </ul>
@@ -280,13 +286,13 @@ function RiskBlock({ snapshot, variant }: { snapshot: TaskSnapshot; variant: Var
           <div className="flex items-start gap-2.5">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" />
             <div>
-              <p className="text-[11.5px] font-medium text-[var(--success)]">数字与承诺已过账本</p>
+              <p className="text-[11.5px] font-medium text-[var(--success)]">数字和承诺都核对过</p>
               <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
                 {conflict
-                  ? "这一版没有写价格；规格与场景已核验。价格仍需管理员确认后再恢复。"
+                  ? "这版没写价。规格和场景都核过，价格等管理员确认。"
                   : snapshot.task.priceStatus === "reference"
-                    ? "这一版没有写价格：该型号只有官网参考价，不是当前售价；规格与场景已核验。"
-                    : "价格、规格与商业条件都落到了同型号事实；发布前仍需门店确认实际报价与库存。"}
+                    ? "这版没写价：只有官网参考价，不是现在能买到的价。规格和场景核过。"
+                    : "价格、规格和活动都能对上同型号资料。发之前再确认门店实际报价和库存。"}
               </p>
             </div>
           </div>
@@ -297,7 +303,7 @@ function RiskBlock({ snapshot, variant }: { snapshot: TaskSnapshot; variant: Var
           <div className="flex items-start gap-2.5">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[var(--info)]" />
             <div>
-              <p className="text-[11.5px] font-medium text-[var(--info)]">还有 {variant.copyQuality.issues.length} 处像套话</p>
+              <p className="text-[11.5px] font-medium text-[var(--info)]">还有 {variant.copyQuality.issues.length} 句像套话</p>
               <div className="mt-1.5 space-y-2">
                 {variant.copyQuality.issues.slice(0, 2).map((issue, index) => (
                   <div key={`${issue.term}-${index}`} className="text-[10.5px] leading-5 text-[var(--muted)]">
@@ -320,13 +326,13 @@ function EvidencePanel({ snapshot, variant }: { snapshot: TaskSnapshot; variant:
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-[11px] font-medium">销售提供的真实细节</p>
+        <p className="text-[11px] font-medium">店里给的那句实情</p>
         <p className="mt-2 border-l border-[var(--red)] pl-3 text-[12px] leading-6 text-[var(--muted)]">{snapshot.task.realDetail.text}</p>
-        <p className="mt-1 pl-3 text-[10px] text-[var(--muted-2)]">标记：销售提供场景 · 未伪装成官方参数</p>
+        <p className="mt-1 pl-3 text-[10px] text-[var(--muted-2)]">这句按店里说的写，没当成官方参数。</p>
       </div>
 
       <div className="border-t border-[var(--line)] pt-4">
-        <p className="text-[11px] font-medium">这版引用的 {facts.length} 条事实</p>
+        <p className="text-[11px] font-medium">这版用到的 {facts.length} 条资料</p>
         <div className="mt-2 divide-y divide-[var(--line)]">
           {facts.slice(0, 8).map((fact) => (
             <div key={fact.id} className="py-2.5">
@@ -334,7 +340,7 @@ function EvidencePanel({ snapshot, variant }: { snapshot: TaskSnapshot; variant:
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[var(--muted-2)]">
                 <span className="mono">{fact.capturedAt}</span>
                 <span>{sourceName(fact.sourceTitle)}</span>
-                <span>层级 {fact.trustTier}</span>
+                <span>{trustLabel(fact.trustTier)}</span>
               </div>
             </div>
           ))}
@@ -359,12 +365,12 @@ function ImageStudio({
   return (
     <div className="space-y-3 border-t border-[var(--line)] pt-4">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-medium">配图 · 官方产品图 + 模板排版</p>
+        <p className="text-[11px] font-medium">配图（官方图 + 排版）</p>
         <Images className="h-3.5 w-3.5 text-[var(--muted-2)]" />
       </div>
       {!snapshot.task.hasAssets && (
         <p className="border border-[var(--warning)]/25 bg-[var(--warning-soft)] p-2.5 text-[10.5px] leading-5 text-[var(--warning)]">
-          这个型号还没有官方产品图。先补素材；文案和导出不受影响。
+          这个型号还没官方图。先补图，文字和导出照常。
         </p>
       )}
       {images.length > 0 ? (
@@ -388,7 +394,7 @@ function ImageStudio({
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className="chip" onClick={onGenerate} disabled={busy}>
               {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              重新生成
+              重做
             </button>
             {images.map((image) => (
               <button key={`dl-${image.id}`} type="button" className="chip" onClick={() => downloadImage(image)}>
@@ -400,11 +406,11 @@ function ImageStudio({
       ) : (
         <button type="button" className="btn-secondary w-full" onClick={onGenerate} disabled={busy}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-          {busy ? "正在排版" : "生成这一版的配图"}
+          {busy ? "正在出图" : "出这版的图"}
         </button>
       )}
       <p className="text-[10px] leading-5 text-[var(--muted-2)]">
-        使用官方产品图与 Canvas 排版；AI 不生成产品外观、不画二维码。二维码未配置时留白。生成后可单张下载，或随整包导出。
+        用官方产品图和模板排版，不改产品外观，不画二维码。没配二维码就留白。可以单张下载，也可以打包。
       </p>
     </div>
   );
@@ -472,7 +478,7 @@ export default function Workbench() {
       setError("");
       if (!quiet) setLoading(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "任务加载失败");
+      setError(e instanceof Error ? e.message : "内容没加载出来");
       if (!quiet) setLoading(false);
     }
   };
@@ -558,16 +564,16 @@ export default function Workbench() {
   const copy = async () => {
     if (!activeVariant) return;
     if (activeVariant.verification.blocked) {
-      setNotice("这一版被核验拦下了，修正后才能复制。");
+      setNotice("这版有问题，改完才能复制。");
       return;
     }
     setBusy("copy");
     try {
       await navigator.clipboard.writeText(activeVariant.copyText);
-      setNotice("已复制。粘贴前再确认一次门店信息。");
+      setNotice("复制好了。发之前再看一眼门店信息。");
       window.setTimeout(() => setNotice(""), 2200);
     } catch {
-      setNotice("浏览器没有允许复制，请长按选中文字。");
+      setNotice("浏览器不让复制，长按选中文字。");
     } finally {
       setBusy(null);
     }
@@ -592,7 +598,7 @@ export default function Workbench() {
         return next;
       });
       await refresh(true);
-      setNotice("已保存并重新核验。");
+      setNotice("改好了，又核了一遍。");
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "保存失败");
     } finally {
@@ -613,7 +619,7 @@ export default function Workbench() {
         return next;
       });
       await refresh(true);
-      setNotice(result.rewriteMode === "llm" ? "已改写并重新核验。" : "模型未返回，已用本地去套话并重新核验。");
+      setNotice(result.rewriteMode === "llm" ? "改好了，又核了一遍。" : "模型没返回，先用本地规则去套话，也重新核过了。");
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "改写失败");
     } finally {
@@ -633,7 +639,7 @@ export default function Workbench() {
         facts: snapshot.evidence,
       });
       setImages((prev) => ({ ...prev, [variant.id]: rendered }));
-      setNotice(`已生成 ${rendered.length} 张配图，可单张下载或随整包导出。`);
+      setNotice(`出了 ${rendered.length} 张图，可以单张下，也可以打包。`);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "配图生成失败");
     } finally {
@@ -664,8 +670,8 @@ export default function Workbench() {
       setImages(map);
       setNotice(
         result === "shared"
-          ? "已调起系统分享。"
-          : `已导出整包${missing.length ? `（${missing.length} 项待补，见 manifest）` : ""}。`,
+          ? "打开系统分享了。"
+          : `打包好了${missing.length ? `（${missing.length} 项待补，清单里有）` : ""}。`,
       );
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "导出失败");
@@ -679,7 +685,7 @@ export default function Workbench() {
     setNotice("");
     try {
       await api.retry(taskId, platform);
-      setNotice(`已只重跑${PLATFORM_NAMES[platform]}，其他渠道不动。`);
+      setNotice(`只重写了${PLATFORM_NAMES[platform]}，别的没动。`);
       await refresh(true);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "重试失败");
@@ -695,14 +701,14 @@ export default function Workbench() {
     <AppShell wide flush hideRail>
       {loading && (
         <div className="grid min-h-[520px] place-items-center">
-          <div className="flex items-center gap-2 text-[12px] text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin" /> 正在打开任务</div>
+          <div className="flex items-center gap-2 text-[12px] text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin" /> 正在打开</div>
         </div>
       )}
 
       {error && !loading && (
         <div className="p-5 sm:p-8">
           <div className="border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-5">
-            <p className="text-[13px] font-medium">任务没有打开</p>
+            <p className="text-[13px] font-medium">这条内容没打开</p>
             <p className="mt-1 text-[12px] text-[var(--muted)]">{error}</p>
             <button className="btn-secondary mt-4" onClick={() => void refresh()}>重试</button>
           </div>
@@ -717,7 +723,7 @@ export default function Workbench() {
             </Link>
             <div className="mt-5">
               <p className="text-[11px] text-[var(--muted)]">{snapshot.task.productShortName}</p>
-              <h1 className="mt-1 text-[17px] font-semibold leading-6 tracking-[-0.02em]">内容包工作台</h1>
+              <h1 className="mt-1 text-[17px] font-semibold leading-6 tracking-[-0.02em]">这条内容</h1>
               <div className="mt-3 flex items-center gap-2">
                 <span className={`status-pill ${statusTone(snapshot.task.status)}`}>
                   {isRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
@@ -732,14 +738,14 @@ export default function Workbench() {
             </div>
 
             <div className="mt-auto border-t border-[var(--line)] pt-4">
-              <p className="text-[10.5px] leading-5 text-[var(--muted)]">生成方式</p>
+              <p className="text-[10.5px] leading-5 text-[var(--muted)]">怎么写的</p>
               <p className="mt-1 text-[10px] leading-5 text-[var(--muted-2)]">{generationLabel(snapshot.task.generationMode)}</p>
               {(snapshot.task.fallbacks || []).length > 0 && (
                 <p className="mt-1 text-[10px] leading-5 text-[var(--warning)]">
-                  {(snapshot.task.fallbacks || []).length} 个渠道模型失败，已如实回退规则稿
+                  {(snapshot.task.fallbacks || []).length} 个渠道模型没跑成，退回模板稿
                 </p>
               )}
-              <p className="mt-3 text-[10.5px] leading-5 text-[var(--muted)]">任务保存 30 天。价格与库存仍以门店实际为准。</p>
+              <p className="mt-3 text-[10.5px] leading-5 text-[var(--muted)]">内容存 30 天。价格和库存以门店当天为准。</p>
             </div>
           </aside>
 
@@ -750,7 +756,7 @@ export default function Workbench() {
                   <Link to="/" className="md:hidden"><ArrowLeft className="h-4 w-4 text-[var(--muted)]" /></Link>
                   <h2 className="truncate text-[15px] font-medium">{PLATFORM_NAMES[platform]}</h2>
                   <span className={`status-pill ${statusTone(activeVariant?.status || currentChannel?.status || "waiting")}`}>
-                    {activeVariant?.status === "blocked" ? "核验拦下" : activeVariant?.status === "ready" ? "可复制" : currentChannel?.status === "waiting" ? "等待中" : "生成中"}
+                    {activeVariant?.status === "blocked" ? "有点问题" : activeVariant?.status === "ready" ? "能发" : currentChannel?.status === "waiting" ? "还没写" : "在写"}
                   </span>
                 </div>
                 <p className="mt-1 truncate text-[10.5px] text-[var(--muted)]">
@@ -758,9 +764,9 @@ export default function Workbench() {
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
-                <button className="icon-button lg:hidden" onClick={() => setDrawer("risk")} aria-label="查看风险" title="风险"><ShieldCheck className="h-4 w-4" /></button>
-                <button className="icon-button lg:hidden" onClick={() => setDrawer("evidence")} aria-label="查看依据" title="依据"><FileText className="h-4 w-4" /></button>
-                <button className="icon-button lg:hidden" onClick={() => setDrawer("images")} aria-label="查看配图计划" title="配图计划"><ImageIcon className="h-4 w-4" /></button>
+                <button className="icon-button lg:hidden" onClick={() => setDrawer("risk")} aria-label="看风险" title="风险"><ShieldCheck className="h-4 w-4" /></button>
+                <button className="icon-button lg:hidden" onClick={() => setDrawer("evidence")} aria-label="看依据" title="依据"><FileText className="h-4 w-4" /></button>
+                <button className="icon-button lg:hidden" onClick={() => setDrawer("images")} aria-label="看配图" title="配图"><ImageIcon className="h-4 w-4" /></button>
               </div>
             </div>
 
@@ -779,18 +785,18 @@ export default function Workbench() {
 
               {channelError && !activeVariant && (
                 <div className="border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-5">
-                  <p className="text-[13px] font-medium">这个渠道没有生成成功</p>
+                  <p className="text-[13px] font-medium">这个渠道没写出来</p>
                   <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">{channelError.message}</p>
                   <button className="btn-secondary mt-4" onClick={() => void retry()} disabled={busy === "retry"}>
                     {busy === "retry" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                    只重试这一渠道
+                    只重试这个渠道
                   </button>
                 </div>
               )}
 
               {snapshot.task.status === "failed" && !activeVariant && (
                 <div className="mt-4 border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-5">
-                  <p className="text-[13px] font-medium">这次生成没有完成</p>
+                  <p className="text-[13px] font-medium">这次没写完</p>
                   <ul className="mt-1 space-y-1 text-[11px] leading-5 text-[var(--muted)]">
                     {(snapshot.errors || []).slice(0, 4).map((item, index) => (
                       <li key={`${item.code || "err"}-${index}`}>{item.message}</li>
@@ -798,10 +804,10 @@ export default function Workbench() {
                   </ul>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button className="btn-secondary" onClick={() => void refresh(true)}>
-                      <RefreshCw className="h-4 w-4" /> 刷新状态
+                      <RefreshCw className="h-4 w-4" /> 刷新
                     </button>
                     <Link to={`/create?productId=${snapshot.task.productId}`} className="btn-secondary">
-                      重新发起
+                      重来一条
                     </Link>
                   </div>
                 </div>
@@ -851,24 +857,24 @@ export default function Workbench() {
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <button className="btn-primary" onClick={() => void copy()} disabled={busy === "copy" || activeVariant.verification.blocked}>
                       {busy === "copy" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
-                      复制这一版
+                      复制这段
                     </button>
                     <button className="btn-secondary" onClick={() => setEditing((v) => !v)}>
-                      <PenLine className="h-4 w-4" /> {editing ? "收起编辑" : "编辑文字"}
+                      <PenLine className="h-4 w-4" /> {editing ? "收起" : "改字"}
                     </button>
                     <button className="btn-secondary" onClick={() => void exportPack()} disabled={exportBusy}>
                       {exportBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                      {exportBusy ? "正在打包" : "导出整包"}
+                      {exportBusy ? "正在打包" : "打包下载"}
                     </button>
-                    {activeVariant.verification.blocked && <span className="text-[10.5px] text-[var(--danger)]">核验未过，复制已禁用</span>}
-                    {activeVariant.editBurden !== "none" && <span className="text-[10.5px] text-[var(--muted)]">预计轻改：{activeVariant.editBurden === "light" ? "一次" : "较大"}</span>}
+                    {activeVariant.verification.blocked && <span className="text-[10.5px] text-[var(--danger)]">核对没过，先别复制</span>}
+                    {activeVariant.editBurden !== "none" && <span className="text-[10.5px] text-[var(--muted)]">大概改：{activeVariant.editBurden === "light" ? "一处" : "较多"}</span>}
                   </div>
 
                   {editing && (
                     <section className="mt-4 border border-[var(--line-strong)] bg-[var(--surface)] p-4">
                       <div className="flex items-center justify-between">
-                        <p className="text-[12px] font-medium">编辑这一版</p>
-                        <span className="text-[10px] text-[var(--muted)]">保存后自动重新核验</span>
+                        <p className="text-[12px] font-medium">改这一段</p>
+                        <span className="text-[10px] text-[var(--muted)]">保存后会再核一遍</span>
                       </div>
                       {activeVariant.platform !== "moments" && (
                         <label className="mt-3 block">
@@ -878,7 +884,7 @@ export default function Workbench() {
                       )}
                       {activeVariant.platform === "video" ? (
                         <label className="mt-3 block">
-                          <span className="field-label">口播脚本</span>
+                          <span className="field-label">口播稿</span>
                           <textarea className="field mt-1 min-h-[240px] resize-y" value={draft.script} onChange={(e) => setDraft((d) => ({ ...d, script: e.target.value, body: e.target.value }))} />
                         </label>
                       ) : (
@@ -895,7 +901,7 @@ export default function Workbench() {
                       )}
                       <div className="mt-4 flex gap-2">
                         <button className="btn-primary" onClick={() => void save()} disabled={busy === "save"}>
-                          {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />} 保存并核验
+                          {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />} 保存，再核一遍
                         </button>
                         <button className="btn-quiet" onClick={() => setEditing(false)}>取消</button>
                       </div>
@@ -903,11 +909,11 @@ export default function Workbench() {
                   )}
 
                   <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--line)] pt-4">
-                    <span className="mr-1 text-[10.5px] text-[var(--muted)]">去一下套话：</span>
+                    <span className="mr-1 text-[10.5px] text-[var(--muted)]">改得口语一点：</span>
                     {[
-                      ["更口语", "更像门店销售说话，句子短一点，删掉套话，不要新增事实。",],
-                      ["换个开头", "换一个更具体的场景开头，保留事实和真实细节。",],
-                      ["删掉口号", "删掉空泛形容词和口号，只留具体动作、事实和限制。",],
+                      ["更口语", "像店里的人说话，句子短一点，删掉套话，别加事实。",],
+                      ["换个开头", "从店里一个具体场景开头，事实和细节别动。",],
+                      ["删口号", "删掉空泛形容词和口号，只留动作、事实和限制。",],
                     ].map(([label, instruction]) => (
                       <button key={label} className="chip" onClick={() => void rewrite(instruction)} disabled={busy === "rewrite"}>
                         {busy === "rewrite" ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
@@ -925,7 +931,7 @@ export default function Workbench() {
           <aside className="hidden px-4 py-6 lg:block">
             <div className="sticky top-[88px] space-y-5">
               <div className="flex items-center justify-between">
-                <h2 className="text-[12px] font-medium">依据与风险</h2>
+                <h2 className="text-[12px] font-medium">依据和风险</h2>
                 <Layers3 className="h-4 w-4 text-[var(--muted-2)]" />
               </div>
               {activeVariant ? (
@@ -940,7 +946,7 @@ export default function Workbench() {
                   <EvidencePanel snapshot={snapshot} variant={activeVariant} />
                 </>
               ) : (
-                <p className="text-[11px] leading-6 text-[var(--muted)]">这一渠道还没有可看的版本。先等后台跑完，或只重试这一渠道。</p>
+                <p className="text-[11px] leading-6 text-[var(--muted)]">这个渠道还没写出来。等一会儿，或者只重试这个渠道。</p>
               )}
             </div>
           </aside>
@@ -950,7 +956,7 @@ export default function Workbench() {
       {drawer && snapshot && activeVariant && (
         <>
           <button type="button" className="drawer-backdrop lg:hidden" aria-label="关闭面板" onClick={() => setDrawer(null)} />
-          <section className="drawer-panel lg:hidden" role="dialog" aria-modal="true" aria-label="依据与风险">
+          <section className="drawer-panel lg:hidden" role="dialog" aria-modal="true" aria-label="依据和风险">
             <div className="flex items-center justify-between">
               <h2 className="text-[14px] font-medium">{drawer === "risk" ? "风险" : drawer === "images" ? "配图" : "依据"}</h2>
               <button className="icon-button" onClick={() => setDrawer(null)} aria-label="关闭"><X className="h-4 w-4" /></button>

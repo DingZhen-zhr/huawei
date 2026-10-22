@@ -150,7 +150,7 @@ function footer(ctx: CanvasRenderingContext2D, task: TaskMeta, x: number, y: num
   ctx.fillStyle = dark ? "rgba(255,255,255,.55)" : "rgba(24,24,24,.45)";
   ctx.font = `400 20px ${FONT}`;
   ctx.fillText(
-    task.productAsset ? "官方产品图 · 模板排版 · AI 不生成产品外观" : "文字模板 · 官方产品图未就位",
+    task.productAsset ? "官方图 + 排版，产品外观没动" : "文字模板，官方图还没到",
     x,
     y,
   );
@@ -188,7 +188,7 @@ function xhsCover(image: HTMLImageElement | null, task: TaskMeta, variant: Varia
   let y = photoH + 96;
   ctx.fillStyle = RED;
   ctx.font = `600 24px ${FONT}`;
-  ctx.fillText(task.productAsset ? "门店实拍思路 · 官方产品图" : "文字模板 · 官方产品图未就位", pad, y);
+  ctx.fillText(task.productAsset ? "官方产品图，店里的话" : "文字模板，官方图还没到", pad, y);
   y += 78;
   ctx.fillStyle = INK;
   ctx.font = `700 66px ${FONT}`;
@@ -218,10 +218,10 @@ function xhsFacts(image: HTMLImageElement | null, task: TaskMeta, variant: Varia
   const pad = 84;
   ctx.fillStyle = INK;
   ctx.font = `700 54px ${FONT}`;
-  ctx.fillText("这版引用的依据", pad, 150);
+  ctx.fillText("这版用到的资料", pad, 150);
   ctx.fillStyle = MUTED;
   ctx.font = `400 24px ${FONT}`;
-  ctx.fillText("每条都能回到同型号资料；不写没依据的数字", pad, 196);
+  ctx.fillText("每条都能翻到原文。没依据的数字不写。", pad, 196);
 
   let y = 280;
   pickFacts(facts, variant, 3).forEach((fact, index) => {
@@ -265,7 +265,7 @@ async function xhsChecklist(task: TaskMeta, variant: Variant): Promise<HTMLCanva
   ctx.fillRect(pad, 118, 18, 18);
   ctx.fillStyle = INK;
   ctx.font = `700 54px ${FONT}`;
-  ctx.fillText("到店先确认这几件", pad, 220);
+  ctx.fillText("到店先看这几件", pad, 220);
   ctx.fillStyle = MUTED;
   ctx.font = `400 26px ${FONT}`;
   ctx.fillText(`${task.productShortName} · ${task.scene || "门店体验"}`, pad, 270);
@@ -311,7 +311,7 @@ function momentsCard(image: HTMLImageElement | null, task: TaskMeta, variant: Va
     ctx.fillStyle = MUTED;
     ctx.font = `400 28px ${FONT}`;
     ctx.textAlign = "center";
-    ctx.fillText("官方产品图未就位", 540, 380);
+    ctx.fillText("官方图还没到", 540, 380);
     ctx.textAlign = "left";
   }
   ctx.fillStyle = PAPER;
@@ -364,7 +364,7 @@ function wechatCover(image: HTMLImageElement | null, task: TaskMeta, variant: Va
   }
   ctx.fillStyle = "rgba(24,24,24,.4)";
   ctx.font = `400 13px ${FONT}`;
-  ctx.fillText("信息基准日 2026-10-17 · 以门店实际为准", pad, 350);
+  ctx.fillText("资料截至 2026-10-17，以门店实际为准", pad, 350);
   return canvas;
 }
 
@@ -385,14 +385,14 @@ async function posterCard(image: HTMLImageElement | null, task: TaskMeta, varian
     ctx.fillStyle = "rgba(255,255,255,.35)";
     ctx.font = `400 30px ${FONT}`;
     ctx.textAlign = "center";
-    ctx.fillText("官方产品图未就位", 621, 500);
+    ctx.fillText("官方图还没到", 621, 500);
     ctx.textAlign = "left";
   }
   ctx.fillStyle = RED;
   ctx.fillRect(0, 940, 1242, 26);
   ctx.fillStyle = "rgba(255,255,255,.6)";
   ctx.font = `500 24px ${FONT}`;
-  ctx.fillText("HUAWEI STORE · 门店实拍/官方图", pad, 1050);
+  ctx.fillText("门店实拍 / 官方图", pad, 1050);
 
   let y = 1150;
   ctx.fillStyle = "#fff";
@@ -437,7 +437,7 @@ function videoCover(image: HTMLImageElement | null, task: TaskMeta, variant: Var
   let y = photoH + 110;
   ctx.fillStyle = RED;
   ctx.font = `600 26px ${FONT}`;
-  ctx.fillText("视频号 · 45–60 秒口播", pad, y);
+  ctx.fillText("视频号 · 45–60 秒", pad, y);
   y += 90;
   ctx.fillStyle = "#fff";
   ctx.font = `700 78px ${FONT}`;

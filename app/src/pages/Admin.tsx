@@ -60,14 +60,14 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
       <main className="mx-auto grid min-h-[calc(100dvh-64px)] max-w-[980px] items-center gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1fr_.8fr]">
         <section>
           <ShieldAlert className="h-8 w-8 text-[var(--red)]" />
-          <h1 className="mt-5 max-w-[12ch] text-[38px] font-semibold leading-[1.12] tracking-[-0.03em] sm:text-[48px]">事实确认，不进销售主流程。</h1>
+          <h1 className="mt-5 max-w-[12ch] text-[38px] font-semibold leading-[1.12] tracking-[-0.03em] sm:text-[48px]">价格和来源，在这儿确认。</h1>
           <p className="mt-5 max-w-[38rem] text-[13px] leading-7 text-[var(--muted)]">
-            管理员只做三件事：核对价格冲突、维护官方来源、生成门店码。销售端不显示这个入口。
+            管理员就做三件事：核对价格冲突、维护官方来源、管门店码。销售端看不到这个入口。
           </p>
         </section>
         <section className="border border-[var(--line-strong)] bg-[var(--surface)] p-5 shadow-[0_18px_50px_-36px_rgba(24,24,24,.45)] sm:p-7">
           <div className="flex items-center gap-2 text-[13px] font-medium"><LockKeyhole className="h-4 w-4 text-[var(--red)]" /> 管理员登录</div>
-          <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">口令只用于本地演示时，请及时替换为环境变量中的正式口令。</p>
+          <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">演示口令只适合本地。正式环境把口令放进环境变量。</p>
           <form className="mt-5 space-y-3" onSubmit={submit}>
             <input className="field" type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} placeholder="管理员口令" autoComplete="current-password" disabled={Boolean(busy)} />
             {error && <p className="text-[11px] leading-5 text-[var(--danger)]">{error}</p>}
@@ -145,8 +145,8 @@ export default function Admin() {
       <main className="mx-auto max-w-[1180px] px-5 py-7 sm:px-8">
         <div className="flex flex-col gap-4 border-b border-[var(--line)] pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-[26px] font-semibold tracking-[-0.03em]">后台总览</h1>
-            <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">价格冲突不自动选边。确认前，销售端内容保持冻结。</p>
+            <h1 className="text-[26px] font-semibold tracking-[-0.03em]">后台</h1>
+            <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">价格冲突不替谁做主。确认前，销售端不写价。</p>
           </div>
           <button className="btn-quiet self-start sm:self-auto" onClick={() => void logout()}><LogOut className="h-4 w-4" /> 退出后台</button>
         </div>
@@ -155,8 +155,8 @@ export default function Admin() {
           {[
             ["产品事实", products.length, "型号"],
             ["未解决冲突", conflicts.filter((c) => c.status === "open").length, "价格字段"],
-            ["内容任务", tasks.length, "本地运行时"],
-            ["官方快照", "2026-10-17", "基线日期"],
+            ["内容", tasks.length, "数据库"],
+            ["资料日期", "2026-10-17", "官方快照"],
           ].map(([label, value, hint]) => (
             <div key={label} className="border border-[var(--line)] bg-[var(--surface)] p-4">
               <p className="text-[10.5px] text-[var(--muted)]">{label}</p>
@@ -181,13 +181,13 @@ export default function Admin() {
                     <p className="text-[13px] font-medium">{conflict.productId} · {conflict.field}</p>
                     <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">{conflict.reason}</p>
                   </div>
-                  <span className="status-pill bg-[var(--warning-soft)] text-[var(--warning)]">冻结中</span>
+                  <span className="status-pill bg-[var(--warning-soft)] text-[var(--warning)]">待确认</span>
                 </div>
                 <div className="mt-3"><CandidateRows conflict={conflict} /></div>
-                <p className="mt-3 text-[10.5px] text-[var(--muted-2)]">确认流程需要选择 SKU、地区、生效日期与结论；当前只读展示，不伪造确认。</p>
+                <p className="mt-3 text-[10.5px] text-[var(--muted-2)]">确认时要选 SKU、地区、生效日期，再写结论。现在只展示，不替你点确认。</p>
               </article>
             ))}
-            {!conflicts.length && <p className="py-5 text-[11px] text-[var(--muted)]">没有未解决冲突。</p>}
+            {!conflicts.length && <p className="py-5 text-[11px] text-[var(--muted)]">没有待确认的价格。</p>}
           </div>
         </section>
 
@@ -220,7 +220,7 @@ export default function Admin() {
         </section>
 
         <section className="mt-8">
-          <h2 className="text-[16px] font-semibold">最近内容任务</h2>
+          <h2 className="text-[16px] font-semibold">最近写的</h2>
           <div className="mt-3 border-t border-[var(--line)]">
             {tasks.slice(0, 8).map((task) => (
               <Link key={task.id} to={`/create/${task.id}`} className="flex items-center justify-between gap-4 border-b border-[var(--line)] py-3 text-[11px]">
@@ -229,7 +229,7 @@ export default function Admin() {
                 <span className="mono text-[var(--muted-2)]">{new Date(task.createdAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
               </Link>
             ))}
-            {!tasks.length && <p className="py-5 text-[11px] text-[var(--muted)]">还没有本地任务。</p>}
+            {!tasks.length && <p className="py-5 text-[11px] text-[var(--muted)]">还没有生成过内容。</p>}
           </div>
         </section>
       </main>

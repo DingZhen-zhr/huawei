@@ -9,22 +9,22 @@ const MAX_ATTEMPTS = Number(process.env.HC_MODEL_ATTEMPTS || (SERVERLESS ? 1 : 2
 const TIMEOUT_MS = Number(process.env.HC_MODEL_TIMEOUT_MS || (SERVERLESS ? 30_000 : 45_000));
 
 const ANGLE_GUIDE = {
-  pain: "痛点切入：第一段写顾客正在做的动作和卡点（用真实细节），第二段只给一个能解决卡点的事实，第三段写边界，最后给下一步。",
-  avoidance: "避坑与选择：第一段写“先别急着……”，第二段给两个判断标准（用事实），第三段写一个不适合的情况，最后给下一步。",
-  story: "真实场景故事：第一段写门店里的一幕（基于真实细节，不虚构成交/姓名），第二段写当时怎么判断，第三段写这台机器对应的一个事实和边界，最后给下一步。",
+  pain: "从顾客的麻烦写起。第一句就写他正在做的动作，不要先介绍产品，也不要先讲参数。",
+  avoidance: "先说一个容易买错的地方，再给判断方法。像在店里提醒人，不像写测评。",
+  story: "写店里发生的一件小事。只用已知细节，不补表情、对话、成交，也不把自己写成亲测的人。",
 };
 
 const PLATFORM_GUIDE = {
   xiaohongshu:
-    "标题 8–20 字；正文 300–800 字，短段落；3–5 个话题标签；一条首评；结尾一个自然动作。不要写成长文或公文。",
+    "标题 8–20 字，像跟朋友说话；正文 300–800 字，一两句一段；3–5 个话题标签；一条首评；结尾给一个自然动作。",
   moments:
-    "无标题；正文 40–280 字，短句；前 6 行内说完关键信息；结尾轻钩子（到店/私聊/看实物）。不要写参数清单。",
+    "没有标题；40–280 字；像自己发朋友圈，不像门店广告；结尾轻轻带一句到店或私聊。",
   "wechat-mp":
-    "标题 ≤64 字；摘要 ≤120 字；正文 800–1400 字，必须含“一、二、三”三个小标题；文末必须原样带来源说明：信息基准日 2026-10-17，产品信息来自华为官方公开资料；具体配置与价格以门店实际报价为准。",
+    "标题 ≤64 字；摘要 ≤120 字；正文 800–1400 字，用空行分段，三个小标题各占一行（一、… / 二、… / 三、…）；文末必须原样带来源说明：信息基准日 2026-10-17，产品信息来自华为官方公开资料；具体配置与价格以门店实际报价为准。",
   poster:
-    "主标题 6–12 字；正文最多 4 行短句（每行 ≤16 字），一屏一结论；不写话题标签；二维码/地址/电话留白，不编造。",
+    "主标题 6–12 字；最多 4 行短句，一行一个意思，别写成文案墙；不写话题标签；二维码、地址、电话留白。",
   video:
-    "标题 ≤12 字；口播脚本 45–60 秒，保留“0–3 秒：/3–15 秒：/15–32 秒：/32–48 秒：/48–60 秒：”时间标记；3–5 个分镜；首 3 秒必须有钩子。",
+    "标题 ≤12 字；口播 45–60 秒，保留“0–3 秒：/3–15 秒：/15–32 秒：/32–48 秒：/48–60 秒：”；3–5 个分镜；前 3 秒说人话，不要喊口号。",
 };
 
 function str(value) {
@@ -37,16 +37,44 @@ function list(value) {
   return text ? text.split(/[\n,，、]+/).map(str).filter(Boolean) : [];
 }
 
-function cleanFactIds(text) {
+function humanizeCopy(text) {
   return str(text)
+    .replace(/真正/g, "")
+    .replace(/边界/g, "不合适的地方")
+    .replace(/说到底[，,]?/g, "")
+    .replace(/说白了[，,]?/g, "")
+    .replace(/值得注意的是[，,]?/g, "")
+    .replace(/更重要的是[，,]?/g, "")
+    .replace(/先说结论[：:，,]?/g, "")
+    .replace(/在这个[^。，\n]{0,15}的时代[，,]?/g, "")
+    .replace(/换句话说[，,]?/g, "也就是说，")
+    .replace(/这意味着/g, "也就是说")
+    .replace(/某种程度上[，,]?/g, "")
+    .replace(/不难看出[，,]?/g, "")
+    .replace(/[，,]{2,}/g, "，")
+    .replace(/^[，,。\s]+/g, "")
+    .trim();
+}
+
+function cleanFactIds(text) {
+  return humanizeCopy(text)
     .replace(/[（(]\s*F\d+\s*[)）]/g, "")
-    .replace(/\s{2,}/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
 function clip(text, max) {
   const chars = [...str(text)];
   return chars.length <= max ? chars.join("") : `${chars.slice(0, max - 1).join("")}…`;
+}
+
+function clipTitle(text, max) {
+  const chars = [...str(text)];
+  if (chars.length <= max) return chars.join("");
+  const head = chars.slice(0, max).join("");
+  const cut = Math.max(head.lastIndexOf("，"), head.lastIndexOf("、"), head.lastIndexOf(" "));
+  return cut >= Math.floor(max * 0.5) ? head.slice(0, cut) : head;
 }
 
 export function contentModel() {
@@ -95,18 +123,34 @@ function buildPrompt({ product, platform, realDetail, audience, scene, target, s
     .join(" · ");
 
   const system = [
-    "你是「华采智营」门店内容副驾驶的写作 Agent，服务华为 PC 门店销售。你写的每一句话都要能被事实账本核对。",
-    "硬规则（违反会被系统拦下）：",
+    "你是替门店同事写内容的人。写完要像这家店的销售自己敲出来的，不像品牌通稿，也不像 AI 总结。",
+    "写之前先想清楚：这个顾客今天卡在哪儿？第一句就写那个动作或麻烦，不要铺垫，不要喊口号。",
+    "事实规则：",
     "1. 只能使用【事实清单】里的数字、规格、型号、条件；不得新增任何数字、单位、型号、SKU、活动、库存、赠品、保修、销量、奖项、顾客评价。",
     "2. 价格：只有【价格口径】不是“不可写”时，才能原样引用其中的金额；否则全文不得出现任何金额。",
-    "3. 真实细节必须保留，但只能作为“销售提供的场景”；不得补人名、学校、公司、天气、成交、使用天数，不得写成官方参数。",
-    "4. 先写顾客正在做的动作或卡点，再写支撑它的事实；不要按“屏幕→重量→电池”堆参数。卖点顺序由痛点决定。",
-    "4.1 真实细节只保留已知信息；不得补写顾客的动作、对话、表情、停顿、成交，也不得写成“我亲测/我背了/我用了”的个人体验。",
-    "5. 同一平台的不同角度，开头、结构、句式必须不同；不得复用同一段话。",
-    "6. 禁止使用：赋能、打造、引领、重新定义、在这个时代、首先/其次/最后、一站式、生态闭环、全方位、全新体验、轻松搞定、绝对、第一、最好、最强、100%（色域参数除外）。",
-    "7. 不贬低竞品，不承诺未给出的权益，不写“全网最低”“永久”。",
-    "8. 不要用“第一/第二/首先/其次”做编号，直接写判断句；也不要用序数词开头。",
-    "9. 只输出 JSON，不要 Markdown 代码块，不要解释。",
+    "3. 真实细节只写已知信息。不要补人名、学校、公司、天气、顾客表情、对话、停顿、成交，也不要写成“我亲测/我背了/我用了”。顾客的动作和对白只写到已知信息为止，不要补“走了两圈”“临走他说”这种没发生的细节。不要替顾客用第一人称写体验（“我回宿舍”“我背着它”）；“我”只能指店里的人。",
+    "写法规则：",
+    "4. 开口就写具体动作或场景，再写支撑它的事实。卖点顺序由麻烦决定，不要按“屏幕→重量→电池”堆参数。",
+    "5. 同一个平台的三个角度，开头、结构、句子都要不一样，不要只换标题。",
+    "6. 句子长短错开。少用破折号，少用“体验、效率、价值、能力、边界、场景化、闭环、生态、赋能”这类抽象词。",
+    "7. 不要用这些 AI 腔：",
+    "   - “不是……而是……”“与其说……不如说……”",
+    "   - “真正”“真正……的是……”“说到底”“说白了”“值得注意的是”“更重要的是”",
+    "   - “从……到……”排比、“不仅……还……”“既……又……”",
+    "   - “关键是：……”这种冒号后面接金句的写法",
+    "   - “在这个……的时代”“当我们在谈论……时”",
+    "   - “先说结论”“总之”“综上”“最后”这类开头或收尾",
+    "8. 写给顾客看，不要写成给销售的操作步骤。不要出现“先问他”“让他”“讲给他”这类指令。",
+  "9. 不贬低竞品，不承诺没给出的权益，不写“全网最低”“永久”。",
+    "9. 不要用“第一/第二/首先/其次”编号。",
+    "10. 只输出 JSON，不要 Markdown 代码块，不要解释。",
+    "可以这样写：",
+    "“每天地铁来回一个半小时，肩上那台旧电脑接近两公斤。先看这台，标准屏版 798 g。”",
+    "“卡和硬盘只能插一个？右侧 SD 卡槽，后侧两个 USB-A，不用来回拔。”",
+    "不要这样写：",
+    "“真正决定体验的，不是参数，而是重量。”",
+    "“这不仅是一次接口升级，更是效率的跃迁。”",
+    "“说到底，选对工具，才能把时间还给自己。”",
   ].join("\n");
 
   const user = [
@@ -181,7 +225,7 @@ function normalizeVariant(raw, platform, angle, product) {
     evidence: [],
   };
   if (platform === "xiaohongshu") {
-    variant.title = clip(variant.title, 20);
+    variant.title = clipTitle(variant.title, 20);
     variant.body = clip(variant.body, 1000);
     if (!variant.tags.length) variant.tags = ["华为电脑", "门店体验", "AI生成"];
   }
@@ -191,17 +235,18 @@ function normalizeVariant(raw, platform, angle, product) {
     variant.tags = [];
   }
   if (platform === "wechat-mp") {
-    variant.title = clip(variant.title, 64);
+    variant.title = clipTitle(variant.title, 64);
     variant.body = clip(variant.body, 3000);
     variant.tags = [];
   }
   if (platform === "poster") {
-    variant.title = clip(variant.title, 12);
-    variant.body = clip(variant.body, 100);
+    variant.title = clipTitle(variant.title, 12);
+    if (variant.posterLines.length) variant.body = variant.posterLines.slice(0, 4).join("\n");
+    variant.body = clip(variant.body, 140);
     variant.tags = [];
   }
   if (platform === "video") {
-    variant.title = clip(variant.title, 12);
+    variant.title = clipTitle(variant.title, 12);
     variant.body = clip(variant.script || variant.body, 1600);
     variant.tags = [];
   }
@@ -216,6 +261,14 @@ function validate(variants, platform, angles) {
   const minBody = platform === "wechat-mp" ? 700 : platform === "poster" ? 8 : platform === "moments" ? 40 : 160;
   const short = variants.filter((item) => [...item.body].length < minBody);
   if (short.length) throw new Error(`模型正文过短：${short.map((item) => item.angle).join("、")}`);
+  if (platform === "wechat-mp") {
+    const broken = variants.filter((item) => !/(一|1)[、.．]/.test(item.body) || !item.body.includes("\n\n"));
+    if (broken.length) throw new Error("公众号正文要有三个小标题，并用空行分段");
+  }
+  if (platform === "poster") {
+    const broken = variants.filter((item) => item.body.split("\n").filter(Boolean).length < 3);
+    if (broken.length) throw new Error("海报正文至少三行短句");
+  }
 }
 
 async function attemptPrompt({ product, platform, realDetail, audience, scene, target, store, attempt, feedback }) {

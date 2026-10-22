@@ -155,13 +155,13 @@ export function localAsk({ messages = [] } = {}) {
   let cards = [];
 
   if (budget === null && !slots.scenario) {
-    reply = "先确认两件事：这台电脑主要用来做什么，预算大概在哪一档？";
+    reply = "这台电脑主要拿来做什么？预算大概多少？";
     options = ["剪视频/做设计", "上网课/学习", "办公/通勤", "预算 6000 左右"];
   } else if (budget === null) {
-    reply = `用途清楚了：${slots.scenario}。预算大概在哪一档？我再把机型收敛到两三台。`;
+    reply = `${slots.scenario}是吧。预算大概多少？我给你收两三个型号。`;
     options = ["预算 4000–5000", "预算 5000–6000", "预算 6000–8000", "预算 8000 以上"];
   } else if (!slots.scenario) {
-    reply = `预算 ${budget.toLocaleString("zh-CN")} 元，先看主要用途。买来最常做的是哪件事？`;
+    reply = `${budget.toLocaleString("zh-CN")} 元的话，主要拿来做什么？`;
     options = ["剪视频/做设计", "上网课/学习", "办公/通勤", "游戏/高性能"];
   } else {
     const all = listProducts()
@@ -171,7 +171,7 @@ export function localAsk({ messages = [] } = {}) {
 
     if (!all.length) {
       const osLabel = slots.os === "windows" ? "Windows" : slots.os === "harmony" ? "鸿蒙" : "";
-      reply = `账本里没有同时满足${osLabel ? `${osLabel}、` : ""}这个用途和预算的型号。要不要先放宽系统或预算，我再筛一轮？`;
+      reply = `库里没有同时满足${osLabel ? `${osLabel}、` : ""}这个用途和预算的型号。放宽系统或预算，我再筛一轮？`;
       options = slots.os ? ["可以看鸿蒙", "可以看 Windows", "预算再放宽一点"] : ["预算再放宽一点", "换个用途看看"];
     } else {
       const withinBudget = (product) => !product.price.min || product.price.min <= budget * 1.15;
@@ -194,17 +194,17 @@ export function localAsk({ messages = [] } = {}) {
         .map((product) => {
           if (!product.price.min) return `${product.shortName}（${product.price.label}）`;
           if (product.price.min <= budget) return `${product.shortName}（${product.price.label}）`;
-          const over = `高出预算约 ¥${(product.price.min - budget).toLocaleString("zh-CN")}`;
+          const over = `比预算高约 ¥${(product.price.min - budget).toLocaleString("zh-CN")}`;
           return product.price.status === "active"
             ? `${product.shortName}（${product.price.label}，${over}）`
-            : `${product.shortName}（${product.price.label}，${over}，仅作参考）`;
+            : `${product.shortName}（${product.price.label}，${over}，只能参考）`;
         })
         .join("；");
       const osNote = slots.os === "windows" ? "只看 Windows 机型。" : slots.os === "harmony" ? "只看鸿蒙机型。" : "";
       const intro = within.length
-        ? `预算 ${budget.toLocaleString("zh-CN")} 元、${slots.scenario}，${osNote}先看${budgetLine}。`
-        : `这个预算内没有完全匹配的现售型号，${osNote}先看${budgetLine}。`;
-      reply = `${intro}\n\n你更在意屏幕和性能，还是每天带出门的重量？`;
+        ? `${budget.toLocaleString("zh-CN")} 元，${slots.scenario}，${osNote}先看${budgetLine}。`
+        : `这个价位没有正合适的现售机型，${osNote}先看${budgetLine}。`;
+      reply = `${intro}\n\n你更在意屏幕，还是背着轻？`;
       options = ["屏幕和性能优先", "轻一点、好带出门", "接口够用就行", "价格再压一点"];
     }
   }
@@ -224,6 +224,6 @@ export function localAsk({ messages = [] } = {}) {
     facts,
     slots,
     cards,
-    warning: "本地规则答复：只引用账本中的真实型号与事实；价格冲突/仅有参考价时不报数字。",
+    warning: "价格有冲突，或者只有参考价时，这里不报数字。",
   };
 }

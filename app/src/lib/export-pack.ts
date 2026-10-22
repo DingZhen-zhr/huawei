@@ -36,7 +36,7 @@ export async function buildPack({
   const channelRows: Record<string, unknown>[] = [];
   const blocked: Record<string, unknown>[] = [];
   const missing: string[] = [];
-  if (!snapshot.task.hasAssets) missing.push("官方产品图未就位：配图使用文字模板，未使用产品图");
+  if (!snapshot.task.hasAssets) missing.push("官方图还没到：配图先用文字模板");
 
   for (const platform of PLATFORMS) {
     const variant = pickVariant(snapshot, platform);
@@ -122,7 +122,7 @@ export async function buildPack({
     })),
     fallbacks: snapshot.task.fallbacks || [],
     missingImages: missing,
-    note: "未通过核验的渠道不进入 copy/；价格、库存和活动以门店实际为准。配图为官方产品图 + 模板排版，AI 不生成产品外观。",
+    note: "没过核验的渠道不会放进 copy/。价格、库存和活动以门店当天为准。配图用官方产品图和模板排版，产品外观没改。",
   };
 
   const sources = {
@@ -155,12 +155,12 @@ export async function buildPack({
         `生成方式：${snapshot.task.generationMode}`,
         "",
         "目录：",
-        "- copy/  通过核验的渠道文案（未通过的渠道不在这里，见 manifest.blocked）",
-        "- images/  官方产品图 + 模板排版生成的配图",
-        "- sources.json  事实与来源",
-        "- manifest.json  渠道状态、核验结果、待补项",
+        "- copy/  过了核验的渠道文案（没过的见 manifest.blocked）",
+        "- images/  官方图 + 排版出的配图",
+        "- sources.json  资料和来源",
+        "- manifest.json  渠道状态、核对结果、待补项",
         "",
-        "发布前请再确认门店实际报价、库存与联系方式。",
+        "发之前再看一眼门店报价、库存和联系方式。",
       ].join("\n"),
     ),
   );

@@ -24,11 +24,11 @@ const timers = new Set();
 
 const PLATFORMS = ["xiaohongshu", "moments", "wechat-mp", "poster", "video"];
 const STAGES = [
-  { stage: "retrieving", label: "查官方资料", percent: 18 },
-  { stage: "planning", label: "排内容结构", percent: 34 },
-  { stage: "writing", label: "写五渠道", percent: 58 },
-  { stage: "reviewing", label: "过门店口吻", percent: 78 },
-  { stage: "verifying", label: "核数字与承诺", percent: 92 },
+  { stage: "retrieving", label: "翻资料", percent: 18 },
+  { stage: "planning", label: "定结构", percent: 34 },
+  { stage: "writing", label: "在写五个渠道", percent: 58 },
+  { stage: "reviewing", label: "顺口吻", percent: 78 },
+  { stage: "verifying", label: "核数字", percent: 92 },
 ];
 
 function ensureDir() {
@@ -227,7 +227,7 @@ async function buildPlatform(task, product, platform) {
 
 async function runPlatforms(taskId, platforms = PLATFORMS) {
   const task = tasks.get(taskId);
-  if (!task) throw new Error("任务不存在");
+  if (!task) throw new Error("这条内容找不到了");
   const product = getProduct(task.productId);
   if (!product) throw new Error("产品事实不存在");
 
@@ -257,7 +257,7 @@ async function runPlatforms(taskId, platforms = PLATFORMS) {
         label: PLATFORM_LABEL[platform],
         stage: "writing",
         code: "PLATFORM_FAILED",
-        message: result.error?.message || "这个渠道生成失败",
+        message: result.error?.message || "这个渠道没写出来",
         retryable: true,
       };
       task.errors.push(row);
@@ -292,7 +292,7 @@ async function runPlatforms(taskId, platforms = PLATFORMS) {
   task.status = failedPlatforms.size ? "partial" : "done";
   task.progress = {
     stage: "done",
-    label: blocked.length ? `已生成，${blocked.length} 个版本被核验拦下` : "内容包已生成",
+    label: blocked.length ? `写完了，${blocked.length} 条要改` : "五个渠道都写好了",
     percent: 100,
     updatedAt: new Date().toISOString(),
   };
@@ -331,12 +331,12 @@ function queueRun(taskId, platforms) {
 export async function createTask({ store, body = {} }) {
   const card = body.taskCardId ? getTaskCard(body.taskCardId) : null;
   const product = getProduct(body.productId || card?.productId);
-  if (!product) throw Object.assign(new Error("未找到真实产品资料"), { status: 400, code: "PRODUCT_NOT_FOUND" });
+  if (!product) throw Object.assign(new Error("没有这个型号的资料"), { status: 400, code: "PRODUCT_NOT_FOUND" });
 
   const real = body.realDetail || {};
   const detailText = String(real.text || "").trim();
   if (!detailText || real.source !== "sales_provided" || real.confirmed !== true) {
-    throw Object.assign(new Error("还差一个真实场景：请写下顾客或门店里实际发生的情况"), {
+    throw Object.assign(new Error("还差一句店里的事。写一句当时发生了什么，再生成。"), {
       status: 400,
       code: "REAL_DETAIL_REQUIRED",
       detail: { field: "realDetail", hint: card?.requiredDetailHint || "旧电脑哪里不好用？顾客每天怎么带着它？" },
@@ -367,7 +367,7 @@ export async function createTask({ store, body = {} }) {
       voiceTone: store.profile?.voiceTone || "",
     },
     status: "queued",
-    progress: { stage: "queued", label: "排队中", percent: 5 },
+    progress: { stage: "queued", label: "等着写", percent: 5 },
     generationMode: modelEnabled() ? `queued:${contentModel()}` : "rules-v1",
     fallbacks: [],
     variants: [],
@@ -381,7 +381,7 @@ export async function createTask({ store, body = {} }) {
   tasks.set(task.id, task);
   events.set(task.id, []);
   pruneCache();
-  addEvent(task.id, { type: "stage", stage: "queued", label: "排队中", percent: 5 });
+  addEvent(task.id, { type: "stage", stage: "queued", label: "等着写", percent: 5 });
   if (DB) await persistTask(task);
   else persist();
 
@@ -411,9 +411,9 @@ async function expireStaleTask(task) {
     ...(task.errors || []),
     { code: "TASK_STALE", message: "任务中断（服务重启或超时），可以单渠道重试或重新生成。", retryable: true },
   ];
-  task.progress = { stage: "failed", label: "任务中断，请重试", percent: 100, updatedAt: new Date().toISOString() };
+  task.progress = { stage: "failed", label: "写了一半，断了，重试一下", percent: 100, updatedAt: new Date().toISOString() };
   task.updatedAt = new Date().toISOString();
-  addEvent(task.id, { type: "error", code: "TASK_STALE", message: "任务中断，请重试", retryable: true });
+  addEvent(task.id, { type: "error", code: "TASK_STALE", message: "写了一半，断了，重试一下", retryable: true });
   await persistTask(task);
   return task;
 }
@@ -548,12 +548,12 @@ export function subscribe(taskId, res) {
 
 export async function retryPlatform(taskId, platform, storeId) {
   const task = await ensureTask(taskId, storeId);
-  if (!task) throw Object.assign(new Error("任务不存在"), { status: 404 });
+  if (!task) throw Object.assign(new Error("这条内容找不到了"), { status: 404 });
   if (!PLATFORMS.includes(platform)) throw Object.assign(new Error("未知渠道"), { status: 400 });
   task.variants = (task.variants || []).filter((v) => v.platform !== platform);
   task.errors = (task.errors || []).filter((e) => e.platform !== platform);
   task.status = "queued";
-  task.progress = { stage: "queued", label: "重试这一个渠道", percent: 10 };
+  task.progress = { stage: "queued", label: "重写这个渠道", percent: 10 };
   task.updatedAt = new Date().toISOString();
   addEvent(task.id, { type: "stage", stage: "queued", label: `重试${PLATFORM_LABEL[platform]}`, percent: 10 });
   if (DB) await persistTask(task);
@@ -567,7 +567,7 @@ export async function retryPlatform(taskId, platform, storeId) {
 
 export async function updateVariant(taskId, variantId, patch, storeId) {
   const task = await ensureTask(taskId, storeId);
-  if (!task) throw Object.assign(new Error("任务不存在"), { status: 404 });
+  if (!task) throw Object.assign(new Error("这条内容找不到了"), { status: 404 });
   const variant = (task.variants || []).find((v) => v.id === variantId);
   if (!variant) throw Object.assign(new Error("版本不存在"), { status: 404 });
   for (const key of ["title", "body", "tags", "cta", "script", "shotList"]) {
@@ -594,15 +594,15 @@ function recoverInterruptedTasks() {
     const missing = PLATFORMS.filter((platform) => !existingPlatforms.has(platform));
     if (!missing.length) {
       task.status = "done";
-      task.progress = { stage: "done", label: "内容包已生成", percent: 100, updatedAt: new Date().toISOString() };
+      task.progress = { stage: "done", label: "五个渠道都写好了", percent: 100, updatedAt: new Date().toISOString() };
       task.updatedAt = new Date().toISOString();
       addEvent(task.id, { type: "done", status: "done", recovered: true });
       continue;
     }
     task.status = "queued";
-    task.progress = { stage: "queued", label: "服务重启，继续未完成渠道", percent: 5, updatedAt: new Date().toISOString() };
+    task.progress = { stage: "queued", label: "服务重启了，接着写没写完的", percent: 5, updatedAt: new Date().toISOString() };
     task.updatedAt = new Date().toISOString();
-    addEvent(task.id, { type: "stage", stage: "queued", label: "服务重启，继续未完成渠道", percent: 5, recovered: true });
+    addEvent(task.id, { type: "stage", stage: "queued", label: "服务重启了，接着写没写完的", percent: 5, recovered: true });
     queueRun(task.id, missing);
   }
   persist();

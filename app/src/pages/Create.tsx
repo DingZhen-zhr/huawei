@@ -17,7 +17,7 @@ import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 
 type Step = 0 | 1 | 2;
 
-const STEP_TITLES = ["这条主要给谁看？", "门店里具体是什么情况？", "你想让顾客下一步做什么？"];
+const STEP_TITLES = ["这条给谁看？", "店里当时是什么情况？", "想让顾客下一步做什么？"];
 
 function VoiceButton({ onChange, disabled }: { onChange: (text: string) => void; disabled?: boolean }) {
   const [listening, setListening] = useState(false);
@@ -130,7 +130,7 @@ export default function Create() {
       scene: scene || "门店接待",
       audience: audience || "到店顾客",
       target: target || "到店看实物",
-      reason: `已收录 ${product.factCount} 条同型号事实；${product.price.label}`,
+      reason: `这个型号有 ${product.factCount} 条资料。${product.price.label}。`,
       requiredDetailHint: "顾客现在最不方便的地方是什么？是重、慢，还是接口不够用？",
       hasAssets: product.hasAssets,
       factStatus: product.price.status === "conflict" ? "conflict" : "active",
@@ -155,7 +155,7 @@ export default function Create() {
           const { products } = await api.products();
           const product = products.find((item) => item.id === requestedProduct || item.name === requestedProduct);
           if (!product) {
-            setLoadError("这个型号没有可用的同型号事实，先回问答换一个型号。");
+            setLoadError("这个型号没有资料，回问答换一个。");
             return;
           }
           picked = cardFromProduct(product, prefillAudience, prefillScene, prefillTarget);
@@ -177,7 +177,7 @@ export default function Create() {
           setScene(prefillScene || picked.scene);
           setBudget(prefillBudget);
         } else {
-          setLoadError("今天没有可用的真实任务卡。");
+          setLoadError("今天没有能写的题。");
         }
       })
       .catch((e) => { if (alive) setLoadError(e instanceof Error ? e.message : "任务卡加载失败"); })
@@ -215,7 +215,7 @@ export default function Create() {
   const next = async () => {
     setError("");
     if (!canNext) {
-      if (step === 1) setError("还差一个真实场景。写一句门店里实际发生的情况，才能生成。");
+      if (step === 1) setError("还差一句店里的事。写一句当时发生了什么，再生成。");
       return;
     }
     if (step < 2) {
@@ -269,10 +269,10 @@ export default function Create() {
             <Link to="/" className="inline-flex items-center gap-1.5 text-[11px] text-[var(--muted)] hover:text-[var(--ink)]">
               <ArrowLeft className="h-3.5 w-3.5" /> 今日任务
             </Link>
-            <h1 className="mt-3 text-[26px] font-semibold tracking-[-0.03em] sm:text-[32px]">补完这句，就开始写</h1>
-            <p className="mt-1.5 text-[12.5px] leading-6 text-[var(--muted)]">一次只问一个。信息够了就直接生成，不硬凑问题。</p>
+            <h1 className="mt-3 text-[26px] font-semibold tracking-[-0.03em] sm:text-[32px]">补一句店里的事，就能写</h1>
+            <p className="mt-1.5 text-[12.5px] leading-6 text-[var(--muted)]">一次问一个。够了就写，不硬凑。</p>
           </div>
-          <span className="mono hidden text-[10px] text-[var(--muted-2)] sm:block">3 / 5 CHANNELS</span>
+          <span className="mono hidden text-[10px] text-[var(--muted-2)] sm:block">五个渠道</span>
         </div>
 
         {loading && (
@@ -284,7 +284,7 @@ export default function Create() {
 
         {loadError && !loading && (
           <div className="mt-7 border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-5">
-            <p className="text-[13px] font-medium">没有拿到任务卡</p>
+            <p className="text-[13px] font-medium">任务卡没出来</p>
             <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">{loadError}</p>
             <button className="btn-secondary mt-4" onClick={() => window.location.reload()}>重新加载</button>
           </div>
@@ -298,7 +298,7 @@ export default function Create() {
                   {card.productAsset ? (
                     <img src={card.productAsset} alt={card.productName} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full items-center justify-center px-4 text-center text-[11px] text-[var(--muted)]">官方产品图未就位，配图会留白</div>
+                    <div className="flex h-full items-center justify-center px-4 text-center text-[11px] text-[var(--muted)]">还没官方图，配图先留白</div>
                   )}
                 </div>
                 <div className="p-4">
@@ -307,7 +307,7 @@ export default function Create() {
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className={`status-pill ${card.factStatus === "conflict" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-[var(--success-soft)] text-[var(--success)]"}`}>
                       {card.factStatus === "conflict" ? <CircleAlert className="h-3 w-3" /> : <ShieldCheck className="h-3 w-3" />}
-                      {card.factStatus === "conflict" ? "价格冻结" : "事实可用"}
+                      {card.factStatus === "conflict" ? "价格待确认" : "资料齐"}
                     </span>
                     <span className="mono text-[10px] text-[var(--muted-2)]">{card.priceLabel}</span>
                   </div>
@@ -317,20 +317,20 @@ export default function Create() {
               </div>
 
               <div className="surface p-4">
-                <p className="text-[11px] font-medium">这次会生成</p>
+                <p className="text-[11px] font-medium">这次出这些</p>
                 <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] text-[var(--muted)]">
                   <span>小红书 × 3</span>
                   <span>朋友圈 × 3</span>
                   <span>公众号 × 1</span>
                   <span>海报 × 1</span>
                   <span>视频号 × 3</span>
-                  <span className="text-[var(--red)]">先文字，后配图</span>
+                  <span className="text-[var(--red)]">先出文字，图后补</span>
                 </div>
               </div>
 
               <div className="border-t border-[var(--line)] pt-4">
                 <p className="text-[10.5px] leading-5 text-[var(--muted)]">
-                  换题：
+                  换一条：
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {cards.filter((c) => c.id !== card.id).map((c) => (
@@ -349,13 +349,13 @@ export default function Create() {
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-[11.5px] font-medium">{card.productName}</p>
-                  <p className="mt-0.5 text-[10px] text-[var(--muted)]">{card.productFamily} · {card.factStatus === "conflict" ? "价格冻结" : "事实可用"}</p>
+                  <p className="mt-0.5 text-[10px] text-[var(--muted)]">{card.productFamily} · {card.factStatus === "conflict" ? "价格待确认" : "资料齐"}</p>
                   <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">场景：{currentScene}{budget ? ` · 预算 ${budget}` : ""}</p>
                 </div>
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <span className="mono text-[10px] text-[var(--muted-2)]">问题 {step + 1} / 3</span>
+                <span className="mono text-[10px] text-[var(--muted-2)]">第 {step + 1} 个问题</span>
                 <div className="flex gap-1.5" aria-label={`第 ${step + 1} 步，共 3 步`}>
                   {[0, 1, 2].map((i) => (
                     <span key={i} className={`h-1.5 w-6 rounded-full ${i <= step ? "bg-[var(--red)]" : "bg-[var(--line)]"}`} />
@@ -365,9 +365,9 @@ export default function Create() {
 
               <h2 className="mt-7 text-[24px] font-semibold leading-tight tracking-[-0.025em] sm:text-[28px]">{STEP_TITLES[step]}</h2>
               <p className="mt-2 text-[12px] leading-6 text-[var(--muted)]">
-                {step === 0 && "决定内容里的称呼和日常场景，不改产品事实。"}
-                {step === 1 && "这句会作为“销售提供的场景”进入内容，不会被写成官方参数。"}
-                {step === 2 && "结尾只给一个自然动作，不替你承诺成交。"}
+                {step === 0 && "决定称呼和日常场景，产品资料不动。"}
+                {step === 1 && "这句会当成店里发生的场景，不写成官方参数。"}
+                {step === 2 && "只给一个自然的下一步，不替你承诺成交。"}
               </p>
 
               <div className="mt-6 space-y-2.5">
@@ -377,7 +377,7 @@ export default function Create() {
                       <OptionButton key={option} label={option} selected={!customAudienceOpen && audience === option} onClick={() => { setAudience(option); setCustomAudienceOpen(false); setCustomAudience(""); }} />
                     ))}
                     <button type="button" className={`chip ${customAudienceOpen ? "chip-active" : ""}`} onClick={() => { setCustomAudienceOpen(true); setAudience(""); }}>
-                      都不是，我来说
+                      都不是，我自己写
                     </button>
                     {customAudienceOpen && (
                       <input
@@ -397,7 +397,7 @@ export default function Create() {
                       <OptionButton key={option} label={option} selected={detail === option} onClick={() => { setDetail(option); setCustomDetail(false); setError(""); }} />
                     ))}
                     <button type="button" className={`chip ${customDetail ? "chip-active" : ""}`} onClick={() => { setCustomDetail(true); setDetail(""); }}>
-                      都不是，我来说
+                      都不是，我自己写
                     </button>
                     {customDetail && (
                       <div className="flex items-start gap-2">
@@ -411,7 +411,7 @@ export default function Create() {
                         <VoiceButton onChange={(text) => { setDetail(text); setError(""); }} disabled={submitting} />
                       </div>
                     )}
-                    {!detail.trim() && <p className="text-[10.5px] leading-5 text-[var(--muted)]">这是生成前的硬门槛。没有这一句，按钮不会放行。</p>}
+                    {!detail.trim() && <p className="text-[10.5px] leading-5 text-[var(--muted)]">没这句就不能生成。</p>}
                   </>
                 )}
 
@@ -421,7 +421,7 @@ export default function Create() {
                       <OptionButton key={option} label={option} selected={!customTargetOpen && target === option} onClick={() => { setTarget(option); setCustomTargetOpen(false); setCustomTarget(""); }} />
                     ))}
                     <button type="button" className={`chip ${customTargetOpen ? "chip-active" : ""}`} onClick={() => { setCustomTargetOpen(true); setTarget(""); }}>
-                      都不是，我来说
+                      都不是，我自己写
                     </button>
                     {customTargetOpen && (
                       <input
@@ -439,7 +439,7 @@ export default function Create() {
               {step === 1 && currentDetail && (
                 <div className="mt-5 flex gap-2 border border-[var(--info)]/20 bg-[var(--info-soft)] p-3 text-[11px] leading-5 text-[var(--info)]">
                   <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>已记录为销售提供的真实场景。核验时会单独标注，不会混进产品参数。</span>
+                  <span>这句会标成店里提供的场景，不混进产品参数。</span>
                 </div>
               )}
 
@@ -456,7 +456,7 @@ export default function Create() {
                 </button>
                 <button type="button" className="btn-primary min-w-[148px]" onClick={() => void next()} disabled={!canNext || submitting}>
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : step === 2 ? <Sparkles className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-                  {submitting ? "正在生成（约 15–30 秒）" : step === 2 ? "生成内容包" : "下一步"}
+                  {submitting ? "正在生成（约 15–30 秒）" : step === 2 ? "生成五个渠道" : "下一步"}
                 </button>
               </div>
             </section>
