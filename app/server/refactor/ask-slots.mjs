@@ -18,13 +18,23 @@ function budgetIn(text) {
   return thousands ? Math.round(Number(thousands[1]) * 1000) : null;
 }
 
+// Scope markers are scanned in order. List conjunctions retain polarity;
+// a clause boundary or affirmative contrast opens a new positive scope.
+const SCOPE_MARKERS = /不仅|不只|不光|而是|但是|但|只是|只|还|[，,。；;！!?？]|以及|和|或|、|不打算|不需要|不再|不用|不想|不会|不做|不玩|无需|取消|不/g;
+const COORDINATORS = new Set(["和", "或", "以及", "、"]);
+const NEGATORS = new Set(["不打算", "不需要", "不再", "不用", "不想", "不会", "不做", "不玩", "无需", "取消", "不"]);
+
 function mentions(text) {
   const pattern = new RegExp(Object.values(USES).flat().sort((a, b) => b.length - a.length).join("|"), "g");
   let previousEnd = 0;
+  let negative = false;
   return [...text.matchAll(pattern)].map((match) => {
-    const prefix = text.slice(previousEnd, match.index).split(/[，,。；;！!?？但而]/).at(-1).replace(/不仅|不只|不光/g, "");
+    const bridge = text.slice(previousEnd, match.index);
+    for (const [marker] of bridge.matchAll(SCOPE_MARKERS)) {
+      if (COORDINATORS.has(marker)) continue;
+      negative = NEGATORS.has(marker);
+    }
     previousEnd = match.index + match[0].length;
-    const negative = /(?:不(?:再|需要|用|会|想|做|玩)?|无需|不用|取消|不打算)[^，,。；;！!?？但而]{0,5}$/.test(prefix);
     return { label: match[0], key: Object.keys(USES).find((kind) => USES[kind].includes(match[0])), negative };
   });
 }

@@ -24,6 +24,19 @@ test("negation ends at a new use and nonexclusive language does not impose const
   assert.equal(ask("预算6000，办公，不一定非要Windows").slots.os, null);
 });
 
+test("negation scopes over coordinated uses until an explicit affirmative contrast", () => {
+  for (const join of ["和", "或", "以及", "、"]) {
+    assert.equal(ask(`预算6000，不剪视频${join}玩游戏`).slots.scenario, null);
+  }
+  for (const contrast of ["但", "只", "而是"]) {
+    assert.equal(ask(`预算6000，不做设计${contrast}剪视频`).slots.scenario, "剪视频");
+  }
+});
+
+test("revoking the final positive use never revives a previously coordinated negative use", () => {
+  assert.equal(ask("预算6000，不做设计和剪视频，只办公", "不办公了").slots.scenario, null);
+});
+
 test("real mixed-OS ledger prices cannot imply the Windows configuration fits the budget", () => {
   const result = ask("预算6000，办公，需要Windows");
   assert.ok(result.cards.some((card) => card.id === "matebook-d-14"));
