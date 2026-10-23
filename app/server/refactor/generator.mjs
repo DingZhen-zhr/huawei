@@ -1,7 +1,7 @@
 // 门店内容生成器：同一事实快照 + 同一真实细节，生成五个渠道的文案骨架。
 // 这里不调用模型补事实；改写服务可以再接 DeepSeek，但事实仍由 verifier 决定。
 
-const ANGLE_LABEL = { pain: "痛点切入", avoidance: "避坑与选择", story: "真实场景故事" };
+const ANGLE_LABEL = { pain: "哪里不好用", avoidance: "怎么选", story: "店里故事" };
 const PLATFORM_LABEL = {
   xiaohongshu: "小红书",
   moments: "朋友圈",
@@ -120,7 +120,7 @@ function xhsVariant(product, detail, angle, audience, scene, target) {
     story: `这类场景里，要确认的就两件：带出去累不累，坐下来顺不顺手。${product.shortName} ${h.portable}，屏幕采用 ${h.screen}，这两点对得上。`,
   };
   const sceneLine = `${audience || "每天带电脑的人"}，每天就是${scene || h.scene}。轻一点、接口顺手一点，差别上手就知道。`;
-  const limitLine = `有个地方先说：${h.limit}。不是劝退，是免得买回去才发现不合适。`;
+  const limitLine = `有个地方先说：${h.limit}。先讲清楚，免得买回去才发现不合适。`;
   const priceSection = priceBlocked(product)
     ? `价格先不写。${priceBlockReason(product)}，到店按实际配置问。`
     : `价格按官方口径：${price}。`;
@@ -171,7 +171,7 @@ function wechatVariant(product, detail, audience, scene, target) {
   const p1 = [
     `店里碰到的情况：${detailLine}。“够不够用”这句话没法回答，因为${scene || h.scene}里的动作完全不同。`,
     `先看三件事：带去哪儿、坐下开什么、回家接什么。`,
-    `不写夸张体验，也不替顾客做决定，只把官方资料里和这个场景有关的摆出来。`,
+    `下面只列官方资料里和这个场景有关的，夸张的话不说。`,
   ].join("\n\n");
   const p2 = [
     `屏幕是 ${h.screen}。如果你经常看长文档、对照表格，3:2 比单纯的尺寸数字更直观。`,
@@ -201,7 +201,7 @@ function wechatVariant(product, detail, audience, scene, target) {
 function posterVariant(product, detail, target) {
   const h = HIGHLIGHTS[product.id];
   const detailLine = normalizeDetail(detail);
-  const title = product.id === "matebook-pro-s" ? "轻一点，带出门" : product.id === "matebook-gt-14" ? "素材多，先看接口" : "背去教室，轻一点";
+  const title = product.id === "matebook-pro-s" ? "798 克，拎一下就知道" : product.id === "matebook-gt-14" ? "素材多，先看接口" : "背去教室，轻一点";
   const lines = h.posterLines || [
     detailLine.length <= 18 ? detailLine : "真实场景，到店聊",
     h.portable,
