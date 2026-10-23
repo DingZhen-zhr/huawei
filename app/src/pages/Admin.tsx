@@ -65,7 +65,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
             管理员就做三件事：核对价格冲突、维护官方来源、管门店码。销售端看不到这个入口。
           </p>
         </section>
-        <section className="border border-[var(--line-strong)] bg-[var(--surface)] p-5 shadow-[0_18px_50px_-36px_rgba(24,24,24,.45)] sm:p-7">
+        <section className="border border-[var(--line-strong)] bg-[var(--surface)] p-5 sm:p-7">
           <div className="flex items-center gap-2 text-[13px] font-medium"><LockKeyhole className="h-4 w-4 text-[var(--red)]" /> 管理员登录</div>
           <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">演示口令只适合本地。正式环境把口令放进环境变量。</p>
           <form className="mt-5 space-y-3" onSubmit={submit}>
@@ -90,7 +90,7 @@ function CandidateRows({ conflict }: { conflict: Conflict }) {
     <div className="space-y-2">
       {conflict.candidates.map((candidate, index) => (
         <div key={`${candidate.value}-${index}`} className="flex flex-wrap items-center gap-2 text-[11px]">
-          <span className="mono rounded-[5px] bg-[var(--surface)] px-2 py-1 text-[var(--ink)]">¥{candidate.value.toLocaleString("zh-CN")}</span>
+          <span className="mono bg-[var(--surface)] px-2 py-1 text-[var(--ink)]">¥{candidate.value.toLocaleString("zh-CN")}</span>
           <span className="text-[var(--muted)]">{candidate.evidence.map((e) => e.sku || e.priceType).filter(Boolean).join(" / ")}</span>
           {candidate.evidence[0]?.url && <a href={candidate.evidence[0].url} target="_blank" rel="noreferrer" className="text-[var(--red)] underline underline-offset-4">看来源</a>}
         </div>

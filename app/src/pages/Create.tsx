@@ -76,7 +76,7 @@ function OptionButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-[10px] border px-4 py-3 text-left text-[13px] transition-colors ${
+      className={`flex min-h-[52px] w-full items-center justify-between gap-3 border px-4 py-3 text-left text-[13px] transition-colors ${
         selected
           ? "border-[var(--ink)] bg-[var(--ink)] text-white"
           : "border-[var(--line)] bg-[var(--surface-strong)] text-[var(--ink)] hover:border-[var(--line-strong)]"
@@ -84,7 +84,7 @@ function OptionButton({
       aria-pressed={selected}
     >
       <span>{label}</span>
-      {selected ? <Check className="h-4 w-4 shrink-0" /> : <span className="h-4 w-4 shrink-0 rounded-full border border-current opacity-30" />}
+      {selected ? <Check className="h-4 w-4 shrink-0" /> : <span className="h-4 w-4 shrink-0 border border-current opacity-30" />}
     </button>
   );
 }
@@ -215,7 +215,7 @@ export default function Create() {
   const next = async () => {
     setError("");
     if (!canNext) {
-      if (step === 1) setError("还差一句店里的事。写一句当时发生了什么，再生成。");
+      if (step === 1) setError("还差一句店里的细节。写一句当时发生了什么，再生成。");
       return;
     }
     if (step < 2) {
@@ -269,8 +269,8 @@ export default function Create() {
             <Link to="/" className="inline-flex items-center gap-1.5 text-[11px] text-[var(--muted)] hover:text-[var(--ink)]">
               <ArrowLeft className="h-3.5 w-3.5" /> 今日任务
             </Link>
-            <h1 className="mt-3 text-[26px] font-semibold tracking-[-0.03em] sm:text-[32px]">补一句店里的事，就能写</h1>
-            <p className="mt-1.5 text-[12.5px] leading-6 text-[var(--muted)]">一次问一个。够了就写，不硬凑。</p>
+            <h1 className="mt-3 text-[34px] font-bold tracking-[-0.04em] sm:text-[44px]">补一句店里的细节，就能写</h1>
+            <p className="mt-1.5 text-[12.5px] leading-6 text-[var(--muted)]">一次问一个，答完就能写。</p>
           </div>
           <span className="mono hidden text-[10px] text-[var(--muted-2)] sm:block">五个渠道</span>
         </div>
@@ -307,7 +307,7 @@ export default function Create() {
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className={`status-pill ${card.factStatus === "conflict" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-[var(--success-soft)] text-[var(--success)]"}`}>
                       {card.factStatus === "conflict" ? <CircleAlert className="h-3 w-3" /> : <ShieldCheck className="h-3 w-3" />}
-                      {card.factStatus === "conflict" ? "价格待确认" : "资料齐"}
+                      {card.factStatus === "conflict" ? "价格待确认" : "资料齐全"}
                     </span>
                     <span className="mono text-[10px] text-[var(--muted-2)]">{card.priceLabel}</span>
                   </div>
@@ -344,12 +344,12 @@ export default function Create() {
 
             <section className="surface order-1 flex min-h-[430px] flex-col p-5 sm:p-7 lg:order-2">
               <div className="mb-5 flex items-center gap-3 border-b border-[var(--line)] pb-4 lg:hidden">
-                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-[8px] border border-[var(--line)] bg-[#eee9e1]">
+                <div className="h-11 w-11 shrink-0 overflow-hidden border border-[var(--line)] bg-[#eee9e1]">
                   {card.productAsset ? <img src={card.productAsset} alt="" className="h-full w-full object-cover" /> : null}
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-[11.5px] font-medium">{card.productName}</p>
-                  <p className="mt-0.5 text-[10px] text-[var(--muted)]">{card.productFamily} · {card.factStatus === "conflict" ? "价格待确认" : "资料齐"}</p>
+                  <p className="mt-0.5 text-[10px] text-[var(--muted)]">{card.productFamily} · {card.factStatus === "conflict" ? "价格待确认" : "资料齐全"}</p>
                   <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">场景：{currentScene}{budget ? ` · 预算 ${budget}` : ""}</p>
                 </div>
               </div>
@@ -358,7 +358,7 @@ export default function Create() {
                 <span className="mono text-[10px] text-[var(--muted-2)]">第 {step + 1} 个问题</span>
                 <div className="flex gap-1.5" aria-label={`第 ${step + 1} 步，共 3 步`}>
                   {[0, 1, 2].map((i) => (
-                    <span key={i} className={`h-1.5 w-6 rounded-full ${i <= step ? "bg-[var(--red)]" : "bg-[var(--line)]"}`} />
+                    <span key={i} className={`h-1.5 w-6 ${i <= step ? "bg-[var(--red)]" : "bg-[var(--line)]"}`} />
                   ))}
                 </div>
               </div>

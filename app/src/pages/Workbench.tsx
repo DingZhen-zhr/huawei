@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
-  AlertTriangle,
   ArrowLeft,
   Check,
   CheckCircle2,
@@ -11,14 +10,11 @@ import {
   Download,
   FileText,
   Image as ImageIcon,
-  Images,
-  Layers3,
   Loader2,
   PenLine,
   Play,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
   X,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
@@ -45,11 +41,8 @@ function sourceName(source: string) {
   return String(source || "").split("/").pop() || source;
 }
 
-function statusTone(status: string) {
-  if (status === "blocked") return "bg-[var(--danger-soft)] text-[var(--danger)]";
-  if (status === "ready") return "bg-[var(--success-soft)] text-[var(--success)]";
-  if (status === "failed") return "bg-[var(--danger-soft)] text-[var(--danger)]";
-  return "bg-[var(--warning-soft)] text-[var(--warning)]";
+function angleName(label: string) {
+  return ({ "痛点切入": "哪里不好用", "避坑与选择": "怎么选", "真实场景故事": "店里故事" } as Record<string, string>)[label] || label;
 }
 
 function trustLabel(tier: number) {
@@ -82,71 +75,69 @@ function Paragraphs({ text }: { text: string }) {
         return heading ? (
           <h3 key={index} className="pt-2 text-[15px] font-semibold leading-6">{block}</h3>
         ) : (
-          <p key={index} className="whitespace-pre-wrap text-[13px] leading-7 text-[var(--ink)]">{block}</p>
+          <p key={index} className="whitespace-pre-wrap text-[14px] leading-[1.95] text-[var(--ink)]">{block}</p>
         );
       })}
     </div>
   );
 }
 
-function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapshot["task"] }) {
+function PlatformPreview({ variant, task, variantIndex }: { variant: Variant; task: TaskSnapshot["task"]; variantIndex: number }) {
   const [coverFailed, setCoverFailed] = useState(false);
   const image = task.productAsset;
   const fit = task.productAssetFit || "cover";
 
   if (variant.platform === "xiaohongshu") {
     return (
-      <div className="mx-auto w-full max-w-[430px] bg-[#f6f1ea] p-3 sm:p-5">
-        <div className="overflow-hidden bg-white shadow-[0_10px_36px_-26px_rgba(0,0,0,.38)]">
-          <div className="relative aspect-[3/4] bg-[#e9e3da]">
-            {image && !coverFailed ? (
-              <img src={image} alt="" className="h-full w-full" style={{ objectFit: fit }} onError={() => setCoverFailed(true)} />
-            ) : (
-              <div className="flex h-full items-center justify-center text-[11px] text-[var(--muted)]">官方图还没到</div>
-            )}
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-5 pt-24 text-white">
-              <p className="text-[20px] font-semibold leading-7">{variant.title}</p>
-              <p className="mt-2 text-[11px] text-white/75">{task.productShortName} · 店里的事</p>
-            </div>
-          </div>
-          <div className="p-4 sm:p-5">
-            <Paragraphs text={variant.body} />
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {(variant.tags || []).map((tag) => (
-                <span key={tag} className="text-[11.5px] text-[#335a7a]">#{tag}</span>
-              ))}
-            </div>
-            <div className="mt-4 border-t border-black/8 pt-3 text-[10.5px] leading-5 text-[var(--muted)]">
-              {variant.cta}
-            </div>
-          </div>
+      <article className="mx-auto w-full max-w-[664px] border-t-2 border-[var(--ink)] bg-white px-5 py-6 sm:px-8 sm:py-7">
+        <div className="flex items-baseline justify-between gap-4">
+          <span className="mono text-[8.5px] tracking-[0.12em] text-[var(--muted-2)]">小红书 · 第 {String(variantIndex).padStart(2, "0")} 条</span>
+          <span className="mono text-[8.5px] tracking-[0.1em] text-[var(--muted-2)]">{task.productShortName} / {task.scene}</span>
         </div>
-      </div>
+        <div className="relative mt-4 h-[260px] overflow-hidden bg-[#e7e3dc] sm:h-[286px]">
+          {image && !coverFailed ? (
+            <img src={image} alt="" className="h-full w-full" style={{ objectFit: fit }} onError={() => setCoverFailed(true)} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-[11px] text-[var(--muted)]">官方图还没到</div>
+          )}
+        </div>
+        <h1 className="mt-6 max-w-[560px] text-[26px] font-bold leading-[1.35] tracking-[-0.035em] sm:text-[30px]">{variant.title}</h1>
+        <p className="mono mt-2 text-[9px] tracking-[0.06em] text-[var(--muted)]">{task.productShortName} · 店里的事</p>
+        <div className="mt-5 max-w-[560px]">
+          <Paragraphs text={variant.body} />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-x-2 gap-y-1">
+          {(variant.tags || []).map((tag) => (
+            <span key={tag} className="text-[11.5px] text-[#335a7a]">#{tag}</span>
+          ))}
+        </div>
+        <div className="mt-4 border-t border-[var(--line)] pt-3 text-[10.5px] leading-5 text-[var(--muted)]">
+          {variant.cta}
+        </div>
+      </article>
     );
   }
 
   if (variant.platform === "moments") {
     return (
-      <div className="mx-auto w-full max-w-[420px] bg-[#e9e5df] p-3 sm:p-5">
-        <div className="bg-white p-4 shadow-[0_10px_36px_-28px_rgba(0,0,0,.4)]">
-          <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] bg-[var(--ink)] text-[10px] font-semibold text-white">华采</span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-medium">门店同事</p>
-              <p className="mt-2 whitespace-pre-wrap text-[13px] leading-6 text-black/80">{variant.body}</p>
-              {image && (
-                <div className="mt-3 grid grid-cols-3 gap-1">
-                  {[0, 1, 2].slice(0, 3).map((i) => (
-                    <div key={i} className="aspect-square overflow-hidden bg-[#eee9e1]">
-                      <img src={image} alt="" className="h-full w-full" style={{ objectFit: fit }} loading="lazy" />
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="mt-3 flex items-center justify-between border-t border-black/6 pt-2 text-[10px] text-black/35">
-                <span>刚刚</span>
-                <span>到店看实物</span>
+      <div className="mx-auto w-full max-w-[440px] border border-[var(--line)] bg-white p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-[var(--ink)] text-[10px] font-semibold text-white">华采</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium">门店同事</p>
+            <p className="mt-2 whitespace-pre-wrap text-[13px] leading-6 text-black/80">{variant.body}</p>
+            {image && (
+              <div className="mt-3 grid grid-cols-3 gap-1">
+                {[0, 1, 2].slice(0, 3).map((i) => (
+                  <div key={i} className="aspect-square overflow-hidden bg-[#eee9e1]">
+                    <img src={image} alt="" className="h-full w-full" style={{ objectFit: fit }} loading="lazy" />
+                  </div>
+                ))}
               </div>
+            )}
+            <div className="mt-3 flex items-center justify-between border-t border-[var(--line)] pt-2 text-[10px] text-[var(--muted-2)]">
+              <span>刚刚</span>
+              <span>到店看实物</span>
             </div>
           </div>
         </div>
@@ -156,28 +147,28 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
 
   if (variant.platform === "wechat-mp") {
     return (
-      <div className="mx-auto w-full max-w-[620px] bg-white p-4 shadow-[0_10px_36px_-30px_rgba(0,0,0,.28)] sm:p-8">
-        <div className="border-b border-black/8 pb-5">
-          <p className="text-[10px] text-[var(--muted)]">华采智营 · 门店内容</p>
-          <h2 className="mt-2 text-[24px] font-semibold leading-[1.35] tracking-[-0.02em]">{variant.title}</h2>
-          <p className="mt-2 text-[11px] text-[var(--muted)]">资料截至 2026-10-17</p>
+      <article className="mx-auto w-full max-w-[620px] border-t-2 border-[var(--ink)] bg-white px-5 py-6 sm:px-8 sm:py-8">
+        <div className="border-b border-[var(--line)] pb-5">
+          <p className="mono text-[8.5px] tracking-[0.1em] text-[var(--muted-2)]">华采智营 · 门店内容</p>
+          <h2 className="mt-2 text-[24px] font-bold leading-[1.35] tracking-[-0.03em]">{variant.title}</h2>
+          <p className="mt-2 text-[10px] text-[var(--muted)]">资料截至 2026-10-17</p>
         </div>
         {image && (
-          <div className="mt-5 aspect-[900/383] overflow-hidden bg-[#eee9e1]">
+          <div className="mt-5 h-[220px] overflow-hidden bg-[#eee9e1]">
             <img src={image} alt="" className="h-full w-full" style={{ objectFit: fit }} />
           </div>
         )}
         <div className="mt-6">
-          {variant.summary && <p className="mb-5 border-l-2 border-[var(--red)] pl-3 text-[12px] leading-6 text-[var(--muted)]">{variant.summary}</p>}
+          {variant.summary && <p className="mb-5 border-l-2 border-[var(--red)] pl-3 text-[11.5px] leading-6 text-[var(--muted)]">{variant.summary}</p>}
           <Paragraphs text={variant.body} />
         </div>
-      </div>
+      </article>
     );
   }
 
   if (variant.platform === "poster") {
     return (
-      <div className="mx-auto w-full max-w-[370px] bg-[#111] p-3 shadow-[0_16px_50px_-30px_rgba(0,0,0,.6)]">
+      <div className="mx-auto w-full max-w-[370px] bg-[#111] p-3">
         <div className="relative aspect-[3/4] overflow-hidden bg-[#161616] text-white">
           {image && (
             <img src={image} alt="" className="absolute inset-0 h-full w-full opacity-55" style={{ objectFit: fit }} />
@@ -214,13 +205,13 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
 
   return (
     <div className="mx-auto grid w-full max-w-[860px] gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="relative mx-auto aspect-[9/16] w-full max-w-[280px] overflow-hidden bg-[#101010] text-white shadow-[0_16px_44px_-32px_rgba(0,0,0,.7)]">
+      <div className="relative mx-auto aspect-[9/16] w-full max-w-[280px] overflow-hidden bg-[#101010] text-white">
         {image && <img src={image} alt="" className="absolute inset-0 h-full w-full opacity-45" style={{ objectFit: fit }} />}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/90" />
         <div className="relative flex h-full flex-col justify-between p-4">
-          <span className="w-fit rounded-full bg-black/45 px-2 py-1 text-[9px] text-white/70">视频号 · 9:16</span>
+          <span className="mono w-fit bg-black/45 px-2 py-1 text-[9px] text-white/70">视频号 · 9:16</span>
           <div>
-            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-black/20">
+            <span className="flex h-10 w-10 items-center justify-center border border-white/40 bg-black/20">
               <Play className="ml-0.5 h-4 w-4 fill-white" />
             </span>
             <p className="mt-3 text-[10px] text-white/55">首 3 秒</p>
@@ -253,66 +244,45 @@ function PlatformPreview({ variant, task }: { variant: Variant; task: TaskSnapsh
 function RiskBlock({ snapshot, variant }: { snapshot: TaskSnapshot; variant: Variant }) {
   const conflict = snapshot.conflicts[0];
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       {conflict && (
-        <div className="border border-[var(--warning)]/25 bg-[var(--warning-soft)] p-3.5">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
-            <div>
-              <p className="text-[11.5px] font-medium text-[var(--warning)]">价格先不写</p>
-              <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
-                {conflict.candidates.map((c) => `¥${c.value.toLocaleString("zh-CN")}`).join(" / ")} 5,899 和 6,599 还没对上。
-                带价的先不发，管理员确认后再写。
-              </p>
-            </div>
-          </div>
+        <div className="border-t-2 border-[var(--warning)] pt-3">
+          <p className="text-[12px] font-semibold text-[var(--warning)]">价格先不写</p>
+          <p className="mt-1.5 text-[10.5px] leading-5 text-[var(--muted)]">
+            {conflict.candidates.map((c) => `¥${c.value.toLocaleString("zh-CN")}`).join(" / ")} 还没核实，带价的先不发。管理员确认后再写。
+          </p>
         </div>
       )}
       {variant.verification.blocked && (
-        <div className="border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-3.5">
-          <div className="flex items-start gap-2.5">
-            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
-            <div>
-              <p className="text-[11.5px] font-medium text-[var(--danger)]">这版先别发</p>
-              <ul className="mt-1 space-y-1 text-[11px] leading-5 text-[var(--muted)]">
-                {variant.verification.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}
-              </ul>
-            </div>
-          </div>
+        <div className="border-t-2 border-[var(--danger)] pt-3">
+          <p className="text-[12px] font-semibold text-[var(--danger)]">这版先别发</p>
+          <ul className="mt-1.5 space-y-1 text-[10.5px] leading-5 text-[var(--muted)]">
+            {variant.verification.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}
+          </ul>
         </div>
       )}
       {!variant.verification.blocked && (
-        <div className="border border-[var(--success)]/20 bg-[var(--success-soft)] p-3.5">
-          <div className="flex items-start gap-2.5">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" />
-            <div>
-              <p className="text-[11.5px] font-medium text-[var(--success)]">数字和承诺都核对过</p>
-              <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
-                {conflict
-                  ? "这版没写价。规格和场景都核过，价格等管理员确认。"
-                  : snapshot.task.priceStatus === "reference"
-                    ? "这版没写价：只有官网参考价，不是现在能买到的价。规格和场景核过。"
-                    : "价格、规格和活动都能对上同型号资料。发之前再确认门店实际报价和库存。"}
-              </p>
-            </div>
-          </div>
+        <div className="border-t-2 border-[var(--red)] pt-3">
+          <p className="flex items-center gap-1.5 text-[12px] font-semibold"><CheckCircle2 className="h-3.5 w-3.5 text-[var(--red)]" /> 数字和说法都核对过</p>
+          <p className="mt-1.5 text-[10.5px] leading-5 text-[var(--muted)]">
+            {conflict
+              ? "这版没写价。规格和场景都核过，价格等管理员确认。"
+              : snapshot.task.priceStatus === "reference"
+                ? "这版没写价：只有官网参考价，不是现在能买到的价。规格和场景核过。"
+                : "价格、规格和活动都能对上同型号资料。发之前再确认门店实际报价和库存。"}
+          </p>
         </div>
       )}
       {variant.copyQuality.issues.length > 0 && (
-        <div className="border border-[var(--info)]/20 bg-[var(--info-soft)] p-3.5">
-          <div className="flex items-start gap-2.5">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[var(--info)]" />
-            <div>
-              <p className="text-[11.5px] font-medium text-[var(--info)]">还有 {variant.copyQuality.issues.length} 句像套话</p>
-              <div className="mt-1.5 space-y-2">
-                {variant.copyQuality.issues.slice(0, 2).map((issue, index) => (
-                  <div key={`${issue.term}-${index}`} className="text-[10.5px] leading-5 text-[var(--muted)]">
-                    <p>“{issue.sentence}”</p>
-                    <p className="mt-0.5 text-[var(--info)]">{issue.suggestion}</p>
-                  </div>
-                ))}
+        <div className="border-t border-[var(--line)] pt-3">
+          <p className="text-[12px] font-semibold">还有 {variant.copyQuality.issues.length} 句像套话</p>
+          <div className="mt-1.5 space-y-2">
+            {variant.copyQuality.issues.slice(0, 2).map((issue, index) => (
+              <div key={`${issue.term}-${index}`} className="text-[10px] leading-5 text-[var(--muted)]">
+                <p>“{issue.sentence}”</p>
+                <p className="mt-0.5 text-[var(--info)]">{issue.suggestion}</p>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       )}
@@ -324,29 +294,34 @@ function EvidencePanel({ snapshot, variant }: { snapshot: TaskSnapshot; variant:
   const selectedIds = new Set(variant.evidenceIds || []);
   const facts = snapshot.evidence.filter((f) => !selectedIds.size || selectedIds.has(f.id));
   return (
-    <div className="space-y-4">
-      <div>
-        <p className="text-[11px] font-medium">店里给的那句实情</p>
-        <p className="mt-2 border-l border-[var(--red)] pl-3 text-[12px] leading-6 text-[var(--muted)]">{snapshot.task.realDetail.text}</p>
-        <p className="mt-1 pl-3 text-[10px] text-[var(--muted-2)]">这句按店里说的写，没当成官方参数。</p>
+    <div>
+      <div className="border-t border-[var(--line)] pt-3">
+        <p className="text-[12px] font-semibold">店里补的那句话</p>
+        <p className="mt-2 border-l-2 border-[var(--red)] pl-3 text-[11px] leading-6 text-[var(--muted)]">{snapshot.task.realDetail.text}</p>
+        <p className="mt-1 pl-3 text-[9px] leading-5 text-[var(--muted-2)]">这是店员说的，没有当成官方参数。</p>
       </div>
 
-      <div className="border-t border-[var(--line)] pt-4">
-        <p className="text-[11px] font-medium">这版用到的 {facts.length} 条资料</p>
-        <div className="mt-2 divide-y divide-[var(--line)]">
-          {facts.slice(0, 8).map((fact) => (
-            <div key={fact.id} className="py-2.5">
-              <p className="text-[11.5px] leading-5 text-[var(--ink)]">{String(fact.value)}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[var(--muted-2)]">
-                <span className="mono">{fact.capturedAt}</span>
-                <span>{sourceName(fact.sourceTitle)}</span>
-                <span>{trustLabel(fact.trustTier)}</span>
+      <div className="mt-5 border-t border-[var(--line)] pt-3">
+        <p className="flex items-baseline justify-between text-[12px] font-semibold">
+          这版用到的资料
+          <span className="mono text-[9px] font-normal text-[var(--muted-2)]">{facts.length} 条</span>
+        </p>
+        <div className="mt-1">
+          {facts.slice(0, 8).map((fact, index) => (
+            <div key={fact.id} className="grid grid-cols-[18px_minmax(0,1fr)] gap-1.5 border-b border-[var(--line)] py-2">
+              <span className="mono pt-0.5 text-[8px] text-[var(--red)]">{String(index + 1).padStart(2, "0")}</span>
+              <div>
+                <p className="text-[10.5px] leading-5 text-[var(--ink)]">{String(fact.value)}</p>
+                <p className="mt-0.5 flex flex-wrap gap-2 text-[8.5px] text-[var(--muted-2)]">
+                  <span className="mono">{fact.capturedAt}</span>
+                  <span>{sourceName(fact.sourceTitle)}</span>
+                  <span>{trustLabel(fact.trustTier)}</span>
+                </p>
               </div>
             </div>
           ))}
         </div>
       </div>
-
     </div>
   );
 }
@@ -363,19 +338,19 @@ function ImageStudio({
   onGenerate: () => void;
 }) {
   return (
-    <div className="space-y-3 border-t border-[var(--line)] pt-4">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-medium">配图（官方图 + 排版）</p>
-        <Images className="h-3.5 w-3.5 text-[var(--muted-2)]" />
+    <div className="border-t border-[var(--line)] pt-3">
+      <div className="flex items-baseline justify-between">
+        <p className="text-[12px] font-semibold">配图</p>
+        <span className="mono text-[9px] text-[var(--muted-2)]">官方图 + 排版</span>
       </div>
       {!snapshot.task.hasAssets && (
-        <p className="border border-[var(--warning)]/25 bg-[var(--warning-soft)] p-2.5 text-[10.5px] leading-5 text-[var(--warning)]">
+        <p className="mt-2 border-l-2 border-[var(--warning)] pl-2 text-[10px] leading-5 text-[var(--warning)]">
           这个型号还没官方图。先补图，文字和导出照常。
         </p>
       )}
       {images.length > 0 ? (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="mt-2 grid grid-cols-3 gap-1.5">
             {images.map((image) => (
               <button
                 key={image.id}
@@ -385,31 +360,32 @@ function ImageStudio({
                 title={`下载 ${image.label}`}
               >
                 <img src={image.dataUrl} alt={image.label} className="aspect-[3/4] h-full w-full bg-[#f5efe5] object-contain" />
-                <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-1 text-[9px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-1 text-[8px] text-white opacity-0 transition-opacity group-hover:opacity-100">
                   下载
                 </span>
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className="chip" onClick={onGenerate} disabled={busy}>
-              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              重做
+          <div className="mt-2 grid grid-cols-2 gap-x-4">
+            <button type="button" className="flex items-center justify-between border-b border-[var(--line)] py-2 text-[10.5px] hover:text-[var(--red)]" onClick={onGenerate} disabled={busy}>
+              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <span>重做</span>}
+              <RefreshCw className="h-3 w-3 text-[var(--red)]" />
             </button>
-            {images.map((image) => (
-              <button key={`dl-${image.id}`} type="button" className="chip" onClick={() => downloadImage(image)}>
-                <Download className="h-3 w-3" /> {image.label.split(" ")[0]}
+            {images.slice(0, 3).map((image) => (
+              <button key={`dl-${image.id}`} type="button" className="flex items-center justify-between border-b border-[var(--line)] py-2 text-[10.5px] hover:text-[var(--red)]" onClick={() => downloadImage(image)}>
+                <span className="truncate">{image.label.split(" ")[0]}</span>
+                <Download className="h-3 w-3 text-[var(--red)]" />
               </button>
             ))}
           </div>
         </>
       ) : (
-        <button type="button" className="btn-secondary w-full" onClick={onGenerate} disabled={busy}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-          {busy ? "正在出图" : "出这版的图"}
+        <button type="button" className="mt-2 flex w-full items-center justify-between border-b border-[var(--line)] py-2 text-[11px] hover:text-[var(--red)]" onClick={onGenerate} disabled={busy}>
+          <span>{busy ? "正在出图" : "出这版的图"}</span>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5 text-[var(--red)]" />}
         </button>
       )}
-      <p className="text-[10px] leading-5 text-[var(--muted-2)]">
+      <p className="mt-2 text-[9px] leading-5 text-[var(--muted-2)]">
         用官方产品图和模板排版，不改产品外观，不画二维码。没配二维码就留白。可以单张下载，也可以打包。
       </p>
     </div>
@@ -426,27 +402,29 @@ function ChannelList({
   onPick: (platform: Platform) => void;
 }) {
   return (
-    <div className="space-y-1">
-      {PLATFORM_ORDER.map((key) => {
+    <div>
+      {PLATFORM_ORDER.map((key, index) => {
         const channel = snapshot.channels[key];
         const error = snapshot.errors.find((e) => e.platform === key);
         const active = key === platform;
+        const count = channel.variants.length || (error ? "失败" : "…");
         return (
           <button
             key={key}
             type="button"
             onClick={() => onPick(key)}
-            className={`flex min-h-[48px] w-full items-center justify-between gap-2 rounded-[9px] px-3 text-left transition-colors ${
-              active ? "bg-[var(--ink)] text-white" : "text-[var(--muted)] hover:bg-black/5 hover:text-[var(--ink)]"
+            className={`grid w-full grid-cols-[22px_minmax(0,1fr)_auto] items-baseline gap-2 border-b border-[var(--line)] py-3 text-left transition-colors ${
+              active
+                ? "-ml-3 border-l-[3px] border-l-[var(--red)] pl-3 font-semibold text-[var(--ink)]"
+                : "text-[#96928b] hover:text-[var(--ink)]"
             }`}
           >
-            <span className="flex items-center gap-2 text-[12px]">
-              <span className={`h-1.5 w-1.5 rounded-full ${channel.status === "ready" ? "bg-[var(--success)]" : channel.status === "blocked" ? "bg-[var(--danger)]" : error ? "bg-[var(--danger)]" : "bg-[var(--muted-2)]"}`} />
+            <span className={`mono text-[8.5px] ${active ? "text-[var(--red)]" : "text-[var(--muted-2)]"}`}>{String(index + 1).padStart(2, "0")}</span>
+            <span className="flex items-center gap-2 text-[15.5px]">
+              <span className={`h-1.5 w-1.5 shrink-0 ${channel.status === "ready" ? "bg-[var(--success)]" : channel.status === "blocked" ? "bg-[var(--danger)]" : error ? "bg-[var(--danger)]" : "bg-[var(--muted-2)]"}`} />
               {PLATFORM_NAMES[key]}
             </span>
-            <span className={`mono text-[9.5px] ${active ? "text-white/45" : "text-[var(--muted-2)]"}`}>
-              {channel.variants.length || (error ? "失败" : "…")}
-            </span>
+            <span className={`mono text-[9.5px] ${active ? "text-[var(--red)]" : "text-[var(--muted-2)]"}`}>{count}</span>
           </button>
         );
       })}
@@ -707,7 +685,7 @@ export default function Workbench() {
 
       {error && !loading && (
         <div className="p-5 sm:p-8">
-          <div className="border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-5">
+          <div className="border border-[var(--danger)] bg-[var(--danger-soft)] p-5">
             <p className="text-[13px] font-medium">这条内容没打开</p>
             <p className="mt-1 text-[12px] text-[var(--muted)]">{error}</p>
             <button className="btn-secondary mt-4" onClick={() => void refresh()}>重试</button>
@@ -716,75 +694,99 @@ export default function Workbench() {
       )}
 
       {snapshot && !loading && (
-        <div className="min-h-[calc(100dvh-64px)] md:grid md:grid-cols-[188px_minmax(0,1fr)] lg:grid-cols-[210px_minmax(0,1fr)_310px]">
-          <aside className="hidden border-r border-[var(--line)] px-4 py-6 md:sticky md:top-16 md:flex md:h-[calc(100dvh-64px)] md:flex-col md:overflow-y-auto">
-            <Link to="/" className="inline-flex items-center gap-1.5 text-[11px] text-[var(--muted)] hover:text-[var(--ink)]">
-              <ArrowLeft className="h-3.5 w-3.5" /> 今日
+        <div className="min-h-[calc(100dvh-74px)] md:grid md:grid-cols-[226px_minmax(0,1fr)] lg:grid-cols-[226px_minmax(0,1fr)_350px]">
+          <aside className="hidden border-r border-[var(--line)] px-4 py-7 md:sticky md:top-[74px] md:flex md:h-[calc(100dvh-74px)] md:flex-col md:overflow-y-auto md:pl-6 md:pr-5 lg:pl-8">
+            <Link to="/" className="mono inline-flex items-center gap-1.5 text-[9px] tracking-[0.1em] text-[var(--muted)] hover:text-[var(--red)]">
+              <ArrowLeft className="h-3 w-3" /> 今天
             </Link>
-            <div className="mt-5">
-              <p className="text-[11px] text-[var(--muted)]">{snapshot.task.productShortName}</p>
-              <h1 className="mt-1 text-[17px] font-semibold leading-6 tracking-[-0.02em]">这条内容</h1>
-              <div className="mt-3 flex items-center gap-2">
-                <span className={`status-pill ${statusTone(snapshot.task.status)}`}>
-                  {isRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                  {snapshot.task.progress.label}
-                </span>
+
+            <div className="mt-8">
+              <p className="mono-label">{snapshot.task.productShortName}</p>
+              <h1 className="mt-1.5 text-[28px] font-bold leading-[1.08] tracking-[-0.04em]">这条内容</h1>
+              <p className="mt-2 text-[10.5px] leading-5 text-[var(--muted)]">{snapshot.task.audience} · {snapshot.task.scene}</p>
+              <div className="mt-3 flex items-center gap-2 text-[11px] font-semibold">
+                {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--red)]" /> : <Check className="h-3.5 w-3.5 text-[var(--red)]" />}
+                {snapshot.task.progress.label}
               </div>
             </div>
 
-            <div className="mt-7">
-              <p className="mono-label">渠道</p>
-              <div className="mt-3"><ChannelList snapshot={snapshot} platform={platform} onPick={pickPlatform} /></div>
+            <div className="mt-8 border-t-2 border-[var(--ink)] pt-1">
+              <ChannelList snapshot={snapshot} platform={platform} onPick={pickPlatform} />
             </div>
 
-            <div className="mt-auto border-t border-[var(--line)] pt-4">
-              <p className="text-[10.5px] leading-5 text-[var(--muted)]">怎么写的</p>
-              <p className="mt-1 text-[10px] leading-5 text-[var(--muted-2)]">{generationLabel(snapshot.task.generationMode)}</p>
+            <div className="mt-auto border-t border-[var(--line)] pt-3">
+              <p className="mono-label">怎么写的</p>
+              <p className="mt-1.5 text-[10px] leading-5 text-[var(--muted)]">{generationLabel(snapshot.task.generationMode)}</p>
               {(snapshot.task.fallbacks || []).length > 0 && (
                 <p className="mt-1 text-[10px] leading-5 text-[var(--warning)]">
                   {(snapshot.task.fallbacks || []).length} 个渠道模型没跑成，退回模板稿
                 </p>
               )}
-              <p className="mt-3 text-[10.5px] leading-5 text-[var(--muted)]">内容存 30 天。价格和库存以门店当天为准。</p>
+              <p className="mt-3 text-[9.5px] leading-5 text-[var(--muted-2)]">内容存 30 天。价格和库存以门店当天为准。</p>
             </div>
           </aside>
 
-          <main className="min-w-0 border-r border-[var(--line)] pb-[calc(76px+env(safe-area-inset-bottom))] md:pb-10">
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-4 sm:px-6">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <Link to="/" className="md:hidden"><ArrowLeft className="h-4 w-4 text-[var(--muted)]" /></Link>
-                  <h2 className="truncate text-[15px] font-medium">{PLATFORM_NAMES[platform]}</h2>
-                  <span className={`status-pill ${statusTone(activeVariant?.status || currentChannel?.status || "waiting")}`}>
-                    {activeVariant?.status === "blocked" ? "有点问题" : activeVariant?.status === "ready" ? "能发" : currentChannel?.status === "waiting" ? "还没写" : "在写"}
-                  </span>
+          <main className="min-w-0 border-[var(--line)] pb-[calc(76px+env(safe-area-inset-bottom))] md:pb-10 lg:border-r">
+            <div className="border-b-2 border-[var(--ink)] px-4 py-5 sm:px-8">
+              <div className="flex items-end justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="mono-label">渠道 {String(PLATFORM_ORDER.indexOf(platform) + 1).padStart(2, "0")} / {platform === "poster" ? "海报" : platform === "video" ? "视频" : "图文"}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <h1 className="text-[40px] font-bold leading-none tracking-[-0.045em] sm:text-[54px]">{PLATFORM_NAMES[platform]}</h1>
+                    <span className={`tag-square ${activeVariant?.status === "blocked" ? "border-[var(--danger)] text-[var(--danger)]" : activeVariant?.status === "ready" ? "border-[var(--success)] text-[var(--success)]" : "border-[var(--line-strong)] text-[var(--muted)]"}`}>
+                      {activeVariant?.status === "blocked" ? "有点问题" : activeVariant?.status === "ready" ? "能发" : currentChannel?.status === "waiting" ? "还没写" : "在写"}
+                    </span>
+                  </div>
+                  <p className="mt-2 truncate text-[10px] text-[var(--muted)]">{snapshot.task.audience} · {snapshot.task.scene} · {snapshot.task.target}</p>
                 </div>
-                <p className="mt-1 truncate text-[10.5px] text-[var(--muted)]">
-                  {snapshot.task.audience} · {snapshot.task.scene} · {snapshot.task.target}
-                </p>
+                <div className="num shrink-0 pb-1 text-[56px] leading-none text-[var(--red)] sm:text-[88px]">
+                  {String(currentChannel?.variants.length || 0).padStart(2, "0")}
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <button className="icon-button lg:hidden" onClick={() => setDrawer("risk")} aria-label="看风险" title="风险"><ShieldCheck className="h-4 w-4" /></button>
-                <button className="icon-button lg:hidden" onClick={() => setDrawer("evidence")} aria-label="看依据" title="依据"><FileText className="h-4 w-4" /></button>
-                <button className="icon-button lg:hidden" onClick={() => setDrawer("images")} aria-label="看配图" title="配图"><ImageIcon className="h-4 w-4" /></button>
+
+              <div className="mt-4 flex items-end justify-between gap-3">
+                <div className="no-scrollbar flex min-w-0 gap-5 overflow-x-auto">
+                  {currentChannel?.variants.map((variant) => (
+                    <button
+                      key={variant.id}
+                      type="button"
+                      onClick={() => pickAngle(variant)}
+                      className={`flex shrink-0 items-center gap-1.5 border-b-2 pb-1 text-[12px] transition-colors ${
+                        variant.id === activeVariant?.id
+                          ? "border-[var(--red)] font-semibold text-[var(--ink)]"
+                          : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
+                      }`}
+                      aria-pressed={variant.id === activeVariant?.id}
+                    >
+                      {variant.recommended && <Check className="h-3 w-3 text-[var(--red)]" />}
+                      {angleName(variant.angleLabel)}
+                      {variant.status === "blocked" && <CircleAlert className="h-3 w-3 text-[var(--danger)]" />}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5 lg:hidden">
+                  <button className="icon-button" onClick={() => setDrawer("risk")} aria-label="看风险" title="风险"><ShieldCheck className="h-4 w-4" /></button>
+                  <button className="icon-button" onClick={() => setDrawer("evidence")} aria-label="看依据" title="依据"><FileText className="h-4 w-4" /></button>
+                  <button className="icon-button" onClick={() => setDrawer("images")} aria-label="看配图" title="配图"><ImageIcon className="h-4 w-4" /></button>
+                </div>
               </div>
             </div>
 
-            <div className="px-4 py-5 sm:px-6">
+            <div className="px-4 py-5 sm:px-8 sm:py-6">
               {isRunning && !activeVariant && (
-                <div className="border border-[var(--line)] bg-[var(--surface)] p-5">
+                <div className="border border-[var(--line)] bg-white p-5">
                   <div className="flex items-center gap-2 text-[12px] text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin" /> {snapshot.progress.label}</div>
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-black/8">
-                    <div className="h-full rounded-full bg-[var(--red)] transition-[width] duration-300" style={{ width: `${Math.max(6, snapshot.progress.percent)}%` }} />
+                  <div className="mt-4 h-1 overflow-hidden bg-black/10">
+                    <div className="h-full bg-[var(--red)] transition-[width] duration-300" style={{ width: `${Math.max(6, snapshot.progress.percent)}%` }} />
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-[10.5px] text-[var(--muted)] sm:grid-cols-5">
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] text-[var(--muted)] sm:grid-cols-5">
                     {["查资料", "排结构", "写稿", "审口吻", "核数字"].map((stage) => <span key={stage}>{stage}</span>)}
                   </div>
                 </div>
               )}
 
               {channelError && !activeVariant && (
-                <div className="border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-5">
+                <div className="border border-[var(--danger)] bg-[var(--danger-soft)] p-5">
                   <p className="text-[13px] font-medium">这个渠道没写出来</p>
                   <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">{channelError.message}</p>
                   <button className="btn-secondary mt-4" onClick={() => void retry()} disabled={busy === "retry"}>
@@ -795,7 +797,7 @@ export default function Workbench() {
               )}
 
               {snapshot.task.status === "failed" && !activeVariant && (
-                <div className="mt-4 border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-5">
+                <div className="mt-4 border border-[var(--danger)] bg-[var(--danger-soft)] p-5">
                   <p className="text-[13px] font-medium">这次没写完</p>
                   <ul className="mt-1 space-y-1 text-[11px] leading-5 text-[var(--muted)]">
                     {(snapshot.errors || []).slice(0, 4).map((item, index) => (
@@ -815,7 +817,7 @@ export default function Workbench() {
 
               {activeVariant && (
                 <>
-                  <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto pb-1 md:hidden" aria-label="切换渠道">
+                  <div className="no-scrollbar mb-4 flex gap-1.5 overflow-x-auto pb-1 md:hidden" aria-label="切换渠道">
                     {PLATFORM_ORDER.map((key) => {
                       const channel = snapshot.channels[key];
                       const active = key === platform;
@@ -828,33 +830,15 @@ export default function Workbench() {
                           aria-pressed={active}
                         >
                           {PLATFORM_NAMES[key]}
-                          <span className="mono text-[9.5px] opacity-55">{channel.variants.length}</span>
+                          <span className="mono text-[9px] opacity-55">{channel.variants.length}</span>
                         </button>
                       );
                     })}
                   </div>
 
-                  <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
-                    {currentChannel?.variants.map((variant) => (
-                      <button
-                        key={variant.id}
-                        type="button"
-                        onClick={() => pickAngle(variant)}
-                        className={`chip shrink-0 ${variant.id === activeVariant.id ? "chip-active" : ""}`}
-                        aria-pressed={variant.id === activeVariant.id}
-                      >
-                        {variant.recommended && <Check className="h-3 w-3" />}
-                        {variant.angleLabel}
-                        {variant.status === "blocked" && <CircleAlert className="h-3 w-3" />}
-                      </button>
-                    ))}
-                  </div>
+                  <PlatformPreview key={activeVariant.id} variant={activeVariant} task={snapshot.task} variantIndex={Math.max(1, (currentChannel?.variants.findIndex((v) => v.id === activeVariant.id) || 0) + 1)} />
 
-                  <div className="mt-5">
-                    <PlatformPreview key={activeVariant.id} variant={activeVariant} task={snapshot.task} />
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <div className="mx-auto mt-4 flex w-full max-w-[664px] flex-wrap items-center gap-2">
                     <button className="btn-primary" onClick={() => void copy()} disabled={busy === "copy" || activeVariant.verification.blocked}>
                       {busy === "copy" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                       复制这段
@@ -866,15 +850,15 @@ export default function Workbench() {
                       {exportBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                       {exportBusy ? "正在打包" : "打包下载"}
                     </button>
-                    {activeVariant.verification.blocked && <span className="text-[10.5px] text-[var(--danger)]">核对没过，先别复制</span>}
-                    {activeVariant.editBurden !== "none" && <span className="text-[10.5px] text-[var(--muted)]">大概改：{activeVariant.editBurden === "light" ? "一处" : "较多"}</span>}
+                    {activeVariant.verification.blocked && <span className="text-[10px] text-[var(--danger)]">核对没过，先别复制</span>}
+                    {activeVariant.editBurden !== "none" && <span className="text-[10px] text-[var(--muted)]">大概改：{activeVariant.editBurden === "light" ? "一处" : "较多"}</span>}
                   </div>
 
                   {editing && (
-                    <section className="mt-4 border border-[var(--line-strong)] bg-[var(--surface)] p-4">
+                    <section className="mx-auto mt-4 w-full max-w-[664px] border border-[var(--line-strong)] bg-white p-4 sm:p-5">
                       <div className="flex items-center justify-between">
-                        <p className="text-[12px] font-medium">改这一段</p>
-                        <span className="text-[10px] text-[var(--muted)]">保存后会再核一遍</span>
+                        <p className="text-[12px] font-semibold">改这一段</p>
+                        <span className="text-[9.5px] text-[var(--muted)]">保存后会再核一遍</span>
                       </div>
                       {activeVariant.platform !== "moments" && (
                         <label className="mt-3 block">
@@ -908,14 +892,14 @@ export default function Workbench() {
                     </section>
                   )}
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--line)] pt-4">
-                    <span className="mr-1 text-[10.5px] text-[var(--muted)]">改得口语一点：</span>
+                  <div className="mx-auto mt-4 flex w-full max-w-[664px] flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--line)] pt-3">
+                    <span className="mr-1 text-[10px] text-[var(--muted)]">改得口语一点：</span>
                     {[
-                      ["更口语", "像店里的人说话，句子短一点，删掉套话，别加事实。",],
-                      ["换个开头", "从店里一个具体场景开头，事实和细节别动。",],
-                      ["删口号", "删掉空泛形容词和口号，只留动作、事实和限制。",],
+                      ["更口语", "像店里的人说话，句子短一点，删掉套话，别加事实。"],
+                      ["换个开头", "从店里一个具体场景开头，事实和细节别动。"],
+                      ["删口号", "删掉空泛形容词和口号，只留动作、事实和限制。"],
                     ].map(([label, instruction]) => (
-                      <button key={label} className="chip" onClick={() => void rewrite(instruction)} disabled={busy === "rewrite"}>
+                      <button key={label} className="flex items-center gap-1 border-b border-[var(--line)] py-1 text-[10.5px] text-[var(--muted)] hover:border-[var(--red)] hover:text-[var(--red)]" onClick={() => void rewrite(instruction)} disabled={busy === "rewrite"}>
                         {busy === "rewrite" ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                         {label}
                       </button>
@@ -924,18 +908,18 @@ export default function Workbench() {
                 </>
               )}
 
-              {notice && <p role="status" aria-live="polite" className="mt-4 border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[11px] leading-5 text-[var(--muted)]">{notice}</p>}
+              {notice && <p role="status" aria-live="polite" className="mx-auto mt-4 w-full max-w-[664px] border-l-2 border-[var(--red)] pl-3 text-[11px] leading-5 text-[var(--muted)]">{notice}</p>}
             </div>
           </main>
 
-          <aside className="hidden px-4 py-6 lg:block">
-            <div className="sticky top-[88px] space-y-5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[12px] font-medium">依据和风险</h2>
-                <Layers3 className="h-4 w-4 text-[var(--muted-2)]" />
+          <aside className="hidden px-6 py-7 lg:block">
+            <div className="sticky top-[94px]">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-[21px] font-bold tracking-[-0.03em]">发之前，核对一下</h2>
+                <span className="mono text-[9px] text-[var(--muted-2)]">{String(activeVariant?.evidenceIds?.length || snapshot.evidence.length).padStart(2, "0")} 条资料</span>
               </div>
               {activeVariant ? (
-                <>
+                <div className="mt-5 space-y-5">
                   <RiskBlock snapshot={snapshot} variant={activeVariant} />
                   <ImageStudio
                     snapshot={snapshot}
@@ -944,9 +928,9 @@ export default function Workbench() {
                     onGenerate={() => void generateImages(activeVariant, platform)}
                   />
                   <EvidencePanel snapshot={snapshot} variant={activeVariant} />
-                </>
+                </div>
               ) : (
-                <p className="text-[11px] leading-6 text-[var(--muted)]">这个渠道还没写出来。等一会儿，或者只重试这个渠道。</p>
+                <p className="mt-4 text-[11px] leading-6 text-[var(--muted)]">这个渠道还没写出来。等一会儿，或者只重试这个渠道。</p>
               )}
             </div>
           </aside>
@@ -956,9 +940,9 @@ export default function Workbench() {
       {drawer && snapshot && activeVariant && (
         <>
           <button type="button" className="drawer-backdrop lg:hidden" aria-label="关闭面板" onClick={() => setDrawer(null)} />
-          <section className="drawer-panel lg:hidden" role="dialog" aria-modal="true" aria-label="依据和风险">
+          <section className="drawer-panel lg:hidden" role="dialog" aria-modal="true" aria-label="发布前核对">
             <div className="flex items-center justify-between">
-              <h2 className="text-[14px] font-medium">{drawer === "risk" ? "风险" : drawer === "images" ? "配图" : "依据"}</h2>
+              <h2 className="text-[16px] font-semibold">{drawer === "risk" ? "发布前核对" : drawer === "images" ? "配图" : "依据"}</h2>
               <button className="icon-button" onClick={() => setDrawer(null)} aria-label="关闭"><X className="h-4 w-4" /></button>
             </div>
             <div className="mt-5">

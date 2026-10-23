@@ -45,14 +45,14 @@ export default function Settings() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[820px]">
+      <div className="mx-auto max-w-[1080px]">
         <header className="border-b border-[var(--line)] pb-5">
           <p className="mono text-[10px] text-[var(--muted-2)]">{store.code}</p>
-          <h1 className="mt-2 text-[26px] font-semibold tracking-[-0.03em] sm:text-[30px]">门店资料</h1>
+          <h1 className="mt-2 text-[38px] font-bold tracking-[-0.04em] sm:text-[48px]">门店资料</h1>
           <p className="mt-1.5 text-[12.5px] leading-6 text-[var(--muted)]">只改门店口吻、海报留白和联系方式，不动产品资料。</p>
         </header>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
           <section className="surface p-5 sm:p-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">

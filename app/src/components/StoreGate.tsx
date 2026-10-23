@@ -49,19 +49,19 @@ function StoreLogin({ onLogin }: { onLogin: (store: Store) => void }) {
           </span>
           <div>
             <div className="text-[14px] font-semibold tracking-[-0.01em]">华采智营</div>
-            <div className="text-[11px] text-[var(--muted)]">门店内容副驾驶</div>
+            <div className="text-[11px] text-[var(--muted)]">门店内容工具</div>
           </div>
         </div>
       </header>
 
       <main className="mx-auto grid min-h-[calc(100dvh-64px)] w-full max-w-[1120px] min-w-0 items-center gap-12 px-5 py-12 sm:px-8 lg:grid-cols-[1.05fr_.95fr]">
         <section className="min-w-0 max-w-[560px]">
-          <h1 className="max-w-[12ch] text-[38px] font-semibold leading-[1.08] tracking-[-0.03em] sm:text-[52px]">
-            今天要发什么，从这儿开始。
+          <h1 className="max-w-[12ch] text-[42px] font-bold leading-[1.06] tracking-[-0.045em] sm:text-[58px]">
+            今天发什么，先选一条。
           </h1>
           <p className="mt-3 mono text-[10px] text-[var(--red)]">门店自己用的工具</p>
           <p className="mt-6 max-w-[36rem] text-[15px] leading-7 text-[var(--muted)]">
-            选一个型号，补一句店里发生的事，五个渠道一次出。价格和参数都从官方资料里取，没依据的不能复制。
+            选一个型号，补一句店里发生的事，五个渠道的文案一次写好。价格和参数都从官方资料里取，没依据的不能复制。
           </p>
           <div className="mt-8 grid max-w-[430px] grid-cols-2 gap-x-6 gap-y-3 border-t border-[var(--line)] pt-5 text-[12px] text-[var(--muted)]">
             <span>小红书 / 朋友圈 / 视频号</span>
@@ -71,7 +71,7 @@ function StoreLogin({ onLogin }: { onLogin: (store: Store) => void }) {
           </div>
         </section>
 
-        <section className="mx-auto w-full min-w-0 max-w-[440px] border border-[var(--line-strong)] bg-[var(--surface)] p-5 shadow-[0_18px_50px_-36px_rgba(24,24,24,.45)] sm:p-7">
+        <section className="mx-auto w-full min-w-0 max-w-[440px] border border-[var(--line-strong)] bg-[var(--surface)] p-5 sm:p-7">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-[13px] font-medium">

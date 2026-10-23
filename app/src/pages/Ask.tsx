@@ -163,7 +163,7 @@ export default function Ask() {
         <header className="border-b border-[var(--line)] px-4 py-5 sm:px-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-[24px] font-semibold tracking-[-0.025em]">顾客问答</h1>
+              <h1 className="text-[40px] font-bold tracking-[-0.045em] sm:text-[52px]">顾客问答</h1>
               <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">顾客什么情况，说一句就行。信息不够我会追问，价格只从资料里取。</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-[var(--muted-2)]">
                 <span>{store.name}</span>
@@ -180,10 +180,10 @@ export default function Ask() {
         <main className="flex-1 px-4 py-5 sm:px-6">
           {messages.length === 0 && (
             <div className="mx-auto max-w-[640px] py-8 sm:py-14">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[var(--line)] bg-[var(--surface)]">
+              <div className="flex h-10 w-10 items-center justify-center border border-[var(--line)] bg-transparent">
                 <Sparkles className="h-4 w-4 text-[var(--red)]" />
               </div>
-              <h2 className="mt-5 text-[20px] font-semibold tracking-[-0.02em]">顾客什么情况，直接说</h2>
+              <h2 className="mt-5 text-[26px] font-bold tracking-[-0.03em] sm:text-[30px]">顾客什么情况，直接说</h2>
               <p className="mt-2 max-w-[36rem] text-[12.5px] leading-6 text-[var(--muted)]">
                 预算、用途、现在最烦的地方，知道多少说多少。不够我会再问一句。
               </p>
@@ -216,14 +216,14 @@ export default function Ask() {
               <div key={message.id}>
                 {message.role === "user" ? (
                   <div className="flex justify-end">
-                    <div className="max-w-[82%] rounded-[14px] rounded-br-[4px] bg-[var(--ink)] px-4 py-3 text-[13px] leading-6 text-white">
+                    <div className="max-w-[82%] bg-[var(--ink)] px-4 py-3 text-[13px] leading-6 text-white">
                       {message.content}
                     </div>
                   </div>
                 ) : (
                   <div className="flex justify-start">
                     <div className="max-w-[90%]">
-                      <div className="rounded-[14px] rounded-bl-[4px] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-3">
+                      <div className="border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-3">
                         <div className="whitespace-pre-wrap text-[13px] leading-7 text-[var(--ink)]">{message.content}</div>
                         {message.warning && <p className="mt-2 border-t border-[var(--line)] pt-2 text-[10.5px] leading-5 text-[var(--warning)]">{message.warning}</p>}
                       </div>
@@ -302,7 +302,7 @@ export default function Ask() {
           {messages.length > 0 && (
             <div className="mt-7 flex items-start gap-2 border border-[var(--info)]/20 bg-[var(--info-soft)] p-3 text-[11px] leading-5 text-[var(--info)]">
               <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>这里只管现场怎么答。要发内容，去内容页补一句店里的事，五个渠道用同一套资料。</span>
+              <span>这里只管现场怎么答。要发内容，去内容页补一句店里的细节，五个渠道用同一套资料。</span>
             </div>
           )}
         </main>
@@ -310,7 +310,7 @@ export default function Ask() {
         <div className="sticky bottom-[calc(58px+env(safe-area-inset-bottom))] z-20 md:bottom-0 border-t border-[var(--line)] bg-[var(--paper)] px-4 py-3 sm:px-6 lg:bottom-0">
           <div className="mx-auto max-w-[820px]">
             {error && <p className="mb-2 text-[11px] leading-5 text-[var(--danger)]">{error}</p>}
-            <div className="flex items-end gap-2 rounded-[14px] border border-[var(--line-strong)] bg-[var(--surface-strong)] p-2 pl-3">
+            <div className="flex items-end gap-2 border border-[var(--line-strong)] bg-[var(--surface-strong)] p-2 pl-3">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -334,7 +334,7 @@ export default function Ask() {
                   {listening ? <MicOff className="h-4 w-4 text-[var(--red)]" /> : <Mic className="h-4 w-4" />}
                 </button>
               )}
-              <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[9px] bg-[var(--ink)] text-white disabled:opacity-30" onClick={() => void send()} disabled={loading || !input.trim()} aria-label="发送">
+              <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center bg-[var(--ink)] text-white disabled:opacity-30" onClick={() => void send()} disabled={loading || !input.trim()} aria-label="发送">
                 <ArrowUp className="h-4 w-4" />
               </button>
             </div>
