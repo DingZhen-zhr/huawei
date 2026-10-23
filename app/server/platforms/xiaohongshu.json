@@ -1,0 +1,123 @@
+{
+  "platform": "xiaohongshu",
+  "label": "小红书",
+  "capability": "MANUAL",
+  "capabilityNote": "无开放内容发布接口；导出『一键复制包』由运营人工发布",
+  "limits": {
+    "titleMin": 8,
+    "titleMax": 20,
+    "bodyMin": 300,
+    "bodyMax": 1000,
+    "tagsMin": 3,
+    "tagsMax": 5,
+    "paragraphMaxLines": 3,
+    "images": {
+      "min": 3,
+      "max": 9,
+      "ratio": "3:4",
+      "minWidth": 1080
+    }
+  },
+  "banned": [
+    "最佳",
+    "最强",
+    "最低价",
+    "最高级",
+    "国家级",
+    "顶级",
+    "绝对",
+    "100%",
+    "全网最低",
+    "史无前例",
+    "永久",
+    "包治",
+    "第一品牌",
+    "行业第一",
+    "排名第一",
+    "销量第一",
+    "最好的",
+    "最好用"
+  ],
+  "bannedReason": "极限词/绝对化用语，违反《广告法》第九条",
+  "falsePositiveGuards": [
+    {
+      "word": "100%",
+      "allowSuffixes": [
+        "sRGB",
+        "Adobe RGB",
+        "DCI-P3",
+        "NTSC"
+      ],
+      "reason": "色域参数属客观规格，不构成绝对化用语"
+    },
+    {
+      "word": "第一",
+      "allowSuffixes": [
+        "：",
+        "、",
+        "，",
+        ",",
+        "步",
+        "点",
+        "次",
+        "件",
+        "个",
+        "部分",
+        "时间",
+        "条",
+        "句",
+        "段",
+        "张",
+        "台",
+        "款",
+        "种",
+        "轮",
+        "遍",
+        "层",
+        "块",
+        "套",
+        "道",
+        "关",
+        "名",
+        "位"
+      ],
+      "reason": "序数用法，不是绝对化排名"
+    },
+    {
+      "word": "最好",
+      "allowSuffixes": [
+        "先",
+        "还是",
+        "别",
+        "能",
+        "在",
+        "提前",
+        "把",
+        "用",
+        "去",
+        "问",
+        "试",
+        "看"
+      ],
+      "reason": "建议用法，不是绝对化比较"
+    }
+  ],
+  "required": [
+    {
+      "key": "AI_GENERATED_LABEL",
+      "label": "AI 生成内容标识",
+      "hint": "#AI生成"
+    }
+  ],
+  "style": {
+    "tone": "口语、第一人称",
+    "emojiPer100": 1.0,
+    "hashtagStyle": "#话题",
+    "titlePattern": "痛点/结果前置"
+  },
+  "checklist": [
+    "标题是否含具体人群或场景",
+    "正文是否有一处可验证的事实依据",
+    "是否留了到店钩子"
+  ]
+}
