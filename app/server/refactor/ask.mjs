@@ -312,9 +312,16 @@ export function localAsk({ messages = [], now = new Date() } = {}) {
         .map((fact) => ({ model: product.name, text: String(fact.value).slice(0, 90), source: fact.sourceTitle })),
     );
 
+  const askBack = [];
+  if (cards.length) {
+    if (!slots.os) askBack.push("系统有偏好吗？Windows 还是鸿蒙？");
+    if (!slots.screenMax) askBack.push("屏幕尺寸有要求吗？14 英寸以内还是都可以？");
+  }
+
   return {
     reply,
     options: options.slice(0, 4),
+    askBack: [...new Set(askBack)].slice(0, 2),
     facts,
     slots,
     cards,

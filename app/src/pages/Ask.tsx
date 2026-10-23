@@ -94,6 +94,7 @@ export default function Ask() {
           facts: result.facts,
           options: result.options,
           cards: result.cards,
+          askBack: result.askBack,
           slots: result.slots,
           warning: result.warning,
         },
@@ -252,6 +253,13 @@ export default function Ask() {
                             </div>
                           ))}
                         </div>
+                      )}
+
+                      {message.askBack && message.askBack.length > 0 && message.id === lastAssistantId && !loading && (
+                        <p className="mt-2 border-l-2 border-[var(--red)] pl-2 text-[10.5px] leading-5 text-[var(--muted)]">
+                          <span className="font-medium text-[var(--ink)]">可以接着问：</span>
+                          {message.askBack.join(" / ")}
+                        </p>
                       )}
 
                       {message.options && message.options.length > 0 && message.id === lastAssistantId && !loading && (

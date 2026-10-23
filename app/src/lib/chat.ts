@@ -26,6 +26,7 @@ export interface Message {
   content: string;
   facts?: Fact[];
   options?: string[];
+  askBack?: string[];
   cards?: AskCard[];
   slots?: Record<string, string | number | null>;
   platform?: string;
@@ -36,6 +37,7 @@ export interface Message {
 export interface ChatReply {
   reply: string;
   options: string[];
+  askBack?: string[];
   issues?: { level: string; rule: string; message: string }[];
   facts: Fact[];
   slots: Record<string, string | number | null>;

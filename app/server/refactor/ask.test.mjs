@@ -20,6 +20,8 @@ test("budget plus scenario returns candidate cards and one next question", () =>
   assert.ok(result.cards.length > 0);
   assert.ok(result.reply.includes("MateBook GT 14"));
   assert.equal((result.reply.match(/[？?]/g) || []).length, 1);
+  assert.ok(result.askBack.some((question) => question.includes("系统")));
+  assert.ok(result.askBack.some((question) => question.includes("屏幕")));
 });
 
 test("later budget overrides the earlier one", () => {

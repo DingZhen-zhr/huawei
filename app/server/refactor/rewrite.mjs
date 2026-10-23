@@ -4,6 +4,19 @@ import { getSpec } from "../mcp/core.mjs";
 import { analyzeCopy, humanizeLocally } from "./copy-quality.mjs";
 import { copyTextFor } from "./generator.mjs";
 
+const SECTION_MARKS = "一二三四五六七八九十";
+
+function renumberSections(text) {
+  let index = 0;
+  return String(text || "").split(/\n{2,}/).map((block) => {
+    const match = block.match(/^([一二三四五六七八九十]+)[、.．]\s*/);
+    if (!match) return block;
+    index += 1;
+    const mark = SECTION_MARKS[index - 1] || match[1];
+    return `${mark}、${block.slice(match[0].length)}`;
+  }).join("\n\n");
+}
+
 const MODEL = process.env.DEEPSEEK_CONTENT_MODEL || process.env.DEEPSEEK_MODEL || "deepseek-v4-pro";
 
 function splitXhs(text) {
@@ -68,7 +81,7 @@ export async function rewriteVariant({ platform, product, variant, instruction =
       const parts = raw.split("\n");
       const title = parts.find((l) => l.trim())?.trim() || variant.title;
       const body = parts.slice(parts.indexOf(title) + 1).join("\n").trim();
-      fields = { title, body: body || raw };
+      fields = { title, body: platform === "wechat-mp" ? renumberSections(body || raw) : (body || raw) };
     }
   } catch (e) {
     mode = "local";
