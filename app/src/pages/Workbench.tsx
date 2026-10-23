@@ -290,9 +290,27 @@ function RiskBlock({ snapshot, variant }: { snapshot: TaskSnapshot; variant: Var
   );
 }
 
+function FactRow({ fact, index }: { fact: TaskSnapshot["evidence"][number]; index: number }) {
+  return (
+    <div className="grid grid-cols-[18px_minmax(0,1fr)] gap-1.5 border-b border-[var(--line)] py-2">
+      <span className="mono pt-0.5 text-[8px] text-[var(--red)]">{String(index + 1).padStart(2, "0")}</span>
+      <div>
+        <p className="text-[10.5px] leading-5 text-[var(--ink)]">{String(fact.value)}</p>
+        <p className="mt-0.5 flex flex-wrap gap-2 text-[8.5px] text-[var(--muted-2)]">
+          <span className="mono">{fact.capturedAt}</span>
+          <span>{sourceName(fact.sourceTitle)}</span>
+          <span>{trustLabel(fact.trustTier)}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function EvidencePanel({ snapshot, variant }: { snapshot: TaskSnapshot; variant: Variant }) {
   const selectedIds = new Set(variant.evidenceIds || []);
-  const facts = snapshot.evidence.filter((f) => !selectedIds.size || selectedIds.has(f.id));
+  const selected = snapshot.evidence.filter((f) => selectedIds.has(f.id));
+  const fallback = snapshot.evidence.filter((f) => !selectedIds.has(f.id));
+  const facts = [...selected, ...fallback].slice(0, Math.min(snapshot.evidence.length, Math.max(3, selected.length)));
   return (
     <div>
       <div className="border-t border-[var(--line)] pt-3">
@@ -307,20 +325,18 @@ function EvidencePanel({ snapshot, variant }: { snapshot: TaskSnapshot; variant:
           <span className="mono text-[9px] font-normal text-[var(--muted-2)]">{facts.length} 条</span>
         </p>
         <div className="mt-1">
-          {facts.slice(0, 8).map((fact, index) => (
-            <div key={fact.id} className="grid grid-cols-[18px_minmax(0,1fr)] gap-1.5 border-b border-[var(--line)] py-2">
-              <span className="mono pt-0.5 text-[8px] text-[var(--red)]">{String(index + 1).padStart(2, "0")}</span>
-              <div>
-                <p className="text-[10.5px] leading-5 text-[var(--ink)]">{String(fact.value)}</p>
-                <p className="mt-0.5 flex flex-wrap gap-2 text-[8.5px] text-[var(--muted-2)]">
-                  <span className="mono">{fact.capturedAt}</span>
-                  <span>{sourceName(fact.sourceTitle)}</span>
-                  <span>{trustLabel(fact.trustTier)}</span>
-                </p>
-              </div>
-            </div>
-          ))}
+          {facts.slice(0, 3).map((fact, index) => <FactRow key={fact.id} fact={fact} index={index} />)}
         </div>
+        {facts.length > 3 && (
+          <details className="mt-1">
+            <summary className="cursor-pointer border-b border-[var(--line)] py-2 text-[9.5px] text-[var(--muted)] hover:text-[var(--ink)]">
+              展开另外 {facts.length - 3} 条
+            </summary>
+            <div>
+              {facts.slice(3).map((fact, index) => <FactRow key={fact.id} fact={fact} index={index + 3} />)}
+            </div>
+          </details>
+        )}
       </div>
     </div>
   );
@@ -916,7 +932,7 @@ export default function Workbench() {
             <div className="sticky top-[94px]">
               <div className="flex items-baseline justify-between">
                 <h2 className="text-[21px] font-bold tracking-[-0.03em]">发之前，核对一下</h2>
-                <span className="mono text-[9px] text-[var(--muted-2)]">{String(activeVariant?.evidenceIds?.length || snapshot.evidence.length).padStart(2, "0")} 条资料</span>
+                <span className="mono text-[9px] text-[var(--muted-2)]">{String(Math.min(snapshot.evidence.length, Math.max(3, activeVariant?.evidenceIds?.length || 0))).padStart(2, "0")} 条资料</span>
               </div>
               {activeVariant ? (
                 <div className="mt-5 space-y-5">

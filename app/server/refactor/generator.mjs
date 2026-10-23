@@ -1,3 +1,5 @@
+import { trimDataDensity } from "./copy-quality.mjs";
+
 // 门店内容生成器：同一事实快照 + 同一真实细节，生成五个渠道的文案骨架。
 // 这里不调用模型补事实；改写服务可以再接 DeepSeek，但事实仍由 verifier 决定。
 
@@ -264,6 +266,7 @@ export function generatePlatformVariants({ product, platform, realDetail, audien
     else v = videoVariant(product, realDetail, angle, audience, scene, target);
     return {
       ...v,
+      body: trimDataDensity(v.body, platform),
       platform,
       angle,
       platformLabel: PLATFORM_LABEL[platform],

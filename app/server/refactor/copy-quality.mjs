@@ -55,6 +55,15 @@ export function analyzeCopy(text) {
       });
     }
   }
+  const numbers = t.match(/\d+(?:\.\d+)?/g) || [];
+  if (numbers.length > 6) {
+    issues.push({
+      type: "参数太密",
+      term: `${numbers.length} 个数字`,
+      sentence: "整篇",
+      suggestion: "删到 2–3 个，只留和顾客场景直接相关的一个主数字",
+    });
+  }
   const emoji = (t.match(/\p{Extended_Pictographic}/gu) || []).length;
   if (emoji > 3) {
     issues.push({
@@ -111,5 +120,90 @@ export function humanizeLocally(text) {
   ];
   for (const [re, value] of replacements) out = out.replace(re, value);
   out = out.replace(/[！!]{2,}/g, "！").replace(/\n{3,}/g, "\n\n").trim();
+  return out;
+}
+
+function countNumbers(text) {
+  return (String(text || "").match(/\d+(?:\.\d+)?/g) || []).length;
+}
+
+// 模型很容易把事实清单逐条搬进正文。这里按平台给一个数字预算，
+// 保留开头和收尾，删掉参数最密的中段；不新增事实，只做减法。
+export function trimDataDensity(text, platform = "xiaohongshu") {
+  const input = String(text || "").trim();
+  if (!input) return input;
+  if (platform === "video") return input;
+  const budget = platform === "wechat-mp" ? 8 : platform === "poster" ? 2 : platform === "moments" ? 3 : 4;
+  if (countNumbers(input) <= budget) return input;
+
+  if (platform === "poster") {
+    const lines = input.split("\n").map((line) => line.trim()).filter(Boolean);
+    const kept = [];
+    let used = 0;
+    for (const line of lines) {
+      const n = countNumbers(line);
+      if (used + n <= budget) {
+        kept.push(line);
+        used += n;
+      }
+      if (kept.filter((item) => countNumbers(item) > 0).length >= 2 && kept.length >= 3) break;
+    }
+    return kept.join("\n") || input;
+  }
+
+  const paragraphs = input.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+  const kept = [];
+  let used = 0;
+  const push = (part) => {
+    if (!part) return;
+    kept.push(part);
+    used += countNumbers(part);
+  };
+
+  const first = paragraphs[0] || "";
+  if (countNumbers(first) <= budget) {
+    push(first);
+  } else {
+    const sentences = first.split(/(?<=[。！？])/).filter(Boolean);
+    for (const sentence of sentences) {
+      if (kept.length === 0 || used + countNumbers(sentence) <= budget) push(sentence);
+      if (used >= budget) break;
+    }
+  }
+
+  for (const paragraph of paragraphs.slice(1)) {
+    const n = countNumbers(paragraph);
+    if (n === 0) {
+      if (kept.length < 3) push(paragraph);
+      continue;
+    }
+    if (used + n <= budget) {
+      push(paragraph);
+      continue;
+    }
+    const quietSentence = paragraph.split(/(?<=[。！？])/).find((sentence) => countNumbers(sentence) === 0);
+    if (quietSentence && kept.length < 4) push(quietSentence);
+  }
+
+  const last = paragraphs[paragraphs.length - 1];
+  if (last && !kept.includes(last) && countNumbers(last) <= 1) push(last);
+
+  while (used > budget && kept.length > 2) {
+    const index = kept.length - 2;
+    used -= countNumbers(kept[index]);
+    kept.splice(index, 1);
+  }
+
+  let out = kept.join("\n\n").trim();
+  if (platform === "xiaohongshu" || platform === "moments") {
+    const parts = out.split(/\n{2,}/).filter(Boolean);
+    if (parts.length > 2) {
+      const head = parts.slice(0, 2);
+      const tail = parts[parts.length - 1];
+      const keepTail = !head.includes(tail) && /(价|到店|来店|私聊|摸一摸|看实物|顺路)/.test(tail);
+      out = [...head, ...(keepTail ? [tail] : [])].join("\n\n");
+    }
+  }
+  if ([...out].length < 80) out = `${out}\n\n屏幕和接口到店看实物，比对着参数页快。`;
   return out;
 }

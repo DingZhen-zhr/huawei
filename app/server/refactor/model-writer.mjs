@@ -2,6 +2,7 @@
 // 任何模型失败都退回规则稿，并在任务里如实标记，不伪装成模型成功。
 import { chat } from "../deepseek.mjs";
 import { getSpec } from "../mcp/core.mjs";
+import { trimDataDensity } from "./copy-quality.mjs";
 
 const MODEL = process.env.DEEPSEEK_CONTENT_MODEL || process.env.DEEPSEEK_MODEL || "deepseek-chat";
 const SERVERLESS = Boolean(process.env.VERCEL || process.env.NETLIFY);
@@ -11,20 +12,20 @@ const TIMEOUT_MS = Number(process.env.HC_MODEL_TIMEOUT_MS || (SERVERLESS ? 30_00
 const ANGLE_GUIDE = {
   pain: "从顾客的麻烦写起。第一句就写他正在做的动作，不要先介绍产品，也不要先讲参数。",
   avoidance: "先说一个容易买错的地方，再给判断方法。像在店里提醒人，不像写测评。",
-  story: "只按已知细节复述，不补人物、对白、表情、心理、成交或离开。宁可写得平一点，也不要编一幕戏。",
+  story: "只挑一个已知细节复述，不补人物、对白、表情、心理、成交或离开；不要把所有规格再抄一遍。宁可写得平一点，也不要编一幕戏。",
 };
 
 const PLATFORM_GUIDE = {
   xiaohongshu:
-    "标题 8–20 字，像跟朋友说话；正文 300–800 字，一两句一段；3–5 个话题标签；一条首评；结尾给一个自然动作。",
+    "标题 8–20 字，像跟朋友说话；正文 250–450 字，一两句一段；最多 2 个数字/规格；3–5 个话题标签；一条首评；结尾给一个自然动作。",
   moments:
-    "没有标题；40–280 字；像自己发朋友圈，不像门店广告；结尾轻轻带一句到店或私聊。",
+    "没有标题；40–180 字；最多 2 个数字/规格；像自己发朋友圈，不像门店广告；结尾轻轻带一句到店或私聊。",
   "wechat-mp":
-    "标题 ≤64 字；摘要 ≤120 字；正文 800–1400 字，用空行分段，三个小标题各占一行（一、… / 二、… / 三、…）；文末必须原样带来源说明：信息基准日 2026-10-17，产品信息来自华为官方公开资料；具体配置与价格以门店实际报价为准。",
+    "标题 ≤64 字；摘要 ≤120 字；正文 600–1000 字，用空行分段，三个小标题各占一行（一、… / 二、… / 三、…）；正文最多 6 个数字/规格；文末必须原样带来源说明：信息基准日 2026-10-17，产品信息来自华为官方公开资料；具体配置与价格以门店实际报价为准。",
   poster:
-    "主标题 6–12 字；最多 4 行短句，一行一个意思，别写成文案墙；不写话题标签；二维码、地址、电话留白。",
+    "主标题 6–12 字；最多 4 行短句，一行一个意思，最多 2 个数字；别写成文案墙；不写话题标签；二维码、地址、电话留白。",
   video:
-    "标题 ≤12 字；口播 45–60 秒，保留“0–3 秒：/3–15 秒：/15–32 秒：/32–48 秒：/48–60 秒：”；3–5 个分镜；前 3 秒说人话，不要喊口号。",
+    "标题 ≤12 字；口播 45–60 秒，最多 2 个数字/规格，保留“0–3 秒：/3–15 秒：/15–32 秒：/32–48 秒：/48–60 秒：”；3–5 个分镜；前 3 秒说人话，不要喊口号。",
 };
 
 function str(value) {
@@ -105,6 +106,12 @@ function priceLine(product) {
   return `${product.price.label}（2026-10-17 官方快照，以门店实际报价为准）`;
 }
 
+function mainSpec(product) {
+  const facts = (product.facts || []).filter((fact) => fact.field !== "price").map((fact) => str(fact.value));
+  const weight = facts.find((value) => /(\d+(?:\.\d+)?)\s*(g|kg|克|千克|公斤)\b/i.test(value));
+  return weight || facts[0] || "以门店实物为准";
+}
+
 function anglesFor(platform) {
   return ["xiaohongshu", "moments", "video"].includes(platform) ? ["pain", "avoidance", "story"] : ["pain"];
 }
@@ -136,6 +143,7 @@ function buildPrompt({ product, platform, realDetail, audience, scene, target, s
     "4. 开口就写具体动作或场景，再写支撑它的事实。卖点顺序由麻烦决定，不要按“屏幕→重量→电池”堆参数。",
     "5. 同一个平台的三个角度，开头、结构、句子都要不一样，不要只换标题。",
     "6. 句子长短错开。少用破折号，少用“体验、效率、价值、能力、边界、场景化、闭环、生态、赋能”这类抽象词。",
+    "6b. 数据要少。小红书、朋友圈、视频号正文只准出现 2 个数字/规格，公众号最多 6 个，海报最多 1 个。第一个是真实细节里已有的数，第二个是【主数字】。写第三个就删掉整句，不要逐条抄事实清单。",
     "7. 不要用这些 AI 腔：",
     "   - “不是……而是……”“与其说……不如说……”",
     "   - “真正”“真正……的是……”“说到底”“说白了”“值得注意的是”“更重要的是”",
@@ -156,6 +164,7 @@ function buildPrompt({ product, platform, realDetail, audience, scene, target, s
     "“这不仅是一次接口升级，更是效率的跃迁。”",
     "“说到底，选对工具，才能把时间还给自己。”",
     "“轻，是拿在手里的。”",
+    "“14.2 英寸，3120 × 2080，264 ppi，120 Hz，54 Wh，16/24/32 GB，512 GB/1 TB。”——这是参数表，不是人说话。",
     "“他拎着没说话，又拎了一下自己包里那台。”",
   ].join("\n");
 
@@ -171,6 +180,8 @@ function buildPrompt({ product, platform, realDetail, audience, scene, target, s
     `【平台规则】${PLATFORM_GUIDE[platform] || ""}`,
     spec?.style?.tone ? `【语气】${spec.style.tone}` : "",
     spec?.required?.length ? `【必备】${spec.required.map((r) => `${r.label}：${r.hint}`).join("；")}` : "",
+    `【主数字】${mainSpec(product)}（正文里只写这一个规格数字，其他规格不带数字）`,
+    `【数据预算】正文只准出现 2 个数字（公众号 6 个，海报 1 个）：真实细节里的数 + 主数字。其他规格只写“屏幕、接口、电池”，不带数字。`,
     `【角度】${angles.map((angle) => `${angle}=${ANGLE_GUIDE[angle]}`).join("\n")}`,
     "【输出 JSON 结构】",
     '{"variants":[{"angle":"pain","title":"","body":"","tags":[],"firstComment":"","cta":"","summary":"","script":"","shotList":[],"posterLines":[]}]}',
@@ -256,6 +267,7 @@ function normalizeVariant(raw, platform, angle, product) {
     variant.body = clip(variant.script || variant.body, 1600);
     variant.tags = [];
   }
+  variant.body = trimDataDensity(variant.body, platform);
   if (!variant.cta) variant.cta = "想摸一下重量和屏幕，直接到店看实物。";
   variant.limitations = [product.price?.status === "active" ? "价格以门店实际报价为准" : "价格字段冻结，正文不写具体价格"];
   return variant;
@@ -264,7 +276,7 @@ function normalizeVariant(raw, platform, angle, product) {
 function validate(variants, platform, angles) {
   const missing = angles.filter((angle) => !variants.some((item) => item.angle === angle && item.body));
   if (missing.length) throw new Error(`模型缺少角度：${missing.join("、")}`);
-  const minBody = platform === "wechat-mp" ? 700 : platform === "poster" ? 8 : platform === "moments" ? 40 : 160;
+  const minBody = platform === "wechat-mp" ? 500 : platform === "poster" ? 8 : platform === "moments" ? 40 : 80;
   const short = variants.filter((item) => [...item.body].length < minBody);
   if (short.length) throw new Error(`模型正文过短：${short.map((item) => item.angle).join("、")}`);
   if (platform === "wechat-mp") {
