@@ -245,16 +245,23 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     },
   });
   const text = await res.text();
-  let data: any = {};
+  let data: { error?: string; code?: string; detail?: unknown } = {};
   try {
-    data = text ? JSON.parse(text) : {};
+    data = text ? (JSON.parse(text) as { error?: string; code?: string; detail?: unknown }) : {};
   } catch {
     data = { error: text.slice(0, 200) || `请求失败（${res.status}）` };
   }
   if (!res.ok) {
     throw new ApiError(data?.error || `请求失败（${res.status}）`, res.status, data?.code, data?.detail);
   }
-  return data as T;
+  return data as unknown as T;
+}
+
+export interface KbStatus {
+  ready: boolean;
+  stats: { models: number; images: number; guides: number };
+  builtAt: string | null;
+  source: string | null;
 }
 
 export const api = {
@@ -303,6 +310,12 @@ export const api = {
   adminDemo: () => request<{ ok: true }>("/api/admin/demo", { method: "POST", body: "{}" }),
   adminOverview: () =>
     request<{ products: Product[]; conflicts: Conflict[]; tasks: RecentTask[] }>("/api/admin/overview"),
+  kbStatus: () => request<KbStatus>("/api/admin/kb/status"),
+  importKb: () =>
+    request<{ status: string; models: number; images: number; guides: number; builtAt: string; source: string; kb: KbStatus }>(
+      "/api/admin/kb/import",
+      { method: "POST", body: "{}" },
+    ),
 };
 
 export { ApiError };

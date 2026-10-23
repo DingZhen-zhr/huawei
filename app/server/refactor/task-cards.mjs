@@ -1,5 +1,6 @@
 // 今日任务卡只从有真实事实和官方素材的型号中生成，不写无资料选题。
 import { getProduct } from "./ledger.mjs";
+import { importedAssetFor } from "./kb-store.mjs";
 
 const CARD_DEFS = [
   {
@@ -47,14 +48,15 @@ const CARD_DEFS = [
 export function getTaskCards() {
   const cards = CARD_DEFS.map((def) => {
     const product = getProduct(def.productId);
-    if (!product || !product.hasAssets) return null;
+    const asset = product ? (product.asset || importedAssetFor(product.modelKey)) : null;
+    if (!product || !asset) return null;
     return {
       ...def,
       productName: product.name,
       productShortName: product.shortName,
-      productAsset: product.asset,
+      productAsset: asset,
       productFamily: product.family,
-      hasAssets: product.hasAssets,
+      hasAssets: Boolean(asset),
       factStatus: product.conflict ? "conflict" : "active",
       priceLabel: product.price.label,
       snapshotDate: product.snapshotDate,

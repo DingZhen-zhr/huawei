@@ -28,6 +28,17 @@ npm run server              # 终端 1：API，8787
 npm run dev                 # 终端 2：前端，3000
 ```
 
+## 知识库导入
+
+只导入型号、图片索引和平台指南，不改事实账本，也不提交原始资料：
+
+```bash
+npm run kb:import -- ../华为PC全板块深度知识库_v7
+# 也可以进 /admin → 知识库 → 从服务器知识库导入
+```
+
+默认读取仓库根的 `华为PC全板块深度知识库_v7/`，也可用 `KB_ROOT` 指定。导入写到 `app/server/data/kb/`（已 gitignore），包含 10 个型号、53 张图和 13 份平台指南。产品卡会优先使用导入的官方主视觉图；模型写作会把对应平台的指南作为参考。
+
 数据默认写 Supabase（`HC_PERSISTENCE=supabase` + `SUPABASE_POOLER_URL`）；不配置数据库则回退本地 JSON。
 
 打开 <http://localhost:3000>，点「进入演示门店」；或使用门店码 `HUAWEI-001` / PIN `246810`。

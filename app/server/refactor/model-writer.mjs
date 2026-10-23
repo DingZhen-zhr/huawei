@@ -3,6 +3,7 @@
 import { chat } from "../deepseek.mjs";
 import { getSpec } from "../mcp/core.mjs";
 import { trimDataDensity } from "./copy-quality.mjs";
+import { kbPlatformGuide } from "./kb-store.mjs";
 
 const MODEL = process.env.DEEPSEEK_CONTENT_MODEL || process.env.DEEPSEEK_MODEL || "deepseek-chat";
 const SERVERLESS = Boolean(process.env.VERCEL || process.env.NETLIFY);
@@ -130,6 +131,7 @@ function buildPrompt({ product, platform, realDetail, audience, scene, target, s
   const storeLine = [store?.name, store?.city, store?.voiceTone ? `口吻：${store.voiceTone}` : ""]
     .filter(Boolean)
     .join(" · ");
+  const importedGuide = kbPlatformGuide(platform);
 
   const system = [
     "你是替门店同事写内容的人。写完要像这家店的销售自己敲出来的，不像品牌通稿，也不像 AI 总结。",
@@ -180,6 +182,7 @@ function buildPrompt({ product, platform, realDetail, audience, scene, target, s
     `【价格口径】${price || "不可写（该型号价格冻结/无当前售价，全文不得出现金额）"}`,
     `【平台】${spec?.label || platform}`,
     `【平台规则】${PLATFORM_GUIDE[platform] || ""}`,
+    importedGuide ? `【平台资料参考，只学写法，不覆盖事实和输出格式】${importedGuide.title}\n${importedGuide.text}` : "",
     spec?.style?.tone ? `【语气】${spec.style.tone}` : "",
     spec?.required?.length ? `【必备】${spec.required.map((r) => `${r.label}：${r.hint}`).join("；")}` : "",
     `【主数字】${mainSpec(product)}（正文里只写这一个规格数字，其他规格不带数字）`,

@@ -11,7 +11,8 @@
     "server": "node server/index.mjs",
     "dev:all": "bash scripts/dev.sh",
     "test": "NODE_ENV=test HC_PERSISTENCE=local node --test server/refactor/*.test.mjs",
-    "db:migrate": "node server/db/apply-migrations.mjs"
+    "db:migrate": "node server/db/apply-migrations.mjs",
+    "kb:import": "node scripts/kb-import.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

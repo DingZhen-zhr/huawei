@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, CircleAlert, Database, Loader2, LockKeyhole, LogOut, ShieldAlert } from "lucide-react";
+import { ArrowLeft, CircleAlert, Database, Loader2, LockKeyhole, LogOut, RefreshCw, ShieldAlert } from "lucide-react";
 import { Link } from "react-router";
-import { api, ApiError, type Conflict, type Product, type RecentTask } from "@/lib/api";
+import { api, ApiError, type Conflict, type KbStatus, type Product, type RecentTask } from "@/lib/api";
 
 function AdminHeader() {
   return (
@@ -106,6 +106,9 @@ export default function Admin() {
   const [products, setProducts] = useState<Product[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [tasks, setTasks] = useState<RecentTask[]>([]);
+  const [kb, setKb] = useState<KbStatus | null>(null);
+  const [kbBusy, setKbBusy] = useState(false);
+  const [kbNotice, setKbNotice] = useState("");
 
   const load = async () => {
     setError("");
@@ -114,6 +117,7 @@ export default function Admin() {
       setProducts(result.products);
       setConflicts(result.conflicts);
       setTasks(result.tasks);
+      setKb(await api.kbStatus().catch(() => null));
       setAuthed(true);
     } catch (e) {
       if (!(e instanceof ApiError && e.status === 401)) setError(e instanceof Error ? e.message : "后台加载失败");
@@ -124,6 +128,20 @@ export default function Admin() {
   };
 
   useEffect(() => { void load(); }, []);
+
+  const importKb = async () => {
+    setKbBusy(true);
+    setKbNotice("");
+    try {
+      const result = await api.importKb();
+      setKb(result.kb);
+      setKbNotice(`导入了 ${result.models} 个型号、${result.images} 张图、${result.guides} 份平台指南。`);
+    } catch (e) {
+      setKbNotice(e instanceof Error ? e.message : "导入失败");
+    } finally {
+      setKbBusy(false);
+    }
+  };
 
   const logout = async () => {
     await api.logout().catch(() => {});
@@ -167,6 +185,39 @@ export default function Admin() {
         </div>
 
         {error && <div className="mt-5 border border-[var(--danger)]/25 bg-[var(--danger-soft)] p-4 text-[11px] text-[var(--danger)]">{error}</div>}
+
+        <section className="mt-8 border border-[var(--line)] bg-[var(--surface)] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-[16px] font-semibold">知识库</h2>
+              <p className="mt-1 max-w-[42rem] text-[11px] leading-5 text-[var(--muted)]">
+                只导入型号、图片索引和平台指南。原始文档和图片留在服务器，不进仓库。
+              </p>
+            </div>
+            <button className="btn-secondary shrink-0" onClick={() => void importKb()} disabled={kbBusy}>
+              {kbBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {kbBusy ? "正在导入" : "从服务器知识库导入"}
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-3 border-t border-[var(--line)] pt-4">
+            {[
+              ["型号", kb?.stats.models ?? 0],
+              ["图片", kb?.stats.images ?? 0],
+              ["平台指南", kb?.stats.guides ?? 0],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <p className="num text-[28px] leading-none">{value}</p>
+                <p className="mt-1 text-[10px] text-[var(--muted)]">{label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[10.5px] leading-5 text-[var(--muted-2)]">
+            {kb?.ready
+              ? `上次导入 ${kb.builtAt ? new Date(kb.builtAt).toLocaleString("zh-CN") : "时间未知"} · 来源 ${kb.source || "服务器知识库"}`
+              : "还没导入。点右上角按钮，从服务器 KB_ROOT 读取。"}
+          </p>
+          {kbNotice && <p className="mt-2 border-l-2 border-[var(--red)] pl-2 text-[10.5px] leading-5 text-[var(--muted)]">{kbNotice}</p>}
+        </section>
 
         <section className="mt-8">
           <div className="flex items-center gap-2">

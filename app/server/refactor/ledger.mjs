@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadKB } from "../agent/kb-index.mjs";
+import { importedAssetFor } from "./kb-store.mjs";
 import { dbEnabled, dbLoadState, dbSaveState } from "./db.mjs";
 
 const hash = (s) => createHash("sha1").update(String(s)).digest("hex").slice(0, 12);
@@ -366,14 +367,15 @@ export function getProduct(idOrName) {
 
 export function publicProduct(p) {
   if (!p) return null;
+  const asset = p.asset || importedAssetFor(p.modelKey);
   return {
     id: p.id,
     name: p.name,
     shortName: p.shortName,
     family: p.family,
-    asset: p.asset,
+    asset,
     assetFit: p.assetFit || "cover",
-    hasAssets: p.hasAssets,
+    hasAssets: Boolean(asset),
     snapshotDate: p.snapshotDate,
     sourceStatus: p.sourceStatus,
     price: {

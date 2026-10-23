@@ -29,6 +29,8 @@ import { verifyContent } from "./verifier.mjs";
 import { analyzeCopy } from "./copy-quality.mjs";
 import { localAsk } from "./ask.mjs";
 import { dbEnabled } from "./db.mjs";
+import { defaultKbRoot, importKbToDisk } from "./kb-import.mjs";
+import { kbMediaPath, kbStatus, reloadKbStore } from "./kb-store.mjs";
 
 export const router = Router();
 
@@ -153,6 +155,34 @@ router.get("/admin/overview", requireAdmin, async (_req, res) => {
       .map((p) => getConflict(p.id))
       .filter(Boolean),
     tasks: await listTasks(null, 20),
+  });
+});
+
+let kbImporting = false;
+router.get("/admin/kb/status", requireAdmin, (_req, res) => {
+  res.json(kbStatus());
+});
+
+router.post("/admin/kb/import", requireAdmin, (req, res) => {
+  if (kbImporting) return res.status(409).json({ error: "知识库正在导入，等这次完成", code: "KB_IMPORT_BUSY" });
+  kbImporting = true;
+  try {
+    const result = importKbToDisk({ root: defaultKbRoot() });
+    reloadKbStore();
+    res.json({ status: "imported", ...result, kb: kbStatus() });
+  } catch (error) {
+    fail(res, error);
+  } finally {
+    kbImporting = false;
+  }
+});
+
+router.get("/kb/media/:file", (req, res) => {
+  const full = kbMediaPath(req.params.file);
+  if (!full) return res.status(404).json({ error: "图片不存在", code: "KB_MEDIA_NOT_FOUND" });
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.sendFile(full, (error) => {
+    if (error && !res.headersSent) res.status(404).end();
   });
 });
 
