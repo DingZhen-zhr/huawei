@@ -82,6 +82,18 @@ function Paragraphs({ text }: { text: string }) {
   );
 }
 
+function publishText(variant: Variant) {
+  const body = String(variant.body || "").trim();
+  const cta = String(variant.cta || "").trim();
+  const title = String(variant.title || "").trim();
+  if (variant.platform === "moments") return [body, cta].filter(Boolean).join("\n\n");
+  if (variant.platform === "wechat-mp") return [title, body].filter(Boolean).join("\n\n");
+  if (variant.platform === "poster") return [title, body].filter(Boolean).join("\n\n");
+  if (variant.platform === "video") return [title, variant.script || body].filter(Boolean).join("\n\n");
+  const tags = (variant.tags || []).map((tag) => `#${tag}`).join(" ");
+  return [title, body, tags, cta].filter(Boolean).join("\n\n");
+}
+
 function PlatformPreview({ variant, task, variantIndex }: { variant: Variant; task: TaskSnapshot["task"]; variantIndex: number }) {
   const [coverFailed, setCoverFailed] = useState(false);
   const image = task.productAsset;
@@ -563,8 +575,8 @@ export default function Workbench() {
     }
     setBusy("copy");
     try {
-      await navigator.clipboard.writeText(activeVariant.copyText);
-      setNotice("复制好了。发之前再看一眼门店信息。");
+      await navigator.clipboard.writeText(publishText(activeVariant));
+      setNotice("复制好了。标题、正文和标签都在这段里。");
       window.setTimeout(() => setNotice(""), 2200);
     } catch {
       setNotice("浏览器不让复制，长按选中文字。");
@@ -855,9 +867,9 @@ export default function Workbench() {
                   <PlatformPreview key={activeVariant.id} variant={activeVariant} task={snapshot.task} variantIndex={Math.max(1, (currentChannel?.variants.findIndex((v) => v.id === activeVariant.id) || 0) + 1)} />
 
                   <div className="mx-auto mt-4 flex w-full max-w-[664px] flex-wrap items-center gap-2">
-                    <button className="btn-primary" onClick={() => void copy()} disabled={busy === "copy" || activeVariant.verification.blocked}>
+                    <button className="btn-primary" title="复制可直接粘贴到平台的内容" onClick={() => void copy()} disabled={busy === "copy" || activeVariant.verification.blocked}>
                       {busy === "copy" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
-                      复制这段
+                      复制发布正文
                     </button>
                     <button className="btn-secondary" onClick={() => setEditing((v) => !v)}>
                       <PenLine className="h-4 w-4" /> {editing ? "收起" : "改字"}
